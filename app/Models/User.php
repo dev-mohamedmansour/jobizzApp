@@ -1,48 +1,96 @@
 <?php
+	  
+	  namespace App\Models;
+	  
+	  use Illuminate\Contracts\Auth\MustVerifyEmail;
+	  use Illuminate\Database\Eloquent\Factories\HasFactory;
+	  use Illuminate\Database\Eloquent\Relations\HasMany;
+	  use Illuminate\Database\Eloquent\Relations\HasOne;
+	  use Illuminate\Foundation\Auth\User as Authenticatable;
+	  use Illuminate\Notifications\Notifiable;
+	  use Laravel\Passport\HasApiTokens;
+	  
+	  class User extends Authenticatable implements MustVerifyEmail
+	  {
+			 use HasApiTokens, HasFactory, Notifiable;
+			 
+			 /**
+			  * The attributes that are mass assignable.
+			  *
+			  * @var array<int, string>
+			  */
+			 protected $fillable
+				  = [
+						'name',
+						'email',
+						'phone',
+						'password',
+						'provider_id',
+						'provider_name',
+						'confirmed_email',
+						'pin_code'
+				  ];
+			 
+			 /**
+			  * The attributes that should be hidden for serialization.
+			  *
+			  * @var array<int, string>
+			  */
+			 protected $hidden
+				  = [
+						'password',
+						'remember_token',
+						'pin_code'
+				  ];
+			 
+			 /**
+			  * Get the attributes that should be cast.
+			  *
+			  * @return array<string, string>
+			  */
+			 protected function casts(): array
+			 {
+					return [
+						 'confirmed_email'   => 'boolean',
+						 'email_verified_at' => 'datetime',
+						 'password'          => 'hashed'
+					];
+			 }
+			 
+			 private string $pin_code;
+			 /**
+			  * @var true
+			  */
+			 private bool $confirmed_email;
+			 
+			 public function profiles(): HasMany
+			 {
+					return $this->hasMany('App\Models\Profile');
+			 }
 
-namespace App\Models;
-
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Passport\HasApiTokens;
-
-class User extends Authenticatable
-{
-	  use HasApiTokens, HasFactory, Notifiable;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
-}
+			 public function setting(): HasOne
+			 {
+					return $this->hasOne('App\Models\Setting');
+			 }
+			 
+			 // Generate PIN for email verification
+			 public function generateVerificationPin(): string
+			 {
+					$this->pin_code = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+					$this->save();
+					return $this->pin_code;
+			 }
+			 
+			 // Verify PIN code
+			 public function verifyPin($pin): bool
+			 {
+					if ($this->pin_code == $pin) {
+						  $this->confirmed_email = true;
+						  $this->pin_code = null;
+						  $this->save();
+						  return true;
+					}
+					return false;
+			 }
+			 
+	  }
