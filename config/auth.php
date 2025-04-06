@@ -93,15 +93,19 @@ return [
     | quickly generating a very large amount of password reset tokens.
     |
     */
-
-    'passwords' => [
-        'users' => [
-            'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
-            'throttle' => 60,
-        ],
-    ],
+	 
+	 'verification' => [
+		  'expire' => env('VERIFICATION_EXPIRE', 1440), // 24 hours
+	 ],
+	 
+	 'passwords' => [
+		  'users' => [
+				'provider' => 'users',
+				'table' => 'password_reset_pins',
+				'expire' => env('PASSWORD_RESET_EXPIRE', 60), // 1 hour
+				'throttle' => 60,
+		  ],
+	 ],
 
     /*
     |--------------------------------------------------------------------------

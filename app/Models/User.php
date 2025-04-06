@@ -28,7 +28,9 @@
 						'provider_id',
 						'provider_name',
 						'confirmed_email',
-						'pin_code'
+						'pin_code',
+						'pin_created_at',
+						'email_verified_at',
 				  ];
 			 
 			 /**
@@ -36,6 +38,9 @@
 			  *
 			  * @var array<int, string>
 			  */
+			 protected array $dates = [
+				  'pin_created_at'
+			 ];
 			 protected $hidden
 				  = [
 						'password',

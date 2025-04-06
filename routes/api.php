@@ -25,4 +25,15 @@
 				  '/{provider}/callback',
 				  [AuthController::class, 'handleProviderCallback']
 			 );
+			 
+			 Route::post(
+				  '/password/reset-request',
+				  [AuthController::class, 'requestPasswordReset']
+			 );
+			 Route::post(
+				  '/password/verify-pin', [AuthController::class, 'verifyResetPin']
+			 );
+			 Route::post(
+				  '/password/reset', [AuthController::class, 'resetPassword']
+			 );
 	  });
