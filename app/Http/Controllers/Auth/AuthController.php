@@ -3,18 +3,17 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
-	  use App\Mail\PinNotificationMail;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
 	  use App\Services\PinService;
-//	  use Illuminate\Auth\MustVerifyEmail;
-	  use Illuminate\Contracts\Auth\MustVerifyEmail;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Auth;
 	  use Illuminate\Support\Facades\Hash;
-	  use Illuminate\Support\Facades\Mail;
 	  use Illuminate\Support\Str;
+	  use Illuminate\Validation\ValidationException;
 	  use Laravel\Socialite\Facades\Socialite;
+
+//	  use Illuminate\Auth\MustVerifyEmail;
 	  
 	  class AuthController extends Controller
 	  {
@@ -37,12 +36,12 @@
 								'password' => 'required|string|min:8|confirmed'
 						  ], [
 								 // Custom error messages
-								 'name.required' => 'The name field is required.',
-								 'email.required' => 'The email field is required.',
-								 'phone.required' => 'The phone number is required.',
-								 'password.required' => 'The password field is required.',
+								 'name.required'      => 'The name field is required.',
+								 'email.required'     => 'The email field is required.',
+								 'phone.required'     => 'The phone number is required.',
+								 'password.required'  => 'The password field is required.',
 								 'password.confirmed' => 'Password confirmation does not match.',
-								 'password.min' => 'Password must be at least 8 characters.',
+								 'password.min'       => 'Password must be at least 8 characters.',
 						  ]);
 						  
 						  // Create user if validation passes
@@ -53,7 +52,9 @@
 								'password'        => Hash::make($validated['password']),
 								'confirmed_email' => false
 						  ]);
-						  $pinResult = $this->pinService->generateAndSendPin($user, 'verification');
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$user, 'verification'
+						  );
 						  
 						  if (!$pinResult['email_sent']) {
 								 // Optionally delete the user if email failed
@@ -86,33 +87,41 @@
 			 {
 					try {
 						  $validated = $request->validate([
-								'email' => 'required|email',
+								'email'    => 'required|email',
 								'pin_code' => 'required|digits:4'
 						  ], [
-								'email.required' => 'Email is required',
-								'email.email' => 'Invalid email format',
+								'email.required'    => 'Email is required',
+								'email.email'       => 'Invalid email format',
 								'pin_code.required' => 'PIN code is required',
-								'pin_code.digits' => 'PIN must be 4 digits'
+								'pin_code.digits'   => 'PIN must be 4 digits'
 						  ]);
 						  
 						  // Find user without failing immediately
 						  $user = User::where('email', $request['email'])->first();
 						  
 						  if (!$user) {
-								 return responseJson(404, 'User not found. Please check your email or register first.');
+								 return responseJson(
+									  404,
+									  'User not found. Please check your email or register first.'
+								 );
 						  }
 						  
 						  // Verify PIN using your service
-						  if ($this->pinService->verifyPin($user, $validated['pin_code'], 'verification')) {
+						  if ($this->pinService->verifyPin(
+								$user, $validated['pin_code'], 'verification'
+						  )
+						  ) {
 								 // Mark email as verified for MustVerifyEmail
 								 if (!$user->hasVerifiedEmail()) {
 										$user->markEmailAsVerified();
 								 }
 								 // Create Passport token
 //								 $token = $user->createToken('AuthToken')->accessToken;
-								 return responseJson(200, 'Email verified successfully', [
-									  'user' => $user
-								 ]);
+								 return responseJson(
+									  200, 'Email verified successfully', [
+											'user' => $user
+									  ]
+								 );
 						  }
 						  
 						  return responseJson(400, 'Invalid PIN code');
@@ -133,48 +142,56 @@
 			 {
 					try {
 						  $validated = $request->validate([
-								'email' => 'required|email',
+								'email'    => 'required|email',
 								'password' => 'required'
 						  ], [
-								'email.required' => 'The email field is required.',
-								'email.email' => 'Please enter a valid email address.',
+								'email.required'    => 'The email field is required.',
+								'email.email'       => 'Please enter a valid email address.',
 								'password.required' => 'The password field is required.'
 						  ]);
 						  
 						  if (!Auth::attempt($validated)) {
-								 return responseJson(401, 'Invalid credentials', [
-									  'suggestion' => 'Please check your email and password'
-								 ]);
+								 return responseJson(
+									  401,
+									  'Invalid credentials, Please check your email and password '
+								 );
 						  }
 						  
-						  $user = $request->user();
+						  $user = Auth::user();
 						  
 						  // Check if email is verified (if using MustVerifyEmail)
-						  if ($user instanceof MustVerifyEmail && !$user->hasVerifiedEmail()) {
-								 return responseJson(403, 'Please verify your email address before logging in');
+						  if ($user instanceof
+								\Illuminate\Contracts\Auth\MustVerifyEmail
+								&& !$user->hasVerifiedEmail()
+						  ) {
+								 return responseJson(
+									  403,
+									  'Please verify your email address before logging in'
+								 );
 						  }
 						  
-						  $token = $user->createToken('AuthToken')->accessToken;
+						  $token = $user->createToken('authToken')->accessToken;
 						  
-						  return responseJson(200, 'Login successful', [
-								'token' => $token,
-								'user' => [
-									 'id' => $user->id,
-									 'name' => $user->name,
-									 'email' => $user->email
-									 // Only include necessary user data
+						  return responseJson(200,
+								'Login successful', [
+									 'token' => $token,
+									 'user'  => [
+										  'id'    => $user->id,
+										  'name'  => $user->name,
+										  'email' => $user->email
+									 ]
 								]
-						  ]);
+						  );
 						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(422, 'Validation error', [
-								'errors' => $e->errors(),
-						  ]);
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error',
+								 $e->errors());
 						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Login failed', [
-								'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
-						  ]);
+						  return responseJson(500, 'Login failed',
+								 config('app.debug') ? $e->getMessage()
+									 : 'An error occurred'
+						  );
 					}
 			 }
 			 
@@ -250,7 +267,8 @@
 					
 					$this->pinService->generateAndSendPin($user, 'reset');
 					
-					return responseJson( 200,"Reset PIN sent to email"
+					return responseJson(
+						 200, "Reset PIN sent to email"
 					);
 			 }
 			 
