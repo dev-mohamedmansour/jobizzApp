@@ -8,11 +8,20 @@
 	  use Illuminate\Database\Eloquent\Relations\HasOne;
 	  use Illuminate\Foundation\Auth\User as Authenticatable;
 	  use Illuminate\Notifications\Notifiable;
-	  use Laravel\Passport\HasApiTokens;
+	  use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 	  
-	  class User extends Authenticatable implements MustVerifyEmail
+	  class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 	  {
-			 use HasApiTokens, HasFactory, Notifiable;
+			 use HasFactory, Notifiable;
+			 public function getJWTIdentifier()
+			 {
+					return $this->getKey();
+			 }
+			 
+			 public function getJWTCustomClaims(): array
+			 {
+					return [];
+			 }
 			 
 			 /**
 			  * The attributes that are mass assignable.

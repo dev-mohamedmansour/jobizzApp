@@ -12,7 +12,7 @@
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
 	  use Laravel\Socialite\Facades\Socialite;
-
+	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 //	  use Illuminate\Auth\MustVerifyEmail;
 	  
 	  class AuthController extends Controller
@@ -150,50 +150,49 @@
 								'password.required' => 'The password field is required.'
 						  ]);
 						  
-						  if (!Auth::attempt($validated)) {
+						  // Attempt JWT authentication
+						  if (!$token = JWTAuth::attempt($validated)) {
 								 return responseJson(
 									  401,
-									  'Invalid credentials, Please check your email and password '
+									  'Invalid credentials. Please check your email and password.'
 								 );
 						  }
 						  
-						  $user = Auth::user();
+						  $user = auth()->user();
 						  
-						  // Check if email is verified (if using MustVerifyEmail)
-						  if ($user instanceof
-								\Illuminate\Contracts\Auth\MustVerifyEmail
-								&& !$user->hasVerifiedEmail()
-						  ) {
+						  // Email verification check
+						  if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail &&
+								!$user->hasVerifiedEmail()) {
 								 return responseJson(
 									  403,
 									  'Please verify your email address before logging in'
 								 );
 						  }
 						  
-						  $token = $user->createToken('authToken')->accessToken;
+						  // Get token expiration time
+						  $expiration = JWTAuth::factory()->getTTL() * 60;
 						  
-						  return responseJson(200,
-								'Login successful', [
-									 'token' => $token,
-									 'user'  => [
-										  'id'    => $user->id,
-										  'name'  => $user->name,
-										  'email' => $user->email
-									 ]
+						  return responseJson(200, 'Login successful', [
+								'access_token' => $token,
+								'token_type'   => 'bearer',
+								'expires_in'   => $expiration,
+								'user' => [
+									 'id'    => $user->id,
+									 'name'  => $user->name,
+									 'email' => $user->email
 								]
-						  );
+						  ]);
 						  
 					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation error',
-								 $e->errors());
+						  return responseJson(422, 'Validation error', $e->errors());
 						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Login failed',
-								 config('app.debug') ? $e->getMessage()
-									 : 'An error occurred'
+								config('app.debug') ? $e->getMessage() : 'An error occurred'
 						  );
 					}
 			 }
+
 			 
 			 // Social login redirect
 			 public function redirectToProvider($provider)

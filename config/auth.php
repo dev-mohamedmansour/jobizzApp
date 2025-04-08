@@ -14,8 +14,11 @@
 			 */
 			 
 			 'defaults' => [
-				  'guard'     => env('AUTH_GUARD', 'web'),
-				  'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
+				  
+						'guard' => 'api',
+						'passwords' => 'users',
+//				  'guard'     => env('AUTH_GUARD', 'web'),
+//				  'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
 			 ],
 			 
 			 /*
@@ -41,7 +44,7 @@
 						'provider' => 'users',
 				  ],
 				  'api' => [
-						'driver'   => 'passport',
+						'driver' => 'jwt',
 						'provider' => 'users',
 				  ],
 			 ],
@@ -120,8 +123,4 @@
 			 
 			 'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 			 
-			 'passport' => [
-				  'private_key' => file_get_contents(storage_path('oauth-private.key')),
-				  'public_key' => file_get_contents(storage_path('oauth-public.key')),
-			 ],
 	  ];
