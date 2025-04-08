@@ -119,5 +119,9 @@
 			 */
 			 
 			 'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
-	  
+			 
+			 'passport' => [
+				  'private_key' => file_get_contents(storage_path('oauth-private.key')),
+				  'public_key' => file_get_contents(storage_path('oauth-public.key')),
+			 ],
 	  ];
