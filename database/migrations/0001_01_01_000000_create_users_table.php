@@ -26,7 +26,7 @@
 						  // Fixed typo in field name and set default value
 						  $table->boolean('confirmed_email')->default(false);
 						  $table->char('pin_code', 5)->nullable();
-						  $table->timestamp('pin_created_at')->nullable(); // When the PIN was sent
+						  $table->dateTime('pin_created_at')->nullable(); // When the PIN was sent
 						  $table->timestamp('email_verified_at')->nullable();
 						  $table->timestamps();
 					});
