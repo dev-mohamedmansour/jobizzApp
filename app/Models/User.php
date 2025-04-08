@@ -38,8 +38,8 @@
 			  *
 			  * @var array<int, string>
 			  */
-			 protected array $dates = [
-				  'pin_created_at'
+			 protected $casts = [
+				  'pin_created_at' => 'datetime',
 			 ];
 			 protected $hidden
 				  = [

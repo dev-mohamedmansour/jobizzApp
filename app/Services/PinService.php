@@ -5,7 +5,10 @@
 	  use App\Mail\PinNotificationMail;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
+	  use Exception;
+	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Mail;
+	  use Random\RandomException;
 	  
 	  class PinService
 	  {
@@ -16,22 +19,14 @@
 			  * @param string $type 'verification' or 'reset'
 			  *
 			  * @return string The generated PIN
+			  * @throws RandomException
 			  */
-			 public function generateAndSendPin(User $user, string $type): string
-			 {
-					$pin = $this->generatePin();
-					$expiry = $this->getExpiryMinutes($type);
-					
-					$this->storePin($user->email, $pin, $type);
-					
-					$this->sendPinEmail($user->email, $pin, $type, $expiry);
-					
-					return $pin;
-			 }
 			 
 			 /**
 			  * Generate a 4-digit PIN
-			  */
+			  *
+			  * @throws RandomException
+*/
 			 protected function generatePin(): string
 			 {
 					return str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -45,6 +40,24 @@
 					return $type === 'verification'
 						 ? config('auth.verification.expire', 1440)  // 24 hours
 						 : config('auth.passwords.users.expire', 60); // 1 hour
+			 }
+			 
+			 /**
+			  * @throws RandomException
+			  */
+			 public function generateAndSendPin(User $user, string $type): array
+			 {
+					$pin = $this->generatePin();
+					$expiry = $this->getExpiryMinutes($type);
+					
+					$this->storePin($user->email, $pin, $type);
+					
+					$emailSent = $this->sendPinEmail($user->email, $pin, $type, $expiry);
+					
+					return [
+						 'pin' => $pin,
+						 'email_sent' => $emailSent
+					];
 			 }
 			 
 			 /**
@@ -68,12 +81,15 @@
 			 /**
 			  * Send the PIN notification email
 			  */
-			 protected function sendPinEmail(string $email, string $pin,
-				  string $type, int $expiry
-			 ): void {
-					Mail::to($email)->send(
-						 new PinNotificationMail($pin, $type, $expiry)
-					);
+			 protected function sendPinEmail(string $email, string $pin, string $type, int $expiry): bool
+			 {
+					try {
+						  Mail::to($email)->send(new PinNotificationMail($pin, $type, $expiry));
+						  return true;
+					} catch (Exception $e) {
+						  Log::error("Failed to send email to {$email}: " . $e->getMessage());
+						  return false;
+					}
 			 }
 			 
 			 /**
@@ -82,9 +98,21 @@
 			 public function verifyPin(User $user, string $pin, string $type): bool
 			 {
 					if ($type === 'verification') {
-						  return $this->verifyEmailPin($user, $pin);
+						  // Check PIN and expiry
+						  if ($user->pin_code === $pin &&
+								$user->pin_created_at->addMinutes(60)->isFuture()) {
+								 
+								 $user->pin_code = null;
+								 $user->confirmed_email = true;
+								 $user->email_verified_at = now();
+								 $user->save();
+								 
+								 return true;
+						  }
+						  return false;
 					}
 					
+					// Handle reset PIN verification
 					return $this->verifyResetPin($user->email, $pin);
 			 }
 			 
