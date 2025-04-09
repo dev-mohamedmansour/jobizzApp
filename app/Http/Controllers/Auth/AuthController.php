@@ -350,37 +350,56 @@
 						  $validated = $request->validate([
 								'email' => 'required|email|exists:users,email',
 								'pin'   => 'required|digits:4'
+						  ], [
+								'email.required' => 'The email field is required.',
+								'email.email'    => 'Please enter a valid email address.',
+								'email.exists'    => 'No account found with this email address.',
+								'pin.required'    => 'The PIN code is required.',
+								'pin.digits'     => 'The PIN must be a 4-digit number.'
 						  ]);
 						  
+						  // Verify PIN
 						  $pinRecord = PasswordResetPin::where('email', $validated['email'])
 								->where('pin', $validated['pin'])
 								->where('created_at', '>', now()->subHours(1))
 								->first();
 						  
 						  if (!$pinRecord) {
-								 return responseJson(400, 'Invalid or expired PIN');
+								 return responseJson(400, 'Invalid or expired PIN', [
+									  'suggestion' => 'Please request a new PIN'
+								 ]);
 						  }
 						  
+						  // Generate JWT token
 						  $user = User::where('email', $validated['email'])->first();
-						  
-						  // Generate token with specific claims
-						  $token = JWTAuth::customClaims([
+						  $token = JWTAuth::fromUser($user, [
 								'purpose' => 'password_reset',
 								'reset_id' => $pinRecord->id,
-								'email' => $user->email
-						  ])->fromUser($user);
-						  
-						  return responseJson(200, 'PIN verified successfully', [
-								'reset_token' => $token,
-								'token_type' => 'bearer',
-								'expires_in' => config('jwt.reset_token_ttl', 1800) // 30 minutes
+								'expires_in' => 1800  // 30 minutes
 						  ]);
 						  
+						  // Invalidate the PIN after successful verification
+						  $pinRecord->update([
+								'pin' => null,
+								'created_at' => null
+						  ]);
+						  
+						  return responseJson(200, 'PIN verified successfully', [
+								'access_token' => $token,
+								'token_type'   => 'bearer',
+								'expires_in'   => config('jwt.reset_token_ttl', 1800)
+						  ]);
+						  
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation failed', [
+								'errors' => $e->errors()
+						  ]);
 					} catch (\Exception $e) {
-						  return responseJson(500, 'PIN verification failed');
+						  return responseJson(500, 'PIN verification failed', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
 					}
 			 }
-			 
 			 public function resetPassword(Request $request)
 			 {
 					try {
