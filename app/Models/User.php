@@ -79,7 +79,12 @@
 			 
 			 public function profiles(): HasMany
 			 {
-					return $this->hasMany('App\Models\Profile');
+					return $this->hasMany(Profile::class);
+			 }
+			 
+			 public function defaultProfile(): HasOne
+			 {
+					return $this->hasOne(Profile::class)->where('is_default', true);
 			 }
 
 			 public function setting(): HasOne

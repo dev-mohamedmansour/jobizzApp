@@ -235,6 +235,8 @@ return [
     */
 
     'show_black_list_exception' => env('JWT_SHOW_BLACKLIST_EXCEPTION', true),
+	 'reset_token_ttl' => env('JWT_RESET_TTL', 1800),
+
 
     /*
     |--------------------------------------------------------------------------

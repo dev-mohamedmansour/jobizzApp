@@ -6,6 +6,6 @@
 	  
 	  class PasswordResetPin extends Model
 	  {
-			 public $timestamps = false;
+			 public $timestamps = true;
 			 protected $fillable = ['email', 'pin',];
 	  }
