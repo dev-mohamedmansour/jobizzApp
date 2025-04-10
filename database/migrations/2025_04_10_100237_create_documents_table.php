@@ -9,13 +9,22 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::create('documents', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
-    }
+	  // database/migrations/YYYY_MM_DD_create_documents_table.php
+	  public function up(): void
+	  {
+			 Schema::create('documents', function (Blueprint $table) {
+					$table->id();
+					$table->foreignId('profile_id')->constrained()->onDelete('cascade');
+					$table->string('name');
+					$table->enum('type', ['cv', 'portfolio', 'certificate', 'other']);
+					$table->string('path')->nullable(); // For CV files
+					$table->string('url')->nullable(); // For portfolio URLs
+					$table->timestamps();
+					
+					// Indexes for faster querying
+					$table->index(['type', 'profile_id']);
+			 });
+	  }
 
     /**
      * Reverse the migrations.

@@ -75,8 +75,27 @@
 			 );
 			 
 			 // Profile documents
+			 // CV Routes
+			 Route::post('/{profileId}/cvs', [ProfileController::class, 'uploadCV']
+			 );
+			 Route::put(
+				  '/{profileId}/cvs/{cvId}', [ProfileController::class, 'editCV']
+			 );
+			 Route::delete(
+				  '/{profileId}/cvs/{cvId}', [ProfileController::class, 'deleteCV']
+			 );
+			 
+			 // Portfolio Routes
 			 Route::post(
-				  '/{profileId}/documents',
-				  [ProfileController::class, 'uploadDocument']
+				  '/{profileId}/portfolio',
+				  [ProfileController::class, 'uploadPortfolio']
+			 );
+			 Route::put(
+				  '/{profileId}/portfolio',
+				  [ProfileController::class, 'editPortfolio']
+			 );
+			 Route::delete(
+				  '/{profileId}/portfolio',
+				  [ProfileController::class, 'deletePortfolio']
 			 );
 	  });

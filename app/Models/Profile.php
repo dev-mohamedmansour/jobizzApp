@@ -33,7 +33,7 @@
 					}
 					return 'https://jobizaa.com/images/nonPhoto.jpg'; // Default placeholder
 			 }
-			 public function educations()
+			 public function educations(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
 					return $this->hasMany(Education::class);
 			 }
@@ -45,16 +45,16 @@
 			 
 			 public function documents(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
-					return $this->hasMany(ProfileDocument::class);
+					return $this->hasMany(Document::class);
 			 }
 			 
 			 public function cvs(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
-					return $this->hasMany(ProfileDocument::class)->where('type', 'cv');
+					return $this->hasMany(Document::class)->where('type', 'cv');
 			 }
 			 
 			 public function portfolios(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
-					return $this->hasMany(ProfileDocument::class)->where('type', 'portfolio');
+					return $this->hasMany(Document::class)->where('type', 'portfolio');
 			 }
 	  }
