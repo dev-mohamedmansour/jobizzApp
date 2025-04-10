@@ -1,12 +1,20 @@
 <?php
-function responseJson($status, $message, $data = null)
+function responseJson($status, $message, $data = null): \Illuminate\Http\JsonResponse
 {
-    $response = [
-        'status' => $status,
-        'message' => $message,
-        'data' => $data
-    ];
-    return response()->json($response);
+	  if ($data === null) {
+			 $response = [
+				  'status' => $status,
+				  'message' => $message,
+			 ];
+	  }else{
+			 $response = [
+				  'status' => $status,
+				  'message' => $message,
+				  'data' => $data
+			 ];
+	  }
+	  return response()->json($response);
+	  
 }
 
 function notifyByFirebase($title, $body, $tokens, $data = [], $is_notification = true): bool|string
