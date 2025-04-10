@@ -2,7 +2,6 @@
 	  
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\ProfileController;
-	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Route;
 	  
 	  
@@ -41,21 +40,43 @@
 	  });
 	  
 	  Route::prefix('profiles')->middleware('auth:api')->group(function () {
-			 Route::get('/', [ProfileController::class, 'index']);
-			 Route::post('/', [ProfileController::class, 'store']);
-			 Route::get('/{id}', [ProfileController::class, 'show']);
+			 Route::get('/', [ProfileController::class, 'getAllProfiles']);
+			 Route::post('/add-profile', [ProfileController::class, 'addProfile']);
+			 Route::get('/{id}', [ProfileController::class, 'getProfileById']);
 			 Route::put('/{id}', [ProfileController::class, 'update']);
-			 Route::delete('/{id}', [ProfileController::class, 'destroy']);
-			 
-			 // Profile images
-			 Route::post('/{profileId}/images', [ProfileController::class, 'uploadImage']);
+			 Route::delete('/{id}', [ProfileController::class, 'delete']);
 			 
 			 // Profile educations
-			 Route::post('/{profileId}/educations', [ProfileController::class, 'addEducation']);
+			 Route::post(
+				  '/{profileId}/educations',
+				  [ProfileController::class, 'addEducation']
+			 );
+			 Route::put(
+				  '/{profileId}/educations/{educationId}',
+				  [ProfileController::class, 'updateEducation']
+			 );
+			 Route::delete(
+				  '/{profileId}/educations/{educationId}',
+				  [ProfileController::class, 'deleteEducation']
+			 );
 			 
 			 // Profile experiences
-			 Route::post('/{profileId}/experiences', [ProfileController::class, 'addExperience']);
+			 Route::post(
+				  '/{profileId}/experiences',
+				  [ProfileController::class, 'addExperience']
+			 );
+			 Route::put(
+				  '/{profileId}/experiences/{experienceId}',
+				  [ProfileController::class, 'editExperience']
+			 );
+			 Route::delete(
+				  '/{profileId}/experiences/{experienceId}',
+				  [ProfileController::class, 'deleteExperience']
+			 );
 			 
 			 // Profile documents
-			 Route::post('/{profileId}/documents', [ProfileController::class, 'uploadDocument']);
+			 Route::post(
+				  '/{profileId}/documents',
+				  [ProfileController::class, 'uploadDocument']
+			 );
 	  });

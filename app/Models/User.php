@@ -8,6 +8,8 @@
 	  use Illuminate\Database\Eloquent\Relations\HasOne;
 	  use Illuminate\Foundation\Auth\User as Authenticatable;
 	  use Illuminate\Notifications\Notifiable;
+	  use Illuminate\Support\Facades\Storage;
+	  use Illuminate\Support\Str;
 	  use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 	  
 	  class User extends Authenticatable implements JWTSubject, MustVerifyEmail
@@ -40,6 +42,7 @@
 						'pin_code',
 						'pin_created_at',
 						'email_verified_at',
+						'profile_image',
 				  ];
 			 
 			 /**

@@ -11,9 +11,10 @@
 					Schema::create('profiles', function (Blueprint $table) {
 						  $table->id();
 						  $table->foreignId('user_id')->constrained()->onDelete('cascade');
-						  $table->string('title');
+						  $table->string('title_job');
 						  $table->string('job_position');
 						  $table->boolean('is_default')->default(false);
+						  $table->string('profile_image')->nullable();
 						  $table->timestamps();
 					});
 			 }

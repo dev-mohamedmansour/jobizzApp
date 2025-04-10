@@ -14,9 +14,8 @@
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenBlacklistedException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
-	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
-	  
+
 //	  use Illuminate\Auth\MustVerifyEmail;
 	  
 	  class AuthController extends Controller
@@ -54,7 +53,7 @@
 								'email'           => $validated['email'],
 								'phone'           => $validated['phone'],
 								'password'        => Hash::make($validated['password']),
-								'confirmed_email' => false
+								'confirmed_email' => false,
 						  ]);
 						  $pinResult = $this->pinService->generateAndSendPin(
 								$user, 'verification'
@@ -229,16 +228,17 @@
 			 public function handleProviderCallback($provider)
 			 {
 					try {
-						  $socialUser = Socialite::driver($provider)->stateless()->user();
+						  $socialUser = Socialite::driver($provider)->stateless()
+								->user();
 						  
 						  // Find or create user
 						  $user = User::firstOrCreate(
 								['email' => $socialUser->getEmail()],
 								[
-									 'name' => $socialUser->getName(),
-									 'provider_id' => $socialUser->getId(),
-									 'provider_name' => $provider,
-									 'password' => Hash::make(Str::random(32)),
+									 'name'              => $socialUser->getName(),
+									 'provider_id'       => $socialUser->getId(),
+									 'provider_name'     => $provider,
+									 'password'          => Hash::make(Str::random(32)),
 									 'email_verified_at' => now() // Mark as verified
 								]
 						  );
@@ -246,26 +246,29 @@
 						  // Generate JWT token
 						  $token = JWTAuth::fromUser($user, [
 								'provider' => $provider,
-								'avatar' => $socialUser->getAvatar()
+								'avatar'   => $socialUser->getAvatar()
 						  ]);
 						  
 						  return responseJson(200, 'Login successful', [
 								'access_token' => $token,
-								'token_type' => 'bearer',
-								'expires_in' => auth()->factory()->getTTL() * 60,
-								'user' => [
-									 'id' => $user->id,
-									 'name' => $user->name,
-									 'email' => $user->email,
+								'token_type'   => 'bearer',
+								'expires_in'   => auth()->factory()->getTTL() * 60,
+								'user'         => [
+									 'id'       => $user->id,
+									 'name'     => $user->name,
+									 'email'    => $user->email,
 									 'provider' => $provider
 								]
 						  ]);
 						  
 					} catch (\Exception $e) {
 						  Log::error("Social auth failed: " . $e->getMessage());
-						  return responseJson(401, 'Authentication failed. Please try again.');
+						  return responseJson(
+								401, 'Authentication failed. Please try again.'
+						  );
 					}
 			 }
+			 
 			 // Logout
 			 public function logout()
 			 {
@@ -281,27 +284,34 @@
 			 {
 					try {
 						  // Manually check if token is blocklisted
-						  if (auth()->payload()->get('jti') &&
-								JWTAuth::getBlacklist()->has(auth()->payload())) {
-								 return responseJson(401, 'User is logged out - please login again');
+						  if (auth()->payload()->get('jti')
+								&& JWTAuth::getBlacklist()->has(auth()->payload())
+						  ) {
+								 return responseJson(
+									  401, 'User is logged out - please login again'
+								 );
 						  }
 						  
 						  $newToken = auth()->refresh();
 						  
 						  return responseJson(200, 'Token refreshed successfully', [
 								'access_token' => $newToken,
-								'token_type' => 'bearer',
-								'expires_in' => auth()->factory()->getTTL() * 60
+								'token_type'   => 'bearer',
+								'expires_in'   => auth()->factory()->getTTL() * 60
 						  ]);
 						  
 					} catch (TokenExpiredException $e) {
 						  return responseJson(401, 'Token has expired');
 					} catch (TokenBlacklistedException $e) {
-						  return responseJson(401, 'User is logged out - please login again');
+						  return responseJson(
+								401, 'User is logged out - please login again'
+						  );
 					} catch (JWTException $e) {
 						  return responseJson(401, 'Unauthenticated users');
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error during token refresh');
+						  return responseJson(
+								500, 'Server error during token refresh'
+						  );
 					}
 			 }
 			 
@@ -312,33 +322,39 @@
 								'email' => 'required|email|exists:users,email'
 						  ], [
 								'email.required' => 'The email field is required.',
-								'email.email' => 'Please enter a valid email address.',
-								'email.exists' => 'No account found with this email address.'
+								'email.email'    => 'Please enter a valid email address.',
+								'email.exists'   => 'No account found with this email address.'
 						  ]);
 						  
 						  $user = User::where('email', $validated['email'])->first();
 						  
 						  // Delete existing pins
-						  PasswordResetPin::where('email', $validated['email'])->delete();
+						  PasswordResetPin::where('email', $validated['email'])
+								->delete();
 						  
 						  // Attempt to generate and send PIN
-						  $pinResult = $this->pinService->generateAndSendPin($user, 'reset');
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$user, 'reset'
+						  );
 						  
 						  if (!$pinResult['email_sent']) {
-								 throw new \Exception('Failed to send password reset email');
+								 throw new \Exception(
+									  'Failed to send password reset email'
+								 );
 						  }
 						  
 						  return responseJson(200, "Reset PIN sent to email");
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  return responseJson(422, 'Validation failed', [
-								'errors' => $e->errors(),
+								'errors'  => $e->errors(),
 								'message' => 'Please check your email address'
 						  ]);
 						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Password reset request failed', [
-								'error' => config('app.debug') ? $e->getMessage() : null,
+								'error'   => config('app.debug') ? $e->getMessage()
+									 : null,
 								'message' => 'Please try again later'
 						  ]);
 					}
@@ -353,13 +369,15 @@
 						  ], [
 								'email.required' => 'The email field is required.',
 								'email.email'    => 'Please enter a valid email address.',
-								'email.exists'    => 'No account found with this email address.',
-								'pin.required'    => 'The PIN code is required.',
+								'email.exists'   => 'No account found with this email address.',
+								'pin.required'   => 'The PIN code is required.',
 								'pin.digits'     => 'The PIN must be a 4-digit number.'
 						  ]);
 						  
 						  // Verify PIN
-						  $pinRecord = PasswordResetPin::where('email', $validated['email'])
+						  $pinRecord = PasswordResetPin::where(
+								'email', $validated['email']
+						  )
 								->where('pin', $validated['pin'])
 								->where('created_at', '>', now()->subHours(1))
 								->first();
@@ -373,14 +391,14 @@
 						  // Generate JWT token
 						  $user = User::where('email', $validated['email'])->first();
 						  $token = JWTAuth::fromUser($user, [
-								'purpose' => 'password_reset',
-								'reset_id' => $pinRecord->id,
+								'purpose'    => 'password_reset',
+								'reset_id'   => $pinRecord->id,
 								'expires_in' => 1800  // 30 minutes
 						  ]);
 						  
 						  // Invalidate the PIN after successful verification
 						  $pinRecord->update([
-								'pin' => null,
+								'pin'        => null,
 								'created_at' => null
 						  ]);
 						  
@@ -400,23 +418,26 @@
 						  ]);
 					}
 			 }
+			 
 			 public function resetPassword(Request $request)
 			 {
 					try {
 						  $validated = $request->validate([
-								'token' => 'required|string',
+								'token'    => 'required|string',
 								'password' => 'required|string|min:8|confirmed'
 						  ]);
 						  
 						  // Manually verify the token
 						  try {
-								 $payload = JWTAuth::setToken($validated['token'])->getPayload();
+								 $payload = JWTAuth::setToken($validated['token'])
+									  ->getPayload();
 								 
 								 if ($payload->get('purpose') !== 'password_reset') {
 										return responseJson(401, 'Invalid token purpose');
 								 }
 								 
-								 $user = User::where('email', $payload->get('email'))->first();
+								 $user = User::where('email', $payload->get('email'))
+									  ->first();
 								 
 								 if (!$user) {
 										return responseJson(404, 'User not found');

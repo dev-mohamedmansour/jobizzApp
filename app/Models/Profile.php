@@ -4,6 +4,8 @@
 	  
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
+	  use Illuminate\Support\Facades\Storage;
+	  use Illuminate\Support\Str;
 	  
 	  class Profile extends Model
 	  {
@@ -11,27 +13,27 @@
 			 
 			 protected $fillable = [
 				  'user_id',
-				  'title',
+				  'title_job',
 				  'job_position',
-				  'is_default'
+				  'is_default',
+				  'profile_image',
 			 ];
 			 
 			 public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {
 					return $this->belongsTo(User::class);
 			 }
-			 
-			 public function images(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 // Accessor for image URL
+			 public function getProfileImageUrlAttribute()
 			 {
-					return $this->hasMany(ProfileImage::class);
+					if ($this->profile_image) {
+						  return Str::startsWith($this->profile_image, 'http')
+								? $this->profile_image
+								: Storage::url($this->profile_image);
+					}
+					return 'https://jobizaa.com/images/nonPhoto.jpg'; // Default placeholder
 			 }
-			 
-			 public function mainImage(): \Illuminate\Database\Eloquent\Relations\HasOne
-			 {
-					return $this->hasOne(ProfileImage::class)->where('is_main', true);
-			 }
-			 
-			 public function educations(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function educations()
 			 {
 					return $this->hasMany(Education::class);
 			 }
