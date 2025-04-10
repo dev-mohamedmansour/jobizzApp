@@ -935,3 +935,307 @@
 [10-Apr-2025 09:31:33 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
 [10-Apr-2025 09:31:34 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
 [10-Apr-2025 07:31:37 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:12:10 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:12:10 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:12:17 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:12:17 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:13:24 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:13:24 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:13:25 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:13:42 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:13:43 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:13:44 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:14:52 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:14:52 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:14:53 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:15:02 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:15:02 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:15:03 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:15:18 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:15:18 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:15:19 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:15:19 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:23:41 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:23:41 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:23:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:23:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:26:03 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:26:04 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:26:05 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:31:43 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:31:43 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:31:44 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:35:47 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:35:48 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:35:49 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:36:23 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:36:23 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:36:24 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:39:41 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:39:41 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:39:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:49:52 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:49:52 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:49:53 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:50:24 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:50:25 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:50:25 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:51:28 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:51:28 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:51:29 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:53:08 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:53:08 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:53:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:55:45 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:55:46 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:55:47 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:58:15 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 13:58:15 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 11:58:16 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:03:43 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:03:43 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:03:44 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:04:09 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:04:09 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:04:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:04:28 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:04:28 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:04:29 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:05:07 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:05:08 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:05:08 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:05:15 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:05:16 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:05:16 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:06:03 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:06:03 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:06:04 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:06:09 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:06:10 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:06:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:06:50 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:06:50 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:06:50 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:06:56 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:06:56 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:06:57 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:07:08 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:07:08 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:07:09 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:07:41 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:07:41 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:07:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:07:49 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:07:49 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:07:49 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:08:23 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:08:24 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:08:24 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:08:46 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:08:46 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:08:47 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:08:56 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:08:56 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:08:57 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:09:29 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:09:29 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:09:30 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:10:03 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:10:03 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:10:03 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:10:14 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:10:14 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:10:15 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:15:58 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:15:58 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:16:02 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:16:12 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:16:12 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:16:13 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:22:17 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:22:17 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:22:18 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:23:09 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:23:09 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:23:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:23:26 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:23:26 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:23:27 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:26:51 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:26:51 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:26:52 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:27:53 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:27:53 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:27:54 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:28:48 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:28:48 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:28:49 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:28:54 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:28:55 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:28:55 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:29:09 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:29:10 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:29:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:29:26 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:29:26 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:29:27 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:30:06 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:30:06 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:30:06 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:30:10 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:30:10 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:30:11 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:33:08 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:33:08 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:33:09 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:35:30 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:35:30 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:35:31 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:35:41 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:35:42 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:35:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:35:42 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:35:43 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:36:17 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:36:17 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:36:18 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:36:27 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:36:28 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:36:28 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:36:32 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:36:32 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:36:33 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:43:57 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:43:57 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:43:58 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:44:08 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:44:08 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:44:09 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:44:22 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:44:22 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:44:23 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:44:29 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:44:30 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:44:30 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:48:15 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:48:15 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:48:16 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:49:27 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:49:27 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:49:28 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:49:46 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:49:46 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:49:47 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:51:25 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:51:25 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:51:26 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:54:02 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:54:03 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:54:03 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:54:21 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:54:22 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:54:22 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:55:27 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:55:27 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:55:28 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:56:28 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:56:29 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:56:30 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:56:49 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:56:49 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:56:49 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:57:02 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:57:02 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:57:03 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:58:38 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:58:38 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:58:39 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:59:41 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 14:59:42 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 12:59:42 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:01:28 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:01:28 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:01:29 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:01:49 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:01:49 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:01:50 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:02:13 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:02:13 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:02:14 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:07:59 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:07:59 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:08:00 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:10:53 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:10:53 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:10:58 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:11:12 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:11:13 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:11:13 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:11:32 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:11:33 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:11:33 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:12:21 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:12:21 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:12:22 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:12:33 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:12:33 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:12:34 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:15:33 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:15:33 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:15:33 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:21:57 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:21:57 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:21:59 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:21:59 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:23:27 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:23:28 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:23:29 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:23:42 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:23:42 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:23:43 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:24:26 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:24:26 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:24:28 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:24:51 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:24:51 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:24:52 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:25:05 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:25:05 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:25:06 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:25:07 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:25:21 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:25:21 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:25:22 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:26:08 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:26:09 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:26:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:27:25 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:27:25 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:27:26 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:27:57 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:27:57 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:27:58 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:28:09 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:28:10 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:28:10 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:28:52 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:28:52 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:28:53 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:28:53 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:30:17 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:30:17 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:30:18 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:31:51 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:31:51 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:31:52 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 15:33:13 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 15:33:13 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:33:14 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 13:33:15 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 16:11:14 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 16:11:14 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:11:17 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:11:17 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 16:11:49 Africa/Cairo] Xdebug: [Log Files] File 'C:/Program Files/php/php8.3.19/xdebug.log' could not be opened.
+[10-Apr-2025 16:11:49 Africa/Cairo] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).
+[10-Apr-2025 14:11:50 UTC] Xdebug: [Step Debug] Time-out connecting to debugging client, waited: 200 ms. Tried: 127.0.0.1:9003 (through xdebug.client_host/xdebug.client_port).

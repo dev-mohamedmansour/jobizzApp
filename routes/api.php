@@ -43,8 +43,8 @@
 			 Route::get('/', [ProfileController::class, 'getAllProfiles']);
 			 Route::post('/add-profile', [ProfileController::class, 'addProfile']);
 			 Route::get('/{id}', [ProfileController::class, 'getProfileById']);
-			 Route::put('/{id}', [ProfileController::class, 'update']);
-			 Route::delete('/{id}', [ProfileController::class, 'delete']);
+			 Route::put('/{id}', [ProfileController::class, 'updateProfile']);
+			 Route::delete('/{id}', [ProfileController::class, 'deleteProfile']);
 			 
 			 // Profile educations
 			 Route::post(

@@ -12,7 +12,19 @@
 				 health: '/up',
 			)
 			->withMiddleware(function (Middleware $middleware) {
-				  //
+				  // Add JWT refresh middleware
+				  $middleware->appendToGroup('web', [
+						\App\Http\Middleware\RefreshJwtToken::class,
+				  ]);
+				  $middleware->appendToGroup('api', [
+						\App\Http\Middleware\RefreshJwtToken::class,
+				  ]);
+				  
+				  // Or if you want it for all requests
+				  $middleware->use([
+						 // ... other middleware
+						 \App\Http\Middleware\RefreshJwtToken::class,
+				  ]);
 			})
 			->withExceptions(function (Exceptions $exceptions) {
 				  //
