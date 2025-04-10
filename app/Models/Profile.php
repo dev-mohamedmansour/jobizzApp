@@ -48,6 +48,11 @@
 					return $this->hasMany(Document::class);
 			 }
 			 
+			 public function documentImages(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 {
+					return $this->hasMany(DocumentImage::class);
+			 }
+			 
 			 public function cvs(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
 					return $this->hasMany(Document::class)->where('type', 'cv');

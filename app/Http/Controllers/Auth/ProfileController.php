@@ -7,6 +7,7 @@
 	  use App\Models\Experience;
 	  use App\Models\Profile;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Facades\Validator;
 	  
@@ -269,7 +270,6 @@
 					}
 			 }
 			 
-			 
 			 // Education Logic
 			 
 			 public function addEducation(Request $request, $profileId
@@ -471,7 +471,6 @@
 					}
 			 }
 			 
-			 
 			 // Experience Logic
 			 public function addExperience(Request $request, $profileId
 			 ): \Illuminate\Http\JsonResponse {
@@ -495,12 +494,12 @@
 								'description' => 'nullable|string|max:1000'
 						  ]);
 						  
-						  $existingexperience = $profile->experiences()
+						  $existingExperience = $profile->experiences()
 								->where('company', $request->company)
 								->where('start_date', $request->start_date)
 								->first();
 						  
-						  if ($existingexperience) {
+						  if ($existingExperience) {
 								 return responseJson(
 									  409,
 									  'company already exists with the same start_date',
@@ -512,7 +511,7 @@
 								 ]);
 						  }
 						  
-						  // Handle current job case
+						  // Handle the current job case
 						  $experienceData = $validator->validated();
 						  if ($experienceData['is_current'] ?? false) {
 								 $experienceData['end_date'] = null;
@@ -574,7 +573,7 @@
 						  );
 						  $updateData = $validator->validated();
 						  
-						  // Handle current job case
+						  // Handle the current job case
 						  if ($updateData['is_current'] ?? false) {
 								 $updateData['end_date'] = null;
 						  }
@@ -661,7 +660,6 @@
 					}
 			 }
 			 
-			 
 			 // Document Logic
 			 public function uploadCV(Request $request, $profileId)
 			 {
@@ -725,20 +723,24 @@
 								 return responseJson(403, 'Unauthorized action');
 						  }
 						  
+						  // Mobile apps can send files as an array using multipart/form-data
+						  // Example: files[0], files[1] etc. or just multiple files with the same name
 						  $validator = Validator::make($request->all(), [
-								'name'    => 'required|string|max:255',
-								'files'   => 'sometimes|array|max:12',
-								'files.*' => 'sometimes|file|mimes:pdf,jpeg,png,jpg,gif|max:2048',
-								'url'     => 'sometimes|url'
+								'name' => 'required|string|max:255',
+								'files' => 'required_without:url|array|max:12',
+								'files.*' => 'sometimes|file|mimes:pdf,jpeg,png,jpg,gif|max:5000',
+								'url' => 'required_without:files|url'
+						  ], [
+								'files.required_without' => 'Please upload files or provide a URL',
+								'url.required_without' => 'Please provide a URL or upload files',
+								'files.max' => 'Maximum 12 files allowed for portfolio'
 						  ])->after(function ($validator) use ($request) {
-								 // Validate at least one upload method exists
-								 if (empty($request->file('files')) && empty($request->url)) {
-										$validator->errors()->add('portfolio', 'Either files or URL must be provided');
-								 }
-								 
-								 // Validate mutual exclusivity
+								 // Check mutual exclusivity
 								 if ($request->has('files') && $request->has('url')) {
-										$validator->errors()->add('portfolio', 'Cannot provide both files and URL');
+										$validator->errors()->add(
+											 'portfolio',
+											 'Cannot provide both files and URL - choose one method'
+										);
 								 }
 						  });
 						  
@@ -754,32 +756,20 @@
 								 // Delete existing portfolio if exists
 								 $profile->documents()->where('type', 'portfolio')->delete();
 								 
-								 $portfolioData = [
+								 $portfolio = $profile->documents()->create([
 									  'name' => $request->name,
 									  'type' => 'portfolio'
-								 ];
+								 ]);
 								 
-								 if ($request->hasFile('files')) {
-										$files = $request->file('files');
-										$portfolio = $profile->documents()->create($portfolioData);
+								 // Handle image uploads
+								 foreach ($request->file('files') as $file) {
+										$path = $file->store('portfolio/images', 'public');
 										
-										foreach ($files as $file) {
-											  $path = $file->store('portfolio', 'public');
-											  $mimeType = $file->getMimeType();
-											  
-											  // Save all files but track images separately
-											  if (str_starts_with($mimeType, 'image/')) {
-													 $portfolio->images()->create(['path' => $path]);
-											  }
-											  
-											  $filePaths[] = ['path' => $path, 'type' => $mimeType];
-										}
-										
-										$portfolioData['path'] = json_encode($filePaths);
-										$portfolio->update(['path' => $portfolioData['path']]);
-								 } else {
-										$portfolioData['url'] = $request->url;
-										$portfolio = $profile->documents()->create($portfolioData);
+										// Save to document_images table
+										$portfolio->images()->create([
+											 'path' => $path,
+											 'mime_type' => $file->getMimeType()
+										]);
 								 }
 								 
 								 DB::commit();
@@ -790,12 +780,6 @@
 								 
 						  } catch (\Exception $e) {
 								 DB::rollBack();
-								 // Cleanup any uploaded files if transaction fails
-								 if (isset($filePaths)) {
-										foreach ($filePaths as $file) {
-											  Storage::disk('public')->delete($file['path']);
-										}
-								 }
 								 return responseJson(500, 'Portfolio upload failed', [
 									  'error' => config('app.debug') ? $e->getMessage() : null
 								 ]);
@@ -809,9 +793,9 @@
 						  ]);
 					}
 			 }
-			 
-			 public function editPortfolio(Request $request, $profileId)
-			 {
+			 public
+			 function editPortfolio(Request $request, $profileId
+			 ) {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()->where(
@@ -918,8 +902,9 @@
 			 }
 			 
 			 // Edit CV
-			 public function editCV(Request $request, $profileId, $cvId)
-			 {
+			 public
+			 function editCV(Request $request, $profileId, $cvId
+			 ) {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  // Authorization
@@ -974,7 +959,7 @@
 						  
 						  $cv->save();
 						  
-						  // Delete old file after successful update
+						  // Delete an old file after successful update
 						  if (isset($newPath)) {
 								 Storage::disk('public')->delete($originalPath);
 						  }
@@ -990,12 +975,14 @@
 						  ]);
 					}
 			 }
+			 
 			 /* delete funs */
 			 
 			 // Delete CV
 			 
-			 public function deleteCV(Request $request, $profileId, $cvId)
-			 {
+			 public
+			 function deleteCV(Request $request, $profileId, $cvId
+			 ) {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $cv = $profile->documents()
@@ -1025,8 +1012,9 @@
 
 // Delete Portfolio
 			 
-			 public function deletePortfolio(Request $request, $profileId)
-			 {
+			 public
+			 function deletePortfolio(Request $request, $profileId
+			 ) {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()->where(
@@ -1059,8 +1047,9 @@
 
 // Helper function to delete portfolio files
 			 
-			 private function deletePortfolioFiles($portfolio)
-			 {
+			 private
+			 function deletePortfolioFiles($portfolio
+			 ) {
 					if ($portfolio->path) {
 						  $files = json_decode($portfolio->path, true);
 						  foreach ($files as $file) {
