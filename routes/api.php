@@ -87,15 +87,15 @@
 			 
 			 // Portfolio Routes
 			 Route::post(
-				  '/{profileId}/portfolio',
-				  [ProfileController::class, 'uploadPortfolio']
+				  '/{profileId}/portfolios',
+				  [ProfileController::class, 'handlePortfolio']
 			 );
 			 Route::put(
-				  '/{profileId}/portfolio',
-				  [ProfileController::class, 'editPortfolio']
+				  '/{profileId}/portfolios/{portfolio}',
+				  [ProfileController::class, 'handlePortfolio']
 			 );
 			 Route::delete(
-				  '/{profileId}/portfolio',
+				  '/{profileId}/portfolios/{portfolio}',
 				  [ProfileController::class, 'deletePortfolio']
 			 );
 	  });
