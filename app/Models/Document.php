@@ -15,8 +15,10 @@
 				  'profile_id',
 				  'name',
 				  'type',
+				  'format',
 				  'path',
-				  'url'
+				  'url',
+				  'max_images'
 			 ];
 			 
 			 protected $casts = [
@@ -39,5 +41,30 @@
 					return self::where('profile_id', $profileId)
 						 ->where('type', 'cv')
 						 ->count();
+			 }
+			 public function scopePortfolios($query)
+			 {
+					return $query->where('type', 'portfolio');
+			 }
+			 
+			 // Helper methods
+			 public function isPdfPortfolio(): bool
+			 {
+					return $this->type === 'portfolio' && $this->format === 'pdf';
+			 }
+			 
+			 public function isImagePortfolio(): bool
+			 {
+					return $this->type === 'portfolio' && $this->format === 'images';
+			 }
+			 
+			 public function isUrlPortfolio(): bool
+			 {
+					return $this->type === 'portfolio' && $this->format === 'url';
+			 }
+			 
+			 public function hasReachedImageLimit(): bool
+			 {
+					return $this->isImagePortfolio() && $this->images()->count() >= $this->max_images;
 			 }
 	  }

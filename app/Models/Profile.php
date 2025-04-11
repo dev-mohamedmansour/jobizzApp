@@ -58,8 +58,18 @@
 					return $this->hasMany(Document::class)->where('type', 'cv');
 			 }
 			 
-			 public function portfolios(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function portfolios()
 			 {
-					return $this->hasMany(Document::class)->where('type', 'portfolio');
+					return $this->documents()->portfolios();
+			 }
+			 
+			 public function hasMaxPortfolios(): bool
+			 {
+					return $this->portfolios()->count() >= 2;
+			 }
+			 
+			 public function hasPdfPortfolio(): bool
+			 {
+					return $this->portfolios()->where('format', 'pdf')->exists();
 			 }
 	  }

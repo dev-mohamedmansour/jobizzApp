@@ -3,6 +3,8 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Models\Document;
+	  use App\Models\DocumentImage;
 	  use App\Models\Education;
 	  use App\Models\Experience;
 	  use App\Models\Profile;
@@ -15,9 +17,7 @@
 	  
 	  class ProfileController extends Controller
 	  {
-			 /**
-			  * Display a listing of the user's profiles.
-			  */
+			 
 			 public function getAllProfiles(Request $request
 			 ): \Illuminate\Http\JsonResponse {
 					try {
@@ -661,8 +661,8 @@
 			 }
 			 
 			 // Document Logic
-			 public function uploadCV(Request $request, $profileId)
-			 {
+			 public function uploadCV(Request $request, $profileId
+			 ): \Illuminate\Http\JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  
@@ -708,194 +708,6 @@
 						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'CV upload failed', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
-					}
-			 }
-			 
-			 public function uploadPortfolio(Request $request, $profileId)
-			 {
-					try {
-						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Unauthorized action');
-						  }
-						  
-						  // Mobile apps can send files as an array using multipart/form-data
-						  // Example: files[0], files[1] etc. or just multiple files with the same name
-						  $validator = Validator::make($request->all(), [
-								'name' => 'required|string|max:255',
-								'files' => 'required_without:url|array|max:12',
-								'files.*' => 'sometimes|file|mimes:pdf,jpeg,png,jpg,gif|max:5000',
-								'url' => 'required_without:files|url'
-						  ], [
-								'files.required_without' => 'Please upload files or provide a URL',
-								'url.required_without' => 'Please provide a URL or upload files',
-								'files.max' => 'Maximum 12 files allowed for portfolio'
-						  ])->after(function ($validator) use ($request) {
-								 // Check mutual exclusivity
-								 if ($request->has('files') && $request->has('url')) {
-										$validator->errors()->add(
-											 'portfolio',
-											 'Cannot provide both files and URL - choose one method'
-										);
-								 }
-						  });
-						  
-						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  try {
-								 // Delete existing portfolio if exists
-								 $profile->documents()->where('type', 'portfolio')->delete();
-								 
-								 $portfolio = $profile->documents()->create([
-									  'name' => $request->name,
-									  'type' => 'portfolio'
-								 ]);
-								 
-								 // Handle image uploads
-								 foreach ($request->file('files') as $file) {
-										$path = $file->store('portfolio/images', 'public');
-										
-										// Save to document_images table
-										$portfolio->images()->create([
-											 'path' => $path,
-											 'mime_type' => $file->getMimeType()
-										]);
-								 }
-								 
-								 DB::commit();
-								 
-								 return responseJson(201, 'Portfolio uploaded successfully', [
-									  'portfolio' => $portfolio->load('images')
-								 ]);
-								 
-						  } catch (\Exception $e) {
-								 DB::rollBack();
-								 return responseJson(500, 'Portfolio upload failed', [
-									  'error' => config('app.debug') ? $e->getMessage() : null
-								 ]);
-						  }
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile not found');
-					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
-					}
-			 }
-			 public
-			 function editPortfolio(Request $request, $profileId
-			 ) {
-					try {
-						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()->where(
-								'type', 'portfolio'
-						  )->firstOrFail();
-						  
-						  // Authorization
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Unauthorized action');
-						  }
-						  
-						  $validator = Validator::make($request->all(), [
-								 // ... existing validation rules ...
-						  ])->after(function ($validator) use ($request, $portfolio) {
-								 if ($request->hasFile('files')) {
-										$existingCount = count(
-											 json_decode($portfolio->path, true) ?? []
-										);
-										$newCount = count($request->file('files'));
-										if (($existingCount + $newCount) > 12) {
-											  $validator->errors()->add(
-													'files',
-													'Total images cannot exceed 12. Current: '
-													. $existingCount
-											  );
-										}
-								 }
-						  });
-						  
-						  $validator = Validator::make($request->all(), [
-								'name'    => 'sometimes|string|max:255',
-								'files.*' => 'sometimes|file|mimes:pdf,jpeg,png,jpg,gif|max:2048',
-								'url'     => 'sometimes|url'
-						  ]);
-						  
-						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
-						  }
-						  
-						  $changes = [];
-						  $originalData = $portfolio->toArray();
-						  
-						  // Handle URL update
-						  if ($request->has('url')) {
-								 // Clear files if switching to URL
-								 if ($portfolio->path) {
-										deletePortfolioFiles($portfolio);
-										$changes[] = 'Removed files';
-								 }
-								 $portfolio->url = $request->url;
-								 $changes[] = 'URL updated';
-						  }
-						  
-						  // Handle file updates
-						  if ($request->hasFile('files')) {
-								 // Clear existing URL
-								 if ($portfolio->url) {
-										$portfolio->url = null;
-										$changes[] = 'URL removed';
-								 }
-								 
-								 $newFiles = [];
-								 foreach ($request->file('files') as $file) {
-										$newFiles[] = ['path' => $file->store(
-											 'portfolio', 'public'
-										)];
-								 }
-								 $portfolio->path = json_encode($newFiles);
-								 $changes[] = 'Files updated';
-						  }
-						  
-						  // Handle name update
-						  if ($request->has('name')
-								&& $portfolio->name !== $request->name
-						  ) {
-								 $portfolio->name = $request->name;
-								 $changes[] = 'Name updated';
-						  }
-						  
-						  if (empty($changes)) {
-								 return responseJson(
-									  200, 'No changes detected', [
-											'portfolio' => $portfolio,
-											'unchanged' => true
-									  ]
-								 );
-						  }
-						  
-						  $portfolio->save();
-						  return responseJson(
-								200, 'Portfolio updated successfully', [
-									 'portfolio' => $portfolio,
-									 'changes'   => $changes
-								]
-						  );
-						  
-					} catch (\Exception $e) {
-						  return responseJson(500, 'Portfolio update failed', [
 								'error' => config('app.debug') ? $e->getMessage() : null
 						  ]);
 					}
@@ -976,8 +788,6 @@
 					}
 			 }
 			 
-			 /* delete funs */
-			 
 			 // Delete CV
 			 
 			 public
@@ -1009,52 +819,245 @@
 						  ]);
 					}
 			 }
-
-// Delete Portfolio
 			 
-			 public
-			 function deletePortfolio(Request $request, $profileId
+			 // Portfolio Logic
+			 
+			 // Unified Upload/Update Portfolio
+			 public function handlePortfolio(Request $request, $profileId,
+				  $portfolioId = null
 			 ) {
+					$validator = Validator::make($request->all(), [
+						 'name'             => 'required|string|max:255',
+						 'pdf'              => 'nullable|file|mimes:pdf|max:10240',
+						 'url'              => 'nullable|url',
+						 'images'           => 'nullable|array|max:12',
+						 'images.*'         => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+						 'deleted_images'   => 'nullable|array',
+						 'deleted_images.*' => 'exists:document_images,id'
+					]);
+					
+					if ($validator->fails()) {
+						  return responseJson(422, $validator->errors());
+					}
+					
+					$profile = Profile::findOrFail($profileId);
+					
+					// Authorization check
+					if ($request->user()->id !== $profile->user_id) {
+						  return responseJson(403, 'Unauthorized');
+					}
+					
+					DB::beginTransaction();
+					
 					try {
-						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()->where(
-								'type', 'portfolio'
-						  )->firstOrFail();
+						  $isUpdate = $portfolioId !== null;
+						  $portfolio = $isUpdate ? Document::findOrFail($portfolioId)
+								: new Document();
 						  
-						  // Authorization
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Unauthorized action');
+						  // Check if creating new portfolio
+						  if (!$isUpdate && $profile->portfolios()->count() >= 2) {
+								 return responseJson(
+									  422,
+									  'Maximum 2 portfolios allowed'
+								 );
 						  }
 						  
-						  $portfolio->delete();
-						  deletePortfolioFiles($portfolio);
+						  // Determine portfolio format
+						  $format = null;
+						  if ($request->hasFile('pdf')) {
+								 $format = 'pdf';
+						  } elseif ($request->filled('url')) {
+								 $format = 'url';
+						  } elseif ($request->has('images')) {
+								 $format = 'images';
+						  }
+						  
+						  if (!$format && !$isUpdate) {
+								 return responseJson(
+									  422, 'You must provide either PDF, URL, or images'
+								 );
+						  }
+						  
+						  // Update portfolio data
+						  $portfolioData = [
+								'profile_id'  => $profileId,
+								'name'        => $request->name,
+								'description' => $request->description,
+								'type'        => 'portfolio',
+								'format'      => $format,
+								'max_images'  => 12
+						  ];
+						  
+						  // Handle PDF
+						  if ($request->hasFile('pdf')) {
+								 // Delete old PDF if exists
+								 if ($isUpdate && $portfolio->path) {
+										Storage::disk('public')->delete($portfolio->path);
+								 }
+								 
+								 $file = $request->file('pdf');
+								 $path = $file->store('portfolios/pdfs', 'public');
+								 $portfolioData['path'] = $path;
+								 $portfolioData['url'] = Storage::disk('public')->url(
+									  $path
+								 );
+						  }
+						  
+						  // Handle URL
+						  if ($request->filled('url')) {
+								 $portfolioData['url'] = $request->url;
+								 $portfolioData['path'] = null;
+						  }
+						  
+						  // Save portfolio
+						  if ($isUpdate) {
+								 $portfolio->update($portfolioData);
+						  } else {
+								 $portfolio = $profile->documents()->create(
+									  $portfolioData
+								 );
+						  }
+						  
+						  // Handle Images
+						  if ($request->has('images')) {
+								 // Check image limit
+								 $currentImages = $portfolio->images()->count();
+								 $newImagesCount = count($request->images);
+								 $remainingSlots = $portfolio->max_images
+									  - $currentImages;
+								 
+								 if ($newImagesCount > $remainingSlots) {
+										return responseJson(
+											 422,
+											 "You can only upload {$remainingSlots} more images (max 12 total)"
+										);
+								 }
+								 
+								 // Store new images
+								 foreach ($request->images as $image) {
+										$path = $image->store(
+											 'portfolios/images', 'public'
+										);
+										
+										$portfolio->images()->create([
+											 'path'      => $path,
+											 'mime_type' => $image->getMimeType(),
+											 'url'       => Storage::disk('public')->url(
+												  $path
+											 )
+										]);
+								 }
+						  }
+						  
+						  // Handle deleted images
+						  if ($request->has('deleted_images')) {
+								 $imagesToDelete = DocumentImage::whereIn(
+									  'id', $request->deleted_images
+								 )
+									  ->where('document_id', $portfolio->id)
+									  ->get();
+								 
+								 foreach ($imagesToDelete as $image) {
+										Storage::disk('public')->delete($image->path);
+										$image->delete();
+								 }
+						  }
+						  
+						  DB::commit();
+						  
+						  $message = $isUpdate
+								?
+								($this->hasChanges($portfolio, $request)
+									 ?
+									 'Portfolio updated successfully'
+									 :
+									 'No changes detected')
+								:
+								'Portfolio created successfully';
 						  
 						  return responseJson(
-								200, 'Portfolio deleted successfully', [
-									 'deleted_id' => $portfolio->id
-								]
+								$isUpdate ? 200 : 201,
+								$message,
+								$portfolio->fresh()->load('images')
 						  );
 						  
 					} catch (\Exception $e) {
+						  DB::rollBack();
 						  return responseJson(
-								500, 'Portfolio deletion failed', [
-									 'error' => config('app.debug') ? $e->getMessage()
-										  : null
-								]
+								500, 'Portfolio operation failed',
 						  );
 					}
 			 }
-
-// Helper function to delete portfolio files
 			 
-			 private
-			 function deletePortfolioFiles($portfolio
-			 ) {
-					if ($portfolio->path) {
-						  $files = json_decode($portfolio->path, true);
-						  foreach ($files as $file) {
-								 Storage::disk('public')->delete($file['path']);
+			 // Delete Portfolio or specific items
+			 
+			 private function hasChanges(Document $portfolio, Request $request
+			 ): bool {
+					return $request->hasFile('pdf') || $request->filled('url')
+						 || $request->has('images')
+						 || $request->has('deleted_images')
+						 || $portfolio->name !== $request->name
+						 || $portfolio->description !== $request->description;
+			 }
+			 
+			 // Check if there are actual changes
+			 
+			 public function deletePortfolio(Request $request, $portfolioId)
+			 {
+					$portfolio = Document::findOrFail($portfolioId);
+					
+					// Authorization check
+					if ($request->user()->id !== $portfolio->profile->user_id) {
+						  return responseJson(
+								403, 'Unauthorized'
+						  );
+					}
+					
+					DB::beginTransaction();
+					
+					try {
+						  // Delete specific images if requested
+						  if ($request->has('delete_images')) {
+								 $imagesToDelete = $portfolio->images()
+									  ->whereIn('id', $request->delete_images)
+									  ->get();
+								 
+								 foreach ($imagesToDelete as $image) {
+										Storage::disk('public')->delete($image->path);
+										$image->delete();
+								 }
+								 
+								 DB::commit();
+								 return responseJson(
+									  200,
+									  'Selected images deleted successfully'
+//									  $portfolio->fresh()->load('images')
+								 );
 						  }
+						  
+						  // Delete entire portfolio
+						  if ($portfolio->isPdfPortfolio() && $portfolio->path) {
+								 Storage::disk('public')->delete($portfolio->path);
+						  } elseif ($portfolio->isImagePortfolio()) {
+								 foreach ($portfolio->images as $image) {
+										Storage::disk('public')->delete($image->path);
+								 }
+						  }
+						  
+						  $portfolio->delete();
+						  DB::commit();
+						  
+						  return responseJson(
+								200,
+								'Portfolio deleted successfully'
+						  );
+						  
+					} catch (\Exception $e) {
+						  DB::rollBack();
+						  return responseJson(
+								500,
+								'Deletion failed'
+						  );
 					}
 			 }
 			 
