@@ -86,16 +86,36 @@
 			 );
 			 
 			 // Portfolio Routes
-			 Route::post(
-				  '/{profileId}/portfolios',
-				  [ProfileController::class, 'handlePortfolio']
-			 );
-			 Route::put(
-				  '/{profileId}/portfolios/{portfolio}',
-				  [ProfileController::class, 'handlePortfolio']
-			 );
-			 Route::delete(
-				  '/{profileId}/portfolios/{portfolio}',
-				  [ProfileController::class, 'deletePortfolio']
-			 );
+			 Route::prefix('{profileId}/portfolio')->group(function () {
+					Route::post(
+						 '/images',
+						 [ProfileController::class, 'addPortfolioTypeImages']
+					);
+					Route::post(
+						 '/pdf',
+						 [ProfileController::class, 'addPortfolioTypePdf']
+					);
+					Route::post(
+						 '/url',
+						 [ProfileController::class, 'addPortfolioTypeLink']
+					);
+					Route::put(
+						 '/images/{portfolioId}',
+						 [ProfileController::class, 'editPortfolioImages']
+					);
+					Route::put(
+						 '/pdf/{portfolioId}',
+						 [ProfileController::class, 'editPortfolioPdf']
+					);
+					Route::put(
+						 '/url/{portfolioId}',
+						 [ProfileController::class, 'editPortfolioUrl']
+					);
+					Route::delete(
+						 '/{portfolioId}',
+						 [ProfileController::class, 'deletePortfolio']
+					);
+			 });
+			 
+			 
 	  });
