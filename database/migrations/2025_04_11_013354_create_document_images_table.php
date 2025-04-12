@@ -12,13 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_images', function (Blueprint $table) {
-            $table->id();
+				 $table->id();
 				 $table->foreignId('document_id')->constrained()->onDelete('cascade');
 				 $table->string('path');
-				 $table->string('caption')->nullable();
 				 $table->string('mime_type');
-				 $table->integer('order')->default(0);
-				 $table->boolean('is_cover')->default(false);
 				 $table->timestamps();
         });
     }

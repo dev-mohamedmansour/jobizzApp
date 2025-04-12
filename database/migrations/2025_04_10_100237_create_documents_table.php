@@ -16,7 +16,9 @@ return new class extends Migration
 					$table->id();
 					$table->foreignId('profile_id')->constrained()->onDelete('cascade');
 					$table->string('name');
-					$table->enum('type', ['cv', 'portfolio', 'certificate', 'other']);
+					$table->unsignedInteger('image_count')->default(0);
+					$table->enum('type', ['cv', 'portfolio']);
+					$table->enum('format', ['images', 'pdf', 'url','cv'])->default('images');
 					$table->string('path')->nullable(); // For CV files
 					$table->string('url')->nullable(); // For portfolio URLs
 					$table->timestamps();
