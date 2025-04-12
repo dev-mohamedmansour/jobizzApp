@@ -11,60 +11,57 @@
 	  {
 			 use HasFactory;
 			 
-			 protected $fillable = [
-				  'profile_id',
-				  'name',
-				  'type',
-				  'format',
-				  'path',
-				  'url',
-				  'max_images'
-			 ];
+			 protected $fillable
+				  = [
+						'profile_id',
+						'name',
+						'type',
+						'format',
+						'path',
+						'url',
+						'image_count'
+				  ];
 			 
-			 protected $casts = [
-				  'type' => DocumentType::class,
-			 ];
+			 protected $casts
+				  = [
+						'type' => DocumentType::class,
+				  ];
 			 
-			 public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-			 {
-					return $this->belongsTo(Profile::class);
-			 }
-			 
-			 public function images(): \Illuminate\Database\Eloquent\Relations\HasMany
-			 {
-					return $this->hasMany(DocumentImage::class);
-			 }
-			 
-			 // Helper method to check CV count
 			 public static function cvCount($profileId)
 			 {
 					return self::where('profile_id', $profileId)
 						 ->where('type', 'cv')
 						 ->count();
 			 }
-			 public function scopePortfolios($query)
+			 
+			 public function profile(
+			 ): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {
-					return $query->where('type', 'portfolio');
+					return $this->belongsTo(Profile::class);
 			 }
 			 
-			 // Helper methods
-			 public function isPdfPortfolio(): bool
+			 public function images(
+			 ): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
-					return $this->type === 'portfolio' && $this->format === 'pdf';
+					return $this->hasMany(DocumentImage::class);
 			 }
 			 
-			 public function isImagePortfolio(): bool
+			 // Helper method to check CV count
+			 
+			 public function isPortfolio(): bool
 			 {
-					return $this->type === 'portfolio' && $this->format === 'images';
+					return $this->type === 'portfolio';
 			 }
 			 
-			 public function isUrlPortfolio(): bool
+			 public function incrementImageCount($count = 1)
 			 {
-					return $this->type === 'portfolio' && $this->format === 'url';
+					$this->update(['image_count' => $this->image_count + $count]);
 			 }
 			 
-			 public function hasReachedImageLimit(): bool
+			 public function decrementImageCount($count = 1)
 			 {
-					return $this->isImagePortfolio() && $this->images()->count() >= $this->max_images;
+					$newCount = max(0, $this->image_count - $count);
+					$this->update(['image_count' => $newCount]);
 			 }
+			 
 	  }

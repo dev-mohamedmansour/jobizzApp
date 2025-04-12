@@ -60,16 +60,12 @@
 			 
 			 public function portfolios()
 			 {
-					return $this->documents()->portfolios();
+					return $this->documents()->where('type', 'portfolio');
 			 }
 			 
-			 public function hasMaxPortfolios(): bool
+			 public function isPortfolio(): bool
 			 {
-					return $this->portfolios()->count() >= 2;
+					return $this->type === 'portfolio';
 			 }
-			 
-			 public function hasPdfPortfolio(): bool
-			 {
-					return $this->portfolios()->where('format', 'pdf')->exists();
-			 }
+
 	  }
