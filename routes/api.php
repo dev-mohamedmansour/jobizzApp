@@ -1,6 +1,7 @@
 <?php
 	  
 	  use App\Http\Controllers\Admin\AdminAuthController;
+	  use App\Http\Controllers\Admin\CompanyController;
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\ProfileController;
 	  use Illuminate\Support\Facades\Route;
@@ -15,10 +16,16 @@
 			 Route::post('/password/reset', [AdminAuthController::class, 'resetAdminPassword']);
 			 
 			 // Authenticated routes
-			 Route::middleware('auth:admin')->group(function () {
+			 Route::middleware(['auth:admin', 'verified'])->group(function () {
+					Route::apiResource('companies', CompanyController::class)
+						 ->except(['show'])
+						 ->parameters(['companies' => 'company:slug']);
+					Route::post('companies/{company}/logo', [CompanyController::class, 'uploadLogo']);
 					Route::post('/logout', [AdminAuthController::class, 'logout']);
 					// Add other protected routes here
 			 });
+			 Route::get('companies/{company:slug}', [CompanyController::class, 'show'])
+				  ->name('companies.show');
 	  });
 	  
 	  Route::prefix('auth')->group(function () {

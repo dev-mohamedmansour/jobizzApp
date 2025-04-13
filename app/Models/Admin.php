@@ -36,6 +36,13 @@
 				  'pin_created_at'=> DateCast::class,
 			 ];
 			 
+			 // Add companies' relationship
+			 public function companies(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 {
+					return $this->hasMany(Company::class);
+			 }
+			 
+			 
 			 protected function serializeDate(\DateTimeInterface $date)
 			 {
 					return $date->toDateString(); // Format: '2025-04-13'
