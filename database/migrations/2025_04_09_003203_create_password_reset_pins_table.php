@@ -14,6 +14,7 @@
 					Schema::create('password_reset_pins', function (Blueprint $table) {
 						  $table->id();
 						  $table->string('email')->index();
+						  $table->enum('type',['user','admin'])->comment('user or admin');
 						  $table->string('pin', 6); // 6-digit PIN
 						  $table->timestamp('created_at')->nullable();
 						  $table->timestamp('updated_at')->nullable();

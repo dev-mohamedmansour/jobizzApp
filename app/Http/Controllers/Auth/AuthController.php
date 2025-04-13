@@ -360,104 +360,149 @@
 					}
 			 }
 			 
-			 public function verifyResetPin(Request $request)
+			 
+			 public function passwordReset(Request $request)
 			 {
 					try {
 						  $validated = $request->validate([
 								'email' => 'required|email|exists:users,email',
-								'pin'   => 'required|digits:4'
+								'pin' => 'required|digits:4',
+								'password' => 'required|string|min:8|confirmed'
 						  ], [
-								'email.required' => 'The email field is required.',
-								'email.email'    => 'Please enter a valid email address.',
-								'email.exists'   => 'No account found with this email address.',
-								'pin.required'   => 'The PIN code is required.',
-								'pin.digits'     => 'The PIN must be a 4-digit number.'
+								'email.required' => 'User email is required',
+								'email.exists' => 'No User account found with this email',
+								'pin.required' => 'Verification PIN is required',
+								'pin.digits' => 'PIN must be a 4-digit number',
+								'password.required' => 'New password is required'
 						  ]);
 						  
-						  // Verify PIN
-						  $pinRecord = PasswordResetPin::where(
-								'email', $validated['email']
-						  )
-								->where('pin', $validated['pin'])
-								->where('created_at', '>', now()->subHours(1))
-								->first();
+						  $user = User::where('email', $validated['email'])->first();
 						  
-						  if (!$pinRecord) {
-								 return responseJson(400, 'Invalid or expired PIN', [
-									  'suggestion' => 'Please request a new PIN'
+						  // Verify PIN through PinService
+						  if (!$this->pinService->verifyPin($user, $validated['pin'], 'reset')) {
+								 return responseJson(401, 'Invalid or expired PIN', [
+									  'suggestion' => 'Request a new PIN'
 								 ]);
 						  }
 						  
-						  // Generate JWT token
-						  $user = User::where('email', $validated['email'])->first();
-						  $token = JWTAuth::fromUser($user, [
-								'purpose'    => 'password_reset',
-								'reset_id'   => $pinRecord->id,
-								'expires_in' => 1800  // 30 minutes
+						  // Update password
+						  $user->update([
+								'password' => Hash::make($validated['password'])
 						  ]);
 						  
-						  // Invalidate the PIN after successful verification
-						  $pinRecord->update([
-								'pin'        => null,
-								'created_at' => null
-						  ]);
+						  // Clear reset PIN record
+						  PasswordResetPin::where('email', $user->email)
+								->where('type', 'user')
+								->delete();
 						  
-						  return responseJson(200, 'PIN verified successfully', [
-								'access_token' => $token,
-								'token_type'   => 'bearer',
-								'expires_in'   => config('jwt.reset_token_ttl', 1800)
-						  ]);
+						  return responseJson(200, 'Password reset successfully! .. Let is To Login');
 						  
 					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation failed', [
-								'errors' => $e->errors()
-						  ]);
+						  return responseJson(422, 'Validation failed', $e->errors());
 					} catch (\Exception $e) {
-						  return responseJson(500, 'PIN verification failed', [
+						  return responseJson(500, 'Password reset failed', [
 								'error' => config('app.debug') ? $e->getMessage() : null
 						  ]);
 					}
 			 }
-			 
-			 public function resetPassword(Request $request)
-			 {
-					try {
-						  $validated = $request->validate([
-								'token'    => 'required|string',
-								'password' => 'required|string|min:8|confirmed'
-						  ]);
-						  
-						  // Manually verify the token
-						  try {
-								 $payload = JWTAuth::setToken($validated['token'])
-									  ->getPayload();
-								 
-								 if ($payload->get('purpose') !== 'password_reset') {
-										return responseJson(401, 'Invalid token purpose');
-								 }
-								 
-								 $user = User::where('email', $payload->get('email'))
-									  ->first();
-								 
-								 if (!$user) {
-										return responseJson(404, 'User not found');
-								 }
-								 
-						  } catch (\Exception $e) {
-								 return responseJson(401, 'Invalid reset token');
-						  }
-						  
-						  // Update password
-						  $user->password = Hash::make($validated['password']);
-						  $user->save();
-						  
-						  // Invalidate the token
-						  JWTAuth::setToken($validated['token'])->invalidate();
-						  
-						  return responseJson(200, 'Password reset successfully');
-						  
-					} catch (\Exception $e) {
-						  return responseJson(500, 'Password reset failed');
-					}
-			 }
+//			 public function verifyResetPin(Request $request)
+//			 {
+//					try {
+//						  $validated = $request->validate([
+//								'email' => 'required|email|exists:users,email',
+//								'pin'   => 'required|digits:4'
+//						  ], [
+//								'email.required' => 'The email field is required.',
+//								'email.email'    => 'Please enter a valid email address.',
+//								'email.exists'   => 'No account found with this email address.',
+//								'pin.required'   => 'The PIN code is required.',
+//								'pin.digits'     => 'The PIN must be a 4-digit number.'
+//						  ]);
+//
+//						  // Verify PIN
+//						  $pinRecord = PasswordResetPin::where(
+//								'email', $validated['email']
+//						  )
+//								->where('pin', $validated['pin'])
+//								->where('created_at', '>', now()->subHours(1))
+//								->first();
+//
+//						  if (!$pinRecord) {
+//								 return responseJson(400, 'Invalid or expired PIN', [
+//									  'suggestion' => 'Please request a new PIN'
+//								 ]);
+//						  }
+//
+//						  // Generate JWT token
+//						  $user = User::where('email', $validated['email'])->first();
+//						  $token = JWTAuth::fromUser($user, [
+//								'purpose'    => 'password_reset',
+//								'reset_id'   => $pinRecord->id,
+//								'expires_in' => 1800  // 30 minutes
+//						  ]);
+//
+//						  // Invalidate the PIN after successful verification
+//						  $pinRecord->update([
+//								'pin'        => null,
+//								'created_at' => null
+//						  ]);
+//
+//						  return responseJson(200, 'PIN verified successfully', [
+//								'access_token' => $token,
+//								'token_type'   => 'bearer',
+//								'expires_in'   => config('jwt.reset_token_ttl', 1800)
+//						  ]);
+//
+//					} catch (ValidationException $e) {
+//						  return responseJson(422, 'Validation failed', [
+//								'errors' => $e->errors()
+//						  ]);
+//					} catch (\Exception $e) {
+//						  return responseJson(500, 'PIN verification failed', [
+//								'error' => config('app.debug') ? $e->getMessage() : null
+//						  ]);
+//					}
+//			 }
+//
+//			 public function resetPassword(Request $request)
+//			 {
+//					try {
+//						  $validated = $request->validate([
+//								'token'    => 'required|string',
+//								'password' => 'required|string|min:8|confirmed'
+//						  ]);
+//
+//						  // Manually verify the token
+//						  try {
+//								 $payload = JWTAuth::setToken($validated['token'])
+//									  ->getPayload();
+//
+//								 if ($payload->get('purpose') !== 'password_reset') {
+//										return responseJson(401, 'Invalid token purpose');
+//								 }
+//
+//								 $user = User::where('email', $payload->get('email'))
+//									  ->first();
+//
+//								 if (!$user) {
+//										return responseJson(404, 'User not found');
+//								 }
+//
+//						  } catch (\Exception $e) {
+//								 return responseJson(401, 'Invalid reset token');
+//						  }
+//
+//						  // Update password
+//						  $user->password = Hash::make($validated['password']);
+//						  $user->save();
+//
+//						  // Invalidate the token
+//						  JWTAuth::setToken($validated['token'])->invalidate();
+//
+//						  return responseJson(200, 'Password reset successfully');
+//
+//					} catch (\Exception $e) {
+//						  return responseJson(500, 'Password reset failed');
+//					}
+//			 }
 	  }

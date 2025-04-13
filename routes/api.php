@@ -1,9 +1,25 @@
 <?php
 	  
+	  use App\Http\Controllers\Admin\AdminAuthController;
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\ProfileController;
 	  use Illuminate\Support\Facades\Route;
 	  
+	  
+	  Route::prefix('admin')->group(function () {
+			 // Public routes
+			 Route::post('/register', [AdminAuthController::class, 'register']);
+			 Route::post('/verify-email', [AdminAuthController::class, 'verifyEmail']);
+			 Route::post('/login', [AdminAuthController::class, 'login']);
+			 Route::post('/password/forgot', [AdminAuthController::class, 'forgotAdminPassword']);
+			 Route::post('/password/reset', [AdminAuthController::class, 'resetAdminPassword']);
+			 
+			 // Authenticated routes
+			 Route::middleware('auth:admin')->group(function () {
+					Route::post('/logout', [AdminAuthController::class, 'logout']);
+					// Add other protected routes here
+			 });
+	  });
 	  
 	  Route::prefix('auth')->group(function () {
 			 // Regular auth
@@ -31,11 +47,11 @@
 				  '/password/reset-request',
 				  [AuthController::class, 'requestPasswordReset']
 			 );
+//			 Route::post(
+//				  '/password/verify-pin', [AuthController::class, 'verifyResetPin']
+//			 );
 			 Route::post(
-				  '/password/verify-pin', [AuthController::class, 'verifyResetPin']
-			 );
-			 Route::post(
-				  '/password/reset', [AuthController::class, 'resetPassword']
+				  '/password/reset', [AuthController::class, 'passwordReset']
 			 );
 	  });
 	  
