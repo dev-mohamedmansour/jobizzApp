@@ -1,5 +1,8 @@
 <?php
 	  
+	  use App\Http\Middleware\AdminMiddleware;
+	  use App\Http\Middleware\ApprovedAdminMiddleware;
+	  use App\Http\Middleware\RefreshJwtToken;
 	  use Illuminate\Foundation\Application;
 	  use Illuminate\Foundation\Configuration\Exceptions;
 	  use Illuminate\Foundation\Configuration\Middleware;
@@ -14,16 +17,20 @@
 			->withMiddleware(function (Middleware $middleware) {
 				  // Add JWT refresh middleware
 				  $middleware->appendToGroup('web', [
-						\App\Http\Middleware\RefreshJwtToken::class,
+						RefreshJwtToken::class,
 				  ]);
 				  $middleware->appendToGroup('api', [
-						\App\Http\Middleware\RefreshJwtToken::class,
+						RefreshJwtToken::class,
+				  ]);
+				  $middleware->appendToGroup('admin', [
+						AdminMiddleware::class,
+						'approved.admin' =>ApprovedAdminMiddleware::class,
 				  ]);
 				  
 				  // Or if you want it for all requests
 				  $middleware->use([
 						 // ... other middleware
-						 \App\Http\Middleware\RefreshJwtToken::class,
+						 RefreshJwtToken::class,
 				  ]);
 			})
 			->withExceptions(function (Exceptions $exceptions) {
