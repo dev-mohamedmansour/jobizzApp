@@ -14,7 +14,6 @@
 			 {
 					$this->app->singleton(PinService::class, function ($app) {
 						  return new PinService();
-						  
 					});
 			 }
 			 

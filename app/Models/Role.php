@@ -11,4 +11,9 @@
 			 {
 					return $this->belongsToMany(Permission::class);
 			 }
+			 
+			 public function admin(): BelongsToMany
+			 {
+					return $this->belongsToMany(Admin::class);
+			 }
 	  }

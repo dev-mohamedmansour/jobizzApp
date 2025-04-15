@@ -15,10 +15,10 @@ class AdminMiddleware
      */
 	  public function handle(Request $request, Closure $next)
 	  {
+			 
 			 if (auth('admin')->check()) {
 					return $next($request);
 			 }
-			 
-			 return response()->json(['error' => 'Unauthorized'], 401);
+			 return responseJson(401,'User Unauthorized');
 	  }
 }

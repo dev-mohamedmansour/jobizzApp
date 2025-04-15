@@ -6,11 +6,13 @@
 	  use App\Models\Admin;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
+	  use App\Notifications\AdminRegistrationPending;
 	  use App\Services\PinService;
 	  use Illuminate\Http\Request;
 //	  use Illuminate\Support\Facades\Auth;
 	  use Illuminate\Support\Facades\Auth;
 	  use Illuminate\Support\Facades\Hash;
+	  use Illuminate\Support\Facades\Notification;
 	  use Illuminate\Validation\ValidationException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  
@@ -39,6 +41,8 @@
 						 'email' => $request->email,
 						 'phone'=> $request->phone,
 						 'password' => Hash::make($request->password),
+						 'is_approved' => false, // Default unapproved
+						 'company_id' => null
 					]);
 					
 					$pinResult = $this->pinService->generateAndSendPin($admin, 'verification');
@@ -48,7 +52,21 @@
 						  return responseJson(500, 'Registration failed - email not sent');
 					}
 					
-					return responseJson(201, 'Admin created. Verify email to activate.');
+					// Assign a temporary "pending" role (optional)
+					$admin->assignRole('pending');
+					
+					// Notify all super-admins
+					$superAdmins = Admin::role('super-admin')->get();
+					
+					Notification::send($superAdmins, new AdminRegistrationPending($admin));
+					
+					return responseJson(201,
+						 'Admin created. Verify email to activate.
+						 And  Your account requires super-admin approval'
+					,[
+						 'id'=>$admin->id,
+						 'email'=>$admin->email,
+						 ]);
 			 }
 			 
 			 public function verifyEmail(Request $request): \Illuminate\Http\JsonResponse
@@ -83,11 +101,9 @@
 								 if (!$admin->hasVerifiedEmail()) {
 										$admin->markEmailAsVerified();
 								 }
-								 // Create Passport token
-//								 $token = $user->createToken('AuthToken')->accessToken;
 								 return responseJson(
 									  200, 'Email verified successfully', [
-											$admin
+											$admin->verified_email
 									  ]
 								 );
 						  }
@@ -105,6 +121,41 @@
 					}
 			 }
 			 
+			 public function approve(Admin $admin): \Illuminate\Http\JsonResponse
+			 {
+					if (!auth()->user()->hasRole('super-admin')) abort(403);
+					
+					$admin->update([
+						 'is_approved' => true,
+						 'approved_by' => auth()->id()
+					]);
+					
+					// Assign default role (e.g., 'admin')
+					$admin->assignRole('admin');
+					
+					return responseJson(200, 'Admin approved');
+			 }
+			 
+			 public function createSubAdmin(Request $request) {
+					$request->validate([
+						 'email' => 'required|email|unique:admins',
+						 'password' => 'required|min:8',
+						 'role' => 'required|in:hr,coo'
+					]);
+					
+					$companyId = auth('admin')->user()->company_id;
+					
+					$subAdmin = Admin::create([
+						 'email' => $request->email,
+						 'password' => bcrypt($request->password),
+						 'company_id' => $companyId,
+						 'is_approved' => true // Auto-approve sub-admins
+					]);
+					
+					$subAdmin->assignRole($request->role);
+					
+					return responseJson(201,'Sub-admin created');
+			 }
 			 public function login(Request $request): \Illuminate\Http\JsonResponse
 			 {
 					$credentials = $request->validate([
@@ -115,6 +166,8 @@
 					if (!$token = auth('admin')->attempt($credentials)) {
 						  return responseJson(401, 'Invalid credentials');
 					}
+					
+					
 					
 					$admin = auth('admin')->user();
 					

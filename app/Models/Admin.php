@@ -8,15 +8,17 @@
 	  use Illuminate\Foundation\Auth\User as Authenticatable;
 	  use Illuminate\Notifications\Notifiable;
 	  use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+	  use Spatie\Permission\Traits\HasRoles;
 	  
 	  class Admin extends Authenticatable implements JWTSubject ,MustVerifyEmail
 	  {
-			 use HasFactory, Notifiable;
+			 use HasFactory, Notifiable, HasRoles;
 			 
 			 protected $fillable = [
 				  'name', 'email', 'password',
 				  'pin_code', 'pin_created_at',
-				  'confirmed_email', 'email_verified_at'
+				  'confirmed_email', 'email_verified_at',
+				  'approved_by'
 			 ];
 			 
 			 protected $casts = [
@@ -36,31 +38,26 @@
 				  'pin_created_at'=> DateCast::class,
 			 ];
 			 
-			 // Add companies' relationship
-			 public function companies(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 protected $guarded = ['is_approved', 'approved_by'];
+			 
+			 public function scopePending($query)
 			 {
-					return $this->hasMany(Company::class);
+					return $query->where('is_approved', false);
 			 }
 			 
-			 
-			 protected function serializeDate(\DateTimeInterface $date)
+			 public function approver(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {
-					return $date->toDateString(); // Format: '2025-04-13'
+					return $this->belongsTo(Admin::class, 'approved_by');
 			 }
 			 
-			 public function role()
-			 {
-					return $this->belongsTo(Role::class);
-			 }
-			 
-			 public function company()
+			 public function company(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {
 					return $this->belongsTo(Company::class);
 			 }
 			 
-			 public function hasPermission($permissionName)
+			 protected function serializeDate(\DateTimeInterface $date)
 			 {
-					return $this->role->permissions->contains('name', $permissionName);
+					return $date->toDateString(); // Format: '2025-04-13'
 			 }
 			 
 			 public function getJWTIdentifier() {
