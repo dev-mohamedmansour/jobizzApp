@@ -6,13 +6,14 @@
 	  use App\Models\Application;
 	  use App\Models\JobListing as Job;
 	  use App\Models\Profile;
+	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Auth;
 	  
 	  class ApplicationController extends Controller
 	  {
-			 public function store(Request $request, $profileId, Job $job
+			 public function store(Request $request, $profileId, Job $jobId
 			 ): JsonResponse {
 					// Check if the user is authenticated
 					if (!Auth::check()) {
@@ -49,8 +50,9 @@
 					}
 					
 					try {
+						  $job = Job::findOrFail($jobId);
 						  $application = $job->applications()->create([
-								'user_id'      => auth()->id(),
+								'profile_id'      => $profile->id,
 								'cover_letter' => $validated['cover_letter'],
 								'resume_path'  => $cv->path
 						  ]);
@@ -68,30 +70,50 @@
 						  );
 					}
 			 }
-
-			 public function allApplications(Request $request, $profileId)
+			 
+			 public function getUserProfileApplications(Request $request, $profileId)
 			 {
-					// Check if the user is authenticated
-					if (!Auth::check()) {
-						  return responseJson(401, 'Unauthorized');
+					try {
+						  // Get authenticated user
+						  $user = $request->user();
+						  
+						  // Validate authentication
+						  if (!$user) {
+								 return responseJson(401, 'Authentication required');
+						  }
+						  
+						  // Find profile with authorization check
+						  $profile = Profile::where('id', $profileId)
+								->where('user_id', $user->id)
+								->firstOrFail();
+						  
+						  // Get applications with relationships
+						  $applications = Application::with([
+								'job:id,title,description',
+								'job.company:id,name',
+								'job.category:id,name'
+						  ])
+								->where('profile_id', $profile->id)
+								->paginate(10);
+						  
+						  return responseJson(200, 'Applications retrieved successfully', [
+								'applications' => $applications->items(),
+								'meta' => [
+									 'current_page' => $applications->currentPage(),
+									 'total_pages' => $applications->lastPage(),
+									 'total_applications' => $applications->total(),
+								]
+						  ]);
+						  
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found or access denied');
+						  
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Failed to retrieve applications', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
 					}
-					// Find the profile
-					$profile = Profile::findOrFail($profileId);
-					// Authorization check: Ensure the current user owns this profile
-					if ($request->user()->id !== $profile->user_id) {
-						  return responseJson(
-								403,
-								'Unauthorized action this profile not allowed'
-						  );
-					}
-					
-					$applications = Application::where('profile_id', $profileId);
-					return responseJson(
-						 200,"All Applications",
-						 $applications
-					);
-			 }
-			// Admin Application Management
+			 }			// Admin Application Management
 			 public function index(): JsonResponse
 			 {
 					/** @var \App\Models\Admin $admin */

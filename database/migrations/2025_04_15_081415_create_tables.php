@@ -30,7 +30,7 @@ return new class extends Migration
 				  $table->id();
 				  $table->foreignId('profile_id')->constrained();
 				  $table->foreignId('job_listings_id')->constrained();
-				  $table->text('cover_letter');
+				  $table->text('cover_letter')->nullable();
 				  $table->string('resume_path');
 				  $table->enum('status', ['pending', 'reviewed', 'accepted', 'rejected'])->default('pending');
 				  $table->timestamps();

@@ -1,6 +1,7 @@
 <?php
 	  
 	  use App\Http\Controllers\Admin\AdminAuthController;
+	  use App\Http\Controllers\Admin\ApplicationController;
 	  use App\Http\Controllers\Admin\CompanyController;
 	  use App\Http\Controllers\Admin\JobController;
 	  use App\Http\Controllers\Auth\AuthController;
@@ -53,6 +54,7 @@
 					Route::post('/logout', [AuthController::class, 'logout']);
 //					Route::get('/user', [AuthController::class, 'getAuthenticatedUser']);
 					Route::post('/refresh', [AuthController::class, 'refresh']);
+					
 			 });
 			 
 			 // Social auth
@@ -155,4 +157,9 @@
 			 });
 			 
 			 
+	  });
+	  
+	  Route::prefix('applications')->middleware('auth:api')->group(function () {
+			Route::get('/{profileId}/all', [ApplicationController::class, 'getUserProfileApplications']);
+			Route::post('/{profileId}/add', [ApplicationController::class, 'store']);
 	  });
