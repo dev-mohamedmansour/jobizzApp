@@ -11,7 +11,8 @@
         "laravel/framework": "^11.0",
         "laravel/socialite": "^5.19",
         "laravel/tinker": "^2.9",
-        "php-open-source-saver/jwt-auth": "^2.8"
+        "php-open-source-saver/jwt-auth": "^2.8",
+      "ext-couchbase": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

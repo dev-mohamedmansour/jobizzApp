@@ -18,7 +18,6 @@ return new class extends Migration
 				  $table->string('industry');
 				  $table->string('website');
 				  $table->string('logo_path')->nullable();
-				  $table->foreignId('admin_id')->constrained('admins');
 				  $table->timestamps();
 			});
     }

@@ -48,6 +48,20 @@
 					return $date->toDateString(); // Format: '2025-04-13'
 			 }
 			 
+			 public function role()
+			 {
+					return $this->belongsTo(Role::class);
+			 }
+			 
+			 public function company()
+			 {
+					return $this->belongsTo(Company::class);
+			 }
+			 
+			 public function hasPermission($permissionName)
+			 {
+					return $this->role->permissions->contains('name', $permissionName);
+			 }
 			 
 			 public function getJWTIdentifier() {
 					return $this->getKey();

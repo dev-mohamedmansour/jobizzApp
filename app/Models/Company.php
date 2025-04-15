@@ -12,7 +12,15 @@ class Company extends Model
 	  {
 			 return $this->belongsTo(Admin::class);
 	  }
+	  public function admins()
+	  {
+			 return $this->hasMany(Admin::class);
+	  }
 	  
+	  public function jobs()
+	  {
+			 return $this->hasMany(JobListing::class);
+	  }
 	  public function jobListings()
 	  {
 			 return $this->hasMany(JobListing::class);

@@ -2,6 +2,7 @@
 	  
 	  namespace App\Http\Controllers\Admin;
 	  
+	  use App\Http\Controllers\Controller;
 	  use App\Models\Company;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Gate;
@@ -14,9 +15,11 @@
 					try {
 						  $this->authorize('viewAny', Company::class);
 						  
-						  $companies = Cache::remember('all_companies', 3600, function () {
+						  $companies = Cache::remember(
+								'all_companies', 3600, function () {
 								 return Company::with('admins')->get();
-						  });
+						  }
+						  );
 						  
 						  return responseJson(200, 'Companies retrieved', $companies);
 					} catch (\Exception $e) {
@@ -29,22 +32,28 @@
 			 {
 					try {
 						  $validated = $request->validate([
-								'name' => 'required|unique:companies|max:255',
-								'industry' => 'required|in:'.implode(',', config('app.industries')),
-								'website' => 'required|url'
+								'name'     => 'required|unique:companies|max:255',
+								'industry' => 'required|in:' . implode(
+										  ',', config('app.industries')
+									 ),
+								'website'  => 'required|url'
 						  ]);
 						  
 						  if (auth('admin')->user()->role->name !== 'super-admin') {
 								 $this->requireApproval('company.create', $validated);
-								 return responseJson(202, 'Company creation pending approval');
+								 return responseJson(
+									  202, 'Company creation pending approval'
+								 );
 						  }
 						  
-						  $company = Company::create($validated + ['admin_id' => auth('admin')->id()]);
+						  $company = Company::create(
+								$validated + ['admin_id' => auth('admin')->id()]
+						  );
 						  
 						  ActivityLog::create([
 								'admin_id' => auth('admin')->id(),
-								'action' => 'company.create',
-								'details' => $company
+								'action'   => 'company.create',
+								'details'  => $company
 						  ]);
 						  
 						  return responseJson(201, 'Company created', $company);
@@ -61,21 +70,23 @@
 						  $this->authorize('update', $company);
 						  
 						  $validated = $request->validate([
-								'name' => 'sometimes|max:255',
-								'industry' => 'sometimes|in:'.implode(',', config('app.industries'))
+								'name'     => 'sometimes|max:255',
+								'industry' => 'sometimes|in:' . implode(
+										  ',', config('app.industries')
+									 )
 						  ]);
 						  
 						  if (auth('admin')->user()->role->name !== 'super-admin') {
 								 $this->requireApproval('company.update', [
 									  'company_id' => $company->id,
-									  'changes' => $validated
+									  'changes'    => $validated
 								 ]);
 								 return responseJson(202, 'Update pending approval');
 						  }
 						  
 						  $company->update($validated);
 						  
-						  Redis::del('company:'.$company->id); // Clear cache
+						  Redis::del('company:' . $company->id); // Clear cache
 						  
 						  return responseJson(200, 'Company updated', $company);
 						  
@@ -112,8 +123,9 @@
 			 {
 					Approval::create([
 						 'admin_id' => auth('admin')->id(),
-						 'action' => $action,
-						 'data' => json_encode($data),
-						 'status' => 'pending'
+						 'action'   => $action,
+						 'data'     => json_encode($data),
+						 'status'   => 'pending'
 					]);
 			 }
+	  }
