@@ -25,7 +25,6 @@
 						 'cover_letter' => 'required|string|max:1000',
 						 'cv_id'        => 'required|integer|exists:documents,id'
 					]);
-					
 					// Find the profile
 					$profile = Profile::with('documents')->findOrFail($profileId);
 					
