@@ -1,7 +1,5 @@
 <?php
 	  
-	  use App\Http\Middleware\AdminMiddleware;
-	  use App\Http\Middleware\ApprovedAdminMiddleware;
 	  use App\Http\Middleware\RefreshJwtToken;
 	  use Illuminate\Foundation\Application;
 	  use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,10 +21,10 @@
 						RefreshJwtToken::class,
 				  ]);
 				  $middleware->appendToGroup('admin', [
-						AdminMiddleware::class,
-						'approved.admin' =>ApprovedAdminMiddleware::class,
+						'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+						'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+						'approved.admin' => \App\Http\Middleware\ApprovedAdminMiddleware::class,
 				  ]);
-				  
 				  // Or if you want it for all requests
 				  $middleware->use([
 						 // ... other middleware

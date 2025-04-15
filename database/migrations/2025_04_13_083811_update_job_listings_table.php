@@ -15,6 +15,8 @@ return new class extends Migration
 				  $table->foreignId('company_id')->constrained('companies');
 				  $table->string('title');
 				  $table->text('description');
+				  $table->text('requirement');
+				  $table->enum('job_status', ['open', 'closed'])->default('open');
 				  $table->string('location');
 				  $table->string('salary_range');
 				  $table->string('employment_type');

@@ -121,41 +121,74 @@
 					}
 			 }
 			 
+			 // Update approve method
 			 public function approve(Admin $admin): \Illuminate\Http\JsonResponse
 			 {
-					if (!auth()->user()->hasRole('super-admin')) abort(403);
+					if (!auth()->user()->hasRole('super-admin')) {
+						  return responseJson(403, 'Unauthorized');
+					}
 					
 					$admin->update([
 						 'is_approved' => true,
-						 'approved_by' => auth()->id()
-					]);
+						 'approved_by' => auth()->id(),
+						 ]);
 					
-					// Assign default role (e.g., 'admin')
-					$admin->assignRole('admin');
+					// Remove a temporary role
+					$admin->removeRole('pending');
+					
+					// Assign a role based on request
+					$admin->assignRole('admin'); // Add role validation
 					
 					return responseJson(200, 'Admin approved');
 			 }
-			 
-			 public function createSubAdmin(Request $request) {
+
+// Update createSubAdmin
+			 public function createSubAdmin(Request $request)
+			 {
 					$request->validate([
 						 'email' => 'required|email|unique:admins',
 						 'password' => 'required|min:8',
 						 'role' => 'required|in:hr,coo'
 					]);
 					
-					$companyId = auth('admin')->user()->company_id;
+					$admin = auth('admin')->user();
+					
+					if (!$admin instanceof \App\Models\Admin || !$admin->hasPermissionTo('manage-company-admins')) {
+						  return responseJson(403, 'Unauthorized');
+					}
 					
 					$subAdmin = Admin::create([
 						 'email' => $request->email,
 						 'password' => bcrypt($request->password),
-						 'company_id' => $companyId,
-						 'is_approved' => true // Auto-approve sub-admins
+						 'company_id' => $admin->company_id,
+						 'is_approved' => true
 					]);
 					
 					$subAdmin->assignRole($request->role);
 					
-					return responseJson(201,'Sub-admin created');
+					return responseJson(201, 'Sub-admin created');
 			 }
+			 
+//			 public function createSubAdmin(Request $request) {
+//					$request->validate([
+//						 'email' => 'required|email|unique:admins',
+//						 'password' => 'required|min:8',
+//						 'role' => 'required|in:hr,coo'
+//					]);
+//
+//					$companyId = auth('admin')->user()->company_id;
+//
+//					$subAdmin = Admin::create([
+//						 'email' => $request->email,
+//						 'password' => bcrypt($request->password),
+//						 'company_id' => $companyId,
+//						 'is_approved' => true // Auto-approve sub-admins
+//					]);
+//
+//					$subAdmin->assignRole($request->role);
+//
+//					return responseJson(201,'Sub-admin created');
+//			 }
 			 public function login(Request $request): \Illuminate\Http\JsonResponse
 			 {
 					$credentials = $request->validate([
@@ -167,14 +200,24 @@
 						  return responseJson(401, 'Invalid credentials');
 					}
 					
-					
+					$admin = auth('admin')->user();
 					
 					$admin = auth('admin')->user();
 					
-					if (!$admin->confirmed_email) {
+					if (!$admin->hasVerifiedEmail()) {
 						  auth('admin')->logout();
-						  return responseJson(403, 'Email not verified');
+						  return responseJson(403, 'Email verification required'
+						  );
 					}
+					
+					if (!$admin->is_approved) {
+						  auth('admin')->logout();
+						  return responseJson(403, 'Account pending approval');
+					}
+//					if (!$admin->confirmed_email) {
+//						  auth('admin')->logout();
+//						  return responseJson(403, 'Email not verified');
+//					}
 					
 					return $this->respondWithToken($token,$admin);
 			 }

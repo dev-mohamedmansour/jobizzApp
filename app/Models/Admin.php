@@ -39,6 +39,13 @@
 			 ];
 			 
 			 protected $guarded = ['is_approved', 'approved_by'];
+			 protected $guard_name = 'admin';
+			 protected $appends = ['permissions'];
+			 
+			 public function getPermissionsAttribute(): \Illuminate\Support\Collection
+			 {
+					return $this->getAllPermissions()->pluck('name');
+			 }
 			 
 			 public function scopePending($query)
 			 {
@@ -67,8 +74,9 @@
 			 public function getJWTCustomClaims(): array
 			 {
 					return [
-						 'role' => 'admin',
-						 'email' => $this->email
+						 'roles' => $this->getRoleNames(),
+						 'permissions' => $this->getAllPermissions()->pluck('name'),
+						 'company_id' => $this->company_id
 					];
 			 }
 	  }
