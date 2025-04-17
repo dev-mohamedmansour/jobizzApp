@@ -8,6 +8,7 @@
 	  use App\Services\PinService;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Hash;
+	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
 	  use Laravel\Socialite\Facades\Socialite;
@@ -35,13 +36,11 @@
 						  $validated = $request->validate([
 								'name'     => 'required|string|max:255',
 								'email'    => 'required|string|email|unique:users',
-								'phone'    => 'required|string|unique:users',
 								'password' => 'required|string|min:8|confirmed'
 						  ], [
 								 // Custom error messages
 								 'name.required'      => 'The name field is required.',
 								 'email.required'     => 'The email field is required.',
-								 'phone.required'     => 'The phone number is required.',
 								 'password.required'  => 'The password field is required.',
 								 'password.confirmed' => 'Password confirmation does not match.',
 								 'password.min'       => 'Password must be at least 8 characters.',
@@ -51,7 +50,6 @@
 						  $user = User::create([
 								'name'            => $validated['name'],
 								'email'           => $validated['email'],
-								'phone'           => $validated['phone'],
 								'password'        => Hash::make($validated['password']),
 								'confirmed_email' => false,
 						  ]);
@@ -75,10 +73,9 @@
 								'Registration successful. Please check your email for verification PIN.',
 								$user
 						  );
-						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  // Return validation errors with 422 status codes
-						  return responseJson(422, 'Validation failed', $e->errors());
+						  return responseJson(422,[$e->getMessage()]);
 					} catch (\Exception $e) {
 						  // Handle other exceptions
 						  return responseJson(500, 'Server error', $e->getMessage());
@@ -177,16 +174,13 @@
 						  // Get token expiration time
 						  $expiration = JWTAuth::factory()->getTTL() * 60;
 						  
-						  return responseJson(200, 'Login successful', [
-								'access_token' => $token,
-								'token_type'   => 'bearer',
-								'expires_in'   => $expiration,
-								'user'         => [
+						  return responseJson(200, 'Login successful',
+								 [
+									 'token' => $token,
 									 'id'    => $user->id,
 									 'name'  => $user->name,
 									 'email' => $user->email
-								]
-						  ]);
+								]);
 						  
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->errors());
@@ -239,6 +233,7 @@
 									 'provider_id'       => $socialUser->getId(),
 									 'provider_name'     => $provider,
 									 'password'          => Hash::make(Str::random(32)),
+									 'confirmed_email' =>1,
 									 'email_verified_at' => now() // Mark as verified
 								]
 						  );
@@ -246,7 +241,6 @@
 						  // Generate JWT token
 						  $token = JWTAuth::fromUser($user, [
 								'provider' => $provider,
-								'avatar'   => $socialUser->getAvatar()
 						  ]);
 						  
 						  return responseJson(200, 'Login successful', [

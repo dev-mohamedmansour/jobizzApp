@@ -12,35 +12,51 @@
 	  Route::prefix('admin')->group(function () {
 			 // Public routes
 			 Route::post('/register', [AdminAuthController::class, 'register']);
-			 Route::post('/verify-email', [AdminAuthController::class, 'verifyEmail']);
+			 Route::post(
+				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
+			 );
 			 Route::post('/login', [AdminAuthController::class, 'login']);
-			 Route::post('/password/forgot', [AdminAuthController::class, 'forgotAdminPassword']);
-			 Route::post('/password/reset', [AdminAuthController::class, 'resetAdminPassword']);
+			 Route::post(
+				  '/password/forgot',
+				  [AdminAuthController::class, 'forgotAdminPassword']
+			 );
+			 Route::post(
+				  '/password/reset',
+				  [AdminAuthController::class, 'resetAdminPassword']
+			 );
 			 
 			 // Authenticated routes
-			 Route::middleware(['auth:admin', 'verified' , 'approved.admin'])->group(function () {
-					// Auth routes
-					Route::post('/logout', [AdminAuthController::class, 'logout']);
-					// Company routes
-					Route::apiResource('companies', CompanyController::class)
-						 ->middleware('permission:manage-all-companies|manage-own-company');
-					// Job routes
-					Route::apiResource('jobs', JobController::class)
-						 ->middleware('permission:manage-all-jobs|manage-company-jobs');
-					
-					// Admin management
-					Route::middleware('role:super-admin|admin')->group(function () {
-						  Route::post(
-								'/approve/{admin}',
-								[AdminAuthController::class, 'approve']
-						  );
-						  Route::post(
-								'/sub-admin',
-								[AdminAuthController::class, 'createSubAdmin']
-						  );
-					});
-			 });
-
+			 Route::middleware(['auth:admin', 'verified', 'approved.admin'])
+				  ->group(function () {
+						 // Auth routes
+						 Route::post('/logout', [AdminAuthController::class, 'logout']
+						 );
+						 // Company routes
+						 Route::apiResource('companies', CompanyController::class)
+							  ->middleware(
+									'permission:manage-all-companies|manage-own-company'
+							  );
+						 // Job routes
+						 Route::apiResource('jobs', JobController::class)
+							  ->middleware(
+									'permission:manage-all-jobs|manage-company-jobs'
+							  );
+						 
+						 // Admin management
+						 Route::middleware('role:super-admin|admin')->group(
+							  function () {
+									 Route::post(
+										  '/approve/{admin}',
+										  [AdminAuthController::class, 'approve']
+									 );
+									 Route::post(
+										  '/sub-admin',
+										  [AdminAuthController::class, 'createSubAdmin']
+									 );
+							  }
+						 );
+				  });
+			 
 	  });
 	  
 	  Route::prefix('auth')->group(function () {
@@ -160,6 +176,15 @@
 	  });
 	  
 	  Route::prefix('applications')->middleware('auth:api')->group(function () {
-			Route::get('/{profileId}/all', [ApplicationController::class, 'getUserProfileApplications']);
-			Route::post('/{profileId}/add', [ApplicationController::class, 'store']);
+			 Route::get(
+				  '/{profileId}/all',
+				  [ApplicationController::class, 'getUserProfileApplications']
+			 );
+			 Route::post(
+				  '/{profileId}/add', [ApplicationController::class, 'store']
+			 );
+	  });
+	  Route::prefix('companies')->middleware('auth:api')->group(function () {
+			 Route::get('/get-all', [CompanyController::class, 'index']);
+			 Route::post('/{companyId}/get', [CompanyController::class, 'show']);
 	  });

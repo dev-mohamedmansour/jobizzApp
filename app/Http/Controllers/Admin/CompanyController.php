@@ -5,21 +5,66 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\Company;
+	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  
 	  
 	  class CompanyController extends Controller
 	  {
-			 public function index(): \Illuminate\Http\JsonResponse
+			 
+			 public function index(): JsonResponse
 			 {
-					$companies = Company::withCount('jobs')->paginate(10);
-					return responseJson(200, 'Companies retrieved', $companies);
+					try {
+						  // Check authenticated user
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $companies = Company::withCount('jobs')->paginate(10);
+						  
+						  if ($companies->isEmpty()) {
+								 return responseJson(404, 'No companies found');
+						  }
+						  
+						  return responseJson(200, 'Companies retrieved successfully', $companies);
+						  
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
 			 }
-			 public function show(Company $company): \Illuminate\Http\JsonResponse
+			 
+			 public function show($id): JsonResponse
 			 {
-					return responseJson(200, 'Company details', [
-						 'company' => $company,
-						 'active_jobs' => $company->jobs()->activeJobs()->count()
-					]);
+					try {
+						  // Check authenticated user
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $company = Company::find($id);
+						  
+						  if (!$company) {
+								 return responseJson(404, 'Company not found');
+						  }
+						  
+						  // Get active jobs for this company
+						  $activeJobs = $company->jobs()
+								->where('company_id', $company->id)
+								->activeJobs()
+								->count();
+						  
+						  return responseJson(200, 'Company details retrieved', [
+								'company' => $company,
+								'active_jobs' => $activeJobs
+						  ]);
+						  
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
 			 }
 			 public function store(Request $request): \Illuminate\Http\JsonResponse
 			 {

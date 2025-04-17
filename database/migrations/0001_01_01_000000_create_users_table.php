@@ -14,8 +14,6 @@
 						  $table->id();
 						  $table->string('name');
 						  $table->string('email')->unique();
-						  $table->string('phone')->nullable(
-						  ); // Made nullable as it might not be required for all users
 						  // Password should be nullable for social login users
 						  $table->string('password')->nullable();
 						  // Social login fields

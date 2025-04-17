@@ -34,7 +34,6 @@
 				  = [
 						'name',
 						'email',
-						'phone',
 						'password',
 						'provider_id',
 						'provider_name',
