@@ -16,6 +16,7 @@
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenBlacklistedException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
+	  use function Laravel\Prompts\error;
 
 //	  use Illuminate\Auth\MustVerifyEmail;
 	  
@@ -33,18 +34,44 @@
 			 {
 					try {
 						  // Validate the request data
+//						  $validated = $request->validate([
+//								'name'     => 'required|string|max:255',
+//								'email'    => 'required|string|email|unique:users',
+//								'password' => 'required|string|min:8|confirmed'
+//						  ], [
+//								 // Custom error messages
+//								 'name.required'      => 'The name field is required.',
+//								 'email.required'     => 'The email field is required.',
+//								 'password.required'  => 'The password field is required.',
+//								 'password.confirmed' => 'Password confirmation does not match.',
+//								 'password.min'       => 'Password must be at least 8 characters.',
+//						  ]);
+						  
 						  $validated = $request->validate([
-								'name'     => 'required|string|max:255',
-								'email'    => 'required|string|email|unique:users',
-								'password' => 'required|string|min:8|confirmed'
+								'name'     => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'email'    => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'unique:users',
+									 'ascii' // Ensures only ASCII characters
+								],
+								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
 						  ], [
 								 // Custom error messages
 								 'name.required'      => 'The name field is required.',
+								 'name.regex'         => 'Name must contain only English letters and spaces.',
+								 
 								 'email.required'     => 'The email field is required.',
+								 'email.regex'        => 'Invalid email format. Please use English characters only.',
+								 'email.ascii'        => 'Email must contain only English characters.',
+								 
 								 'password.required'  => 'The password field is required.',
 								 'password.confirmed' => 'Password confirmation does not match.',
 								 'password.min'       => 'Password must be at least 8 characters.',
+								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
 						  ]);
+						  
 						  
 						  // Create user if validation passes
 						  $user = User::create([
@@ -71,11 +98,29 @@
 						  return responseJson(
 								201,
 								'Registration successful. Please check your email for verification PIN.',
-								$user
+								[
+									 'id'    => $user->id,
+									 'name'  => $user->name,
+									 'email' => $user->email
+								]
 						  );
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  // Return validation errors with 422 status codes
-						  return responseJson(422,[$e->getMessage()]);
+//						  return responseJson(
+//								422,
+//								'Validation error '. $e->getMessage(),
+//						  );
+//						  return responseJson(422,$e->getMessage());
+						  $errors = $e->validator->errors()->all();
+						  $errorMessage = 'Validation error: ';
+						  $errorMessage .= implode(' ', array_map(
+								fn($error, $index) => "$error",
+								$errors,
+								array_keys($errors)
+						  ));
+						  return responseJson(
+								422,
+								$errorMessage
+						  );
 					} catch (\Exception $e) {
 						  // Handle other exceptions
 						  return responseJson(500, 'Server error', $e->getMessage());
@@ -154,7 +199,7 @@
 						  if (!$token = JWTAuth::attempt($validated)) {
 								 return responseJson(
 									  401,
-									  'Invalid credentials. Please check your email and password.'
+									  'Email Or Password Invalid',
 								 );
 						  }
 						  
@@ -183,7 +228,7 @@
 								]);
 						  
 					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation error', $e->errors());
+						  return responseJson(422, 'Validation error'. $e->errors());
 						  
 					} catch (\Exception $e) {
 						  return responseJson(
