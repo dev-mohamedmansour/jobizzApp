@@ -68,9 +68,6 @@
 			 
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::post('/logout', [AuthController::class, 'logout']);
-//					Route::get('/user', [AuthController::class, 'getAuthenticatedUser']);
-					Route::post('/refresh', [AuthController::class, 'refresh']);
-					
 			 });
 			 
 			 // Social auth
@@ -81,17 +78,17 @@
 				  '/{provider}/callback',
 				  [AuthController::class, 'handleProviderCallback']
 			 );
-			 
+			 //password Logic
 			 Route::post(
 				  '/password/reset-request',
 				  [AuthController::class, 'requestPasswordReset']
 			 );
-//			 Route::post(
-//				  '/password/verify-pin', [AuthController::class, 'verifyResetPin']
-//			 );
 			 Route::post(
-				  '/password/reset', [AuthController::class, 'passwordReset']
+				  '/password/verify-pin', [AuthController::class, 'checkResetPasswordPinCode']
 			 );
+			 Route::post(
+				  '/password/reset', [AuthController::class, 'newPassword'])
+				  ->middleware(['auth:api', 'check.reset.token']);
 	  });
 	  
 	  Route::prefix('profiles')->middleware('auth:api')->group(function () {

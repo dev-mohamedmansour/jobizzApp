@@ -20,12 +20,14 @@
 				  $middleware->appendToGroup('api', [
 						RefreshJwtToken::class,
 				  ]);
+				  $middleware->alias([
+						'check.reset.token' => \App\Http\Middleware\CheckPasswordResetToken::class,
+				  ]);
 				  $middleware->appendToGroup('admin', [
 						'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
 						'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
 						'approved.admin' => \App\Http\Middleware\ApprovedAdminMiddleware::class,
 				  ]);
-				  // Or if you want it for all requests
 				  $middleware->use([
 						 // ... other middleware
 						 RefreshJwtToken::class,
