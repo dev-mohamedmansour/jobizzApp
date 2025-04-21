@@ -25,8 +25,10 @@
 				  ]);
 				  $middleware->appendToGroup('admin', [
 						'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+						 \App\Http\Middleware\EnsureAdminEmailIsVerified::class,
 						'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-						'approved.admin' => \App\Http\Middleware\ApprovedAdminMiddleware::class,
+						 \App\Http\Middleware\ApprovedAdminMiddleware::class,
+						'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
 				  ]);
 				  $middleware->use([
 						 // ... other middleware
@@ -35,4 +37,8 @@
 			})
 			->withExceptions(function (Exceptions $exceptions) {
 				  //
-			})->create();
+			})
+			->withProviders([
+				 Spatie\Permission\PermissionServiceProvider::class,
+			])
+			->create();
