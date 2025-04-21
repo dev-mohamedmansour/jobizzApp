@@ -26,27 +26,50 @@
 						  // Application Permissions
 						  'manage-applications',
 						  'view-applicant-profiles',
-						  'send-messages'
+						  'send-messages',
+						  
+						  //pending permission
+						  'access-pending'
 					];
 					
-					foreach ($permissions as $perm) {
-						  Permission::firstOrCreate(['name' => $perm]);
+					foreach ($permissions as $permission) {
+						  Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'admin']);
 					}
 					
-					$superAdmin = Role::create(['name' => 'super-admin'])
-						 ->syncPermissions(Permission::all());
+					$roles = [
+						 'super-admin' => ['manage-all-companies', 'manage-all-jobs', 'manage-roles', 'manage-company-admins', 'manage-applications', 'view-applicant-profiles', 'send-messages'],
+						 'admin' => ['manage-own-company', 'manage-company-jobs', 'manage-company-admins'],
+						 'hr' => ['manage-company-jobs', 'view-applicant-profiles'],
+						 'coo' => ['manage-applications', 'send-messages'],
+						 'pending' => ['access-pending'],
+					];
 					
-					$admin = Role::create(['name' => 'admin'])
-						 ->syncPermissions([
-							  'manage-own-company',
-							  'manage-company-jobs',
-							  'manage-company-admins'
-						 ]);
+					foreach ($roles as $roleName => $permissions) {
+						  $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'admin']);
+						  $role->syncPermissions($permissions);
+					}
 					
-					$hr = Role::create(['name' => 'hr'])
-						 ->syncPermissions(['manage-company-jobs', 'view-applicant-profiles']);
-					
-					$coo = Role::create(['name' => 'coo'])
-						 ->syncPermissions(['manage-applications', 'send-messages']);
+//					foreach ($permissions as $perm) {
+//						  Permission::firstOrCreate(['name' => $perm,'guard_name' => 'admin']);
+//					}
+//
+//					$superAdmin = Role::create(['name' => 'super-admin', 'guard_name' => 'admin'])
+//						 ->syncPermissions(Permission::all());
+//
+//					$admin = Role::create(['name' => 'admin', 'guard_name' => 'admin'])
+//						 ->syncPermissions([
+//							  'manage-own-company',
+//							  'manage-company-jobs',
+//							  'manage-company-admins'
+//						 ]);
+//
+//					$hr = Role::create(['name' => 'hr', 'guard_name' => 'admin'])
+//						 ->syncPermissions(['manage-company-jobs', 'view-applicant-profiles']);
+//
+//					$coo = Role::create(['name' => 'coo', 'guard_name' => 'admin'])
+//						 ->syncPermissions(['manage-applications', 'send-messages']);
+//
+//					$pendingAdmin = Role::create(['name' => 'pending', 'guard_name' => 'admin'])
+//						 ->syncPermissions('access-pending');
 			 }
 	  }

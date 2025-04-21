@@ -11,9 +11,9 @@ class JobListing extends Model
 			'salary_range', 'employment_type', 'expiry_date'
 	  ];
 	  
-	  public function categories()
+	  public function category()
 	  {
-			 return $this->belongsToMany(Category::class);
+			 return $this->belongsTo(Category::class);
 	  }
 	  
 	  public function applications()

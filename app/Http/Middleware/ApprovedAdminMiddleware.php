@@ -14,8 +14,16 @@ class ApprovedAdminMiddleware
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
 	  public function handle(Request $request, Closure $next) {
-			 if (auth()->guard('admin')->check() && !auth()->guard('admin')->user()->is_approved) {
-					return responseJson(401,'Account pending approval');
+			 $admin = auth()->guard('admin')->user();
+			 if (!$admin)
+			 {
+					return responseJson(401,'Account Not found ');
+			 }elseif(!$admin?->is_approved) {
+					
+					return responseJson(403,
+						 'Account pending super-admin approval',
+						 $admin ? 'pending' : 'unauthenticated'
+					);
 			 }
 			 return $next($request);
 	  }

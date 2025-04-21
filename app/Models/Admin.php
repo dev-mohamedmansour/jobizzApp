@@ -9,17 +9,19 @@
 	  use Illuminate\Notifications\Notifiable;
 	  use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 	  use Spatie\Permission\Traits\HasRoles;
-	  
 	  class Admin extends Authenticatable implements JWTSubject ,MustVerifyEmail
 	  {
 			 use HasFactory, Notifiable, HasRoles;
 			 
+			 
 			 protected $fillable = [
 				  'name', 'email', 'password',
+				  'phone',
 				  'pin_code', 'pin_created_at',
 				  'confirmed_email', 'email_verified_at',
 				  'approved_by'
 			 ];
+			 protected $guarded = ['is_approved', 'approved_by'];
 			 
 			 protected $casts = [
 				  'confirmed_email' => 'boolean',
@@ -37,15 +39,12 @@
 				  'updated_at' => DateCast::class,
 				  'pin_created_at'=> DateCast::class,
 			 ];
-			 
-			 protected $guarded = ['is_approved', 'approved_by'];
 			 protected $guard_name = 'admin';
-			 protected $appends = ['permissions'];
 			 
-			 public function getPermissionsAttribute(): \Illuminate\Support\Collection
-			 {
-					return $this->getAllPermissions()->pluck('name');
-			 }
+//			 public function getPermissionsAttribute(): \Illuminate\Support\Collection
+//			 {
+//					return $this->getAllPermissions()->pluck('name');
+//			 }
 			 
 			 public function scopePending($query)
 			 {

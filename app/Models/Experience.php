@@ -2,6 +2,7 @@
 	  
 	  namespace App\Models;
 	  
+	  use App\Casts\DateCast;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
 	  
@@ -17,6 +18,11 @@
 				  'end_date',
 				  'is_current',
 				  'description'
+			 ];
+			 
+			 protected $dates = [
+				  'created_at' => DateCast::class,
+				  'updated_at' => DateCast::class,
 			 ];
 			 
 			 public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo

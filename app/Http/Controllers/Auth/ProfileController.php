@@ -7,6 +7,7 @@
 	  use App\Models\Education;
 	  use App\Models\Experience;
 	  use App\Models\Profile;
+	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Storage;
@@ -16,9 +17,8 @@
 	  
 	  class ProfileController extends Controller
 	  {
-			 
-			 public function getAllProfiles(Request $request
-			 ): \Illuminate\Http\JsonResponse {
+			 public function getAllProfiles(Request $request): JsonResponse
+			 {
 					try {
 						  $user = $request->user();
 						  $profiles = $user->profiles()->with(
@@ -66,9 +66,11 @@
 						  );
 						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Failed to retrieve profiles', [
-								'error' => $e->getMessage()
-						  ]);
+						  $message = config('app.debug')
+								? 'Failed to retrieve profiles: ' . $e->getMessage()
+								: 'Failed to retrieve profiles. Please try again later';
+						  
+						  return responseJson(500, $message);
 					}
 			 }
 			 
@@ -76,7 +78,7 @@
 			  * Display the specified profile.
 			  */
 			 public function getProfileById(Request $request, $id
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($id);
 						  
@@ -94,14 +96,16 @@
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  $message = config('app.debug')
+								? 'Server error: ' . $e->getMessage()
+								: 'Server error. Please try again later';
+						  
+						  return responseJson(500, $message);
 					}
 			 }
 			 
 			 public function addProfile(Request $request
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					$user = $request->user();
 					$validator = Validator::make($request->all(), [
 						 'title_job'     => 'required|string|max:255',
@@ -159,7 +163,7 @@
 			 }
 			 
 			 public function updateProfile(Request $request, $id
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile or fail
 						  $profile = Profile::findOrFail($id);
@@ -235,7 +239,7 @@
 			 }
 			 
 			 public function deleteProfile(Request $request, $id
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile or fail
 						  $profile = Profile::findOrFail($id);
@@ -272,7 +276,7 @@
 			 // Education Logic
 			 
 			 public function addEducation(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
@@ -343,7 +347,7 @@
 			 
 			 public function updateEducation(Request $request, $profileId,
 				  $educationId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile and education
 						  $profile = Profile::findOrFail($profileId);
@@ -431,7 +435,7 @@
 			 
 			 public function deleteEducation(Request $request, $profileId,
 				  $educationId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile and education
 						  $profile = Profile::findOrFail($profileId);
@@ -472,7 +476,7 @@
 			 
 			 // Experience Logic
 			 public function addExperience(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  
@@ -535,7 +539,7 @@
 			 
 			 public function editExperience(Request $request, $profileId,
 				  $experienceId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
@@ -620,7 +624,7 @@
 			 
 			 public function deleteExperience(Request $request, $profileId,
 				  $experienceId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
@@ -661,7 +665,7 @@
 			 
 			 // Document Logic
 			 public function uploadCV(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  
@@ -824,7 +828,7 @@
 			 
 			 // Upload Portfolio
 			 public function addPortfolioTypeImages(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
 						 'name'     => 'required|string|max:255',
 						 'images'   => 'nullable|array|max:12',
@@ -928,7 +932,7 @@
 			 
 			 protected function handleExistingImagePortfolio(Request $request,
 				  Document $portfolio
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					$currentCount = $portfolio->image_count;
 					$newImages = $request->file('images');
 					$newCount = count($newImages);
@@ -998,7 +1002,7 @@
 			 }
 			 
 			 public function addPortfolioTypePdf(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
 						 'name' => 'required|string|max:255',
 						 'pdf'  => 'required|file|mimes:pdf|max:10240',
@@ -1071,7 +1075,7 @@
 			 }
 			 
 			 public function addPortfolioTypeLink(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
 						 'name' => 'required|string|max:255',
 						 'url'  => 'required|url'
@@ -1147,7 +1151,7 @@
 			 
 			 public function editPortfolioImages(Request $request, $profileId,
 				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()
@@ -1282,7 +1286,7 @@
 			 
 			 public function editPortfolioPdf(Request $request, $profileId,
 				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()
@@ -1390,7 +1394,7 @@
 			 
 			 public function editPortfolioUrl(Request $request, $profileId,
 				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()
@@ -1491,7 +1495,7 @@
 			 
 			 public function deletePortfolio(Request $request, $profileId,
 				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  $portfolio = $profile->documents()

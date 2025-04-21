@@ -94,7 +94,7 @@
 						 'title'       => 'sometimes|string|max:255',
 						 'description' => 'sometimes|string',
 						 'status'      => 'sometimes|in:open,close',
-						 'categories' => 'sometimes|array|exists:categories,id'
+						 'category' => 'sometimes|array|exists:categories,id'
 					]);
 					
 					// Authorization check using policy
@@ -103,8 +103,8 @@
 					}
 					
 					$job->update($validated);
-					if ($request->has('categories')) {
-						  $job->categories()->sync($request->categories);
+					if ($request->has('category')) {
+						  $job->category()->sync($request->category);
 					}
 					return responseJson(200, 'Job updated', $job);
 			 }

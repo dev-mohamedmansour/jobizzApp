@@ -5,18 +5,18 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\PasswordResetPin;
-	  use App\Models\User;
+	  use App\Notifications\AdminApprovedNotification;
 	  use App\Notifications\AdminRegistrationPending;
 	  use App\Services\PinService;
+	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-//	  use Illuminate\Support\Facades\Auth;
-	  use Illuminate\Support\Facades\Auth;
+	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Hash;
+	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Notification;
 	  use Illuminate\Validation\ValidationException;
-	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
-	  
-	  use Illuminate\Support\Facades\Validator;
+	  use Spatie\Permission\Exceptions\PermissionAlreadyExists;
+	  use Spatie\Permission\Exceptions\RoleAlreadyExists;
 	  
 	  class AdminAuthController extends Controller
 	  {
@@ -27,49 +27,183 @@
 					$this->pinService = $pinService;
 			 }
 			 
-			 public function register(Request $request): \Illuminate\Http\JsonResponse
+			 protected function registerSuperAdmin(Request $request): JsonResponse
 			 {
-					$request->validate([
-						 'name' => 'required|string|max:255',
-						 'email' => 'required|email|unique:admins,email|unique:users,email',
-						 'phone'    => 'required|string|unique:admins,phone|unique:users,phone',
-						 'password' => 'required|string|min:8|confirmed',
-					]);
-					
-					$admin = Admin::create([
-						 'name' => $request->name,
-						 'email' => $request->email,
-						 'phone'=> $request->phone,
-						 'password' => Hash::make($request->password),
-						 'is_approved' => false, // Default unapproved
-						 'company_id' => null
-					]);
-					
-					$pinResult = $this->pinService->generateAndSendPin($admin, 'verification');
-					
-					if (!$pinResult['email_sent']) {
-						  $admin->delete();
-						  return responseJson(500, 'Registration failed - email not sent');
+					try {
+						  // Validate the request data
+						  $validated = $request->validate([
+								'fullName' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'email'    => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'unique:admins,email',
+									 'unique:users,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
+								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+						  ], [
+								 // Custom error messages
+								 'fullName.required' => 'The name field is required.',
+								 'fullName.regex'    => 'Name must contain only English letters and spaces.',
+								 
+								 'email.required' => 'The email field is required.',
+								 'email.regex'    => 'Invalid email format. Please use English characters only.',
+								 'email.ascii'    => 'Email must contain only English characters.',
+								 
+								 'password.required'  => 'The password field is required.',
+								 'password.confirmed' => 'Password confirmation does not match.',
+								 'password.min'       => 'Password must be at least 8 characters.',
+								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+						  ]);
+						  
+						  // Create admin if validation passes
+						  $admin = Admin::create([
+								'name'            => $validated['fullName'],
+								'email'           => $validated['email'],
+								'phone'           => $validated['phone'],
+								'password'        => Hash::make($validated['password']),
+								'is_approved'     => 1, // Default unapproved
+								'company_id'      => null,
+						  ]);
+						  
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$admin, 'verification'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 $admin->delete();
+								 return responseJson(
+									  500, 'Registration failed - email not sent'
+								 );
+						  }
+						  
+						  // Assign a pending role and basic permissions
+						  $admin->assignRole('super-admin');
+						  
+						  return responseJson(
+								201,
+								'Admin created. Verify email to activate. And  Your account requires super-admin approval'
+								, [
+									 'id'    => $admin->id,
+									 'email' => $admin->email,
+								]
+						  );
+						  
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
 					}
-					
-					// Assign a temporary "pending" role (optional)
-					$admin->assignRole('pending');
-					
-					// Notify all super-admins
-					$superAdmins = Admin::role('super-admin')->get();
-					
-					Notification::send($superAdmins, new AdminRegistrationPending($admin));
-					
-					return responseJson(201,
-						 'Admin created. Verify email to activate.
-						 And  Your account requires super-admin approval'
-					,[
-						 'id'=>$admin->id,
-						 'email'=>$admin->email,
-						 ]);
 			 }
 			 
-			 public function verifyEmail(Request $request): \Illuminate\Http\JsonResponse
+			 public function register(Request $request): JsonResponse
+			 {
+					try {
+						  // Validate the request data
+						  $validated = $request->validate([
+								'fullName' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'email'    => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'unique:admins,email',
+									 'unique:users,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
+								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+						  ], [
+								 // Custom error messages
+								 'fullName.required' => 'The name field is required.',
+								 'fullName.regex'    => 'Name must contain only English letters and spaces.',
+
+								 'email.required' => 'The email field is required.',
+								 'email.regex'    => 'Invalid email format. Please use English characters only.',
+								 'email.ascii'    => 'Email must contain only English characters.',
+
+								 'password.required'  => 'The password field is required.',
+								 'password.confirmed' => 'Password confirmation does not match.',
+								 'password.min'       => 'Password must be at least 8 characters.',
+								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+						  ]);
+						  
+						  // Create admin if validation passes
+						  $admin = Admin::create([
+								'name'            => $validated['fullName'],
+								'email'           => $validated['email'],
+								'phone'           => $validated['phone'],
+								'password'        => Hash::make($validated['password']),
+								'is_approved'     => true, // Default unapproved
+								'company_id'      => null,
+						  ]);
+						  
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$admin, 'verification'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 $admin->delete();
+								 return responseJson(
+									  500, 'Registration failed - email not sent'
+								 );
+						  }
+						  
+						  // Assign a pending role and basic permissions
+						  $admin->assignRole('pending');
+						  $admin->givePermissionTo('access-pending');
+
+						  // Notify all super-admins
+						  $superAdmins = Admin::role('super-admin')->get();
+						  Notification::send(
+								$superAdmins, new AdminRegistrationPending($admin)
+						  );
+						  
+						  return responseJson(
+								201,
+								'Admin created. Verify email to activate. And  Your account requires super-admin approval'
+								, [
+								'id'    => $admin->id,
+								'fullName' => $admin->name,
+								'email' => $admin->email,
+						  ]
+						  );
+						  
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function verifyEmail(Request $request): JsonResponse
 			 {
 					try {
 						  $validated = $request->validate([
@@ -102,9 +236,7 @@
 										$admin->markEmailAsVerified();
 								 }
 								 return responseJson(
-									  200, 'Email verified successfully', [
-											$admin->verified_email
-									  ]
+									  200, 'Email verified successfully'
 								 );
 						  }
 						  
@@ -122,45 +254,72 @@
 			 }
 			 
 			 // Update approve method
-			 public function approve(Admin $admin): \Illuminate\Http\JsonResponse
+			 public function approve(Admin $pendingAdmin): JsonResponse
 			 {
-					if (!auth()->user()->hasRole('super-admin')) {
-						  return responseJson(403, 'Unauthorized');
+					try {
+						  if (!auth()->user()->hasRole('super-admin')) {
+								 return responseJson(403, 'Unauthorized: Only super-admins can approve');
+						  }
+						  
+						  DB::transaction(function () use ($pendingAdmin) {
+								 // Remove pending status
+								 $pendingAdmin->update([
+									  'is_approved' => true,
+									  'approved_by' => auth()->id(),
+								 ]);
+								 
+								 // Remove temporary role/permissions
+								 $pendingAdmin->removeRole('pending');
+								 $pendingAdmin->revokePermissionTo('access-pending');
+								 
+								 // Assign a default admin role with permissions
+								 $pendingAdmin->assignRole('admin');
+								 $pendingAdmin->givePermissionTo([
+									  'manage-company',
+									  'view-dashboard',
+									  'manage-users'
+								 ]);
+								 
+								 // Send approval notification
+								 $pendingAdmin->notify(new AdminApprovedNotification());
+						  });
+						  
+						  return responseJson(200, 'Admin approved successfully', [
+								'admin_id' => $pendingAdmin->id,
+								'new_role' => 'admin'
+						  ]);
+						  
+					} catch (RoleAlreadyExists $e) {
+						  return responseJson(500, 'Error: Role already exists.');
+					} catch (PermissionAlreadyExists $e) {
+						  return responseJson(500, 'Error: Permission already exists.');
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error: ' . $e->getMessage());
 					}
 					
-					$admin->update([
-						 'is_approved' => true,
-						 'approved_by' => auth()->id(),
-						 ]);
-					
-					// Remove a temporary role
-					$admin->removeRole('pending');
-					
-					// Assign a role based on request
-					$admin->assignRole('admin'); // Add role validation
-					
-					return responseJson(200, 'Admin approved');
 			 }
 
 // Update createSubAdmin
 			 public function createSubAdmin(Request $request)
 			 {
 					$request->validate([
-						 'email' => 'required|email|unique:admins',
+						 'email'    => 'required|email|unique:admins',
 						 'password' => 'required|min:8',
-						 'role' => 'required|in:hr,coo'
+						 'role'     => 'required|in:hr,coo'
 					]);
 					
 					$admin = auth('admin')->user();
 					
-					if (!$admin instanceof \App\Models\Admin || !$admin->hasPermissionTo('manage-company-admins')) {
+					if (!$admin instanceof \App\Models\Admin
+						 || !$admin->hasPermissionTo('manage-company-admins')
+					) {
 						  return responseJson(403, 'Unauthorized');
 					}
 					
 					$subAdmin = Admin::create([
-						 'email' => $request->email,
-						 'password' => bcrypt($request->password),
-						 'company_id' => $admin->company_id,
+						 'email'       => $request->email,
+						 'password'    => bcrypt($request->password),
+						 'company_id'  => $admin->company_id,
 						 'is_approved' => true
 					]);
 					
@@ -169,57 +328,76 @@
 					return responseJson(201, 'Sub-admin created');
 			 }
 			 
-//			 public function createSubAdmin(Request $request) {
-//					$request->validate([
-//						 'email' => 'required|email|unique:admins',
-//						 'password' => 'required|min:8',
-//						 'role' => 'required|in:hr,coo'
-//					]);
-//
-//					$companyId = auth('admin')->user()->company_id;
-//
-//					$subAdmin = Admin::create([
-//						 'email' => $request->email,
-//						 'password' => bcrypt($request->password),
-//						 'company_id' => $companyId,
-//						 'is_approved' => true // Auto-approve sub-admins
-//					]);
-//
-//					$subAdmin->assignRole($request->role);
-//
-//					return responseJson(201,'Sub-admin created');
-//			 }
 			 public function login(Request $request): \Illuminate\Http\JsonResponse
 			 {
-					$credentials = $request->validate([
-						 'email' => 'required|email',
-						 'password' => 'required|string'
-					]);
-					
-					if (!$token = auth('admin')->attempt($credentials)) {
-						  return responseJson(401, 'Invalid credentials');
-					}
-					
-					$admin = auth('admin')->user();
-					
-					$admin = auth('admin')->user();
-					
-					if (!$admin->hasVerifiedEmail()) {
-						  auth('admin')->logout();
-						  return responseJson(403, 'Email verification required'
+					try {
+						  $validated = $request->validate([
+								'email'    => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'email',
+									 'exists:admins,email', //
+									 'ascii' // Ensures only ASCII characters
+								],
+								'password' => 'required|string|min:8|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+						  ], [
+								'email.required' => 'The email field is required.',
+								'email.email'    => 'Please enter a valid email address.',
+								'email.exists'   => 'Account Not found in App.',
+								'email.regex'    => 'Invalid email format. Please use English characters only.',
+								'email.ascii'    => 'Email must contain only English characters.',
+								
+								'password.required' => 'The password field is required.',
+								'password.min'      => 'Password must be at least 8 characters.',
+								'password.regex'    => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+						  ]);
+						  if (!$token = auth('admin')->attempt($validated)) {
+								 return responseJson(401, 'Email Or Password Invalid');
+						  }
+						  $admin = auth('admin')->user();
+						  
+						  // Email verification check
+						  if (!$admin->hasVerifiedEmail()) {
+								 auth('admin')->logout();
+								 return responseJson(
+									  403, 'Please verify your email address before logging in'
+								 );
+						  }
+						  // SuperAdmin check approved
+						  if (!$admin->is_approved) {
+								 auth('admin')->logout();
+								 return responseJson(403, 'Account pending approval, Please contact the administrator');
+						  }
+//						  return $this->respondWithToken($token, $admin);
+						  return responseJson(
+								200, 'Login successful',
+								[
+									 'token' => $token,
+									 'id'    => $admin->id,
+									 'fullName'  => $admin->name,
+									 'email' => $admin->email,
+									 'roles' => $admin->getRoleNames(),
+									 'permissions' => $admin->getAllPermissions()->pluck('name')								]
 						  );
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
 					}
-					
-					if (!$admin->is_approved) {
-						  auth('admin')->logout();
-						  return responseJson(403, 'Account pending approval');
-					}
-//					if (!$admin->confirmed_email) {
-//						  auth('admin')->logout();
-//						  return responseJson(403, 'Email not verified');
-//					}
-					
-					return $this->respondWithToken($token,$admin);
 			 }
 			 
 			 public function logout(): \Illuminate\Http\JsonResponse
@@ -228,8 +406,20 @@
 					return responseJson(200, 'Successfully logged out');
 			 }
 			 
-			 public function forgotAdminPassword(Request $request): \Illuminate\Http\JsonResponse
-			 {
+			 protected function respondWithToken($token, $data
+			 ): \Illuminate\Http\JsonResponse {
+					return responseJson(
+						 200, 'Authenticated',
+						 [
+							  'token' => ' type: bearer  ' . $token,
+							  'admin' => $data
+						 ]
+					);
+					
+			 }
+			 
+			 public function forgotAdminPassword(Request $request
+			 ): \Illuminate\Http\JsonResponse {
 					try {
 						  $validated = $request->validate([
 								'email' => 'required|email|exists:admins,email'
@@ -273,29 +463,39 @@
 					
 			 }
 			 
-			 public function resetAdminPassword(Request $request): \Illuminate\Http\JsonResponse
-			 {
+			 public function resetAdminPassword(Request $request
+			 ): \Illuminate\Http\JsonResponse {
 					try {
 						  $validated = $request->validate([
-								'email' => 'required|email|exists:admins,email',
-								'pin' => 'required|digits:4',
+								'email'    => 'required|email|exists:admins,email',
+								'pin'      => 'required|digits:4',
 								'password' => 'required|string|min:8|confirmed'
 						  ], [
-								'email.required' => 'Admin email is required',
-								'email.exists' => 'No admin account found with this email',
-								'pin.required' => 'Verification PIN is required',
-								'pin.digits' => 'PIN must be a 4-digit number',
+								'email.required'    => 'Admin email is required',
+								'email.exists'      => 'No admin account found with this email',
+								'pin.required'      => 'Verification PIN is required',
+								'pin.digits'        => 'PIN must be a 4-digit number',
 								'password.required' => 'New password is required'
 						  ]);
 						  
-						  $admin = Admin::where('email', $validated['email'])->first();
+						  $admin = Admin::where('email', $validated['email'])->first(
+						  );
 						  
 						  // Verify PIN through PinService
-						  if (!$this->pinService->verifyPin($admin, $validated['pin'], 'reset')) {
+						  if (!$this->pinService->verifyPin(
+								$admin, $validated['pin'], 'reset'
+						  )
+						  ) {
 								 return responseJson(401, 'Invalid or expired PIN', [
 									  'suggestion' => 'Request a new PIN'
 								 ]);
 						  }
+//						  if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $request->password)) {
+//								 $e->add(
+//									  'password',
+//									  'Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character'
+//								 );
+//						  }
 						  
 						  // Update password
 						  $admin->update([
@@ -318,14 +518,5 @@
 								'error' => config('app.debug') ? $e->getMessage() : null
 						  ]);
 					}
-			 }
-			 protected function respondWithToken($token,$data): \Illuminate\Http\JsonResponse
-			 {
-					return responseJson(200, 'Authenticated',
-						 [
-						 'token' => ' type: bearer  '.$token,
-						 'admin'=>$data
-					]);
-					
 			 }
 	  }

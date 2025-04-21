@@ -16,9 +16,6 @@ class AdminRegistrationPending extends Notification
      * Create a new notification instance.
      */
 	  public function __construct(public Admin $admin) {}
-	  
-
-
     /**
      * Get the notification's delivery channels.
      *
@@ -29,23 +26,9 @@ class AdminRegistrationPending extends Notification
 	  {
 			 return ['mail', 'database'];
 	  }
-	  
-//    public function via(object $notifiable): array
-//    {
-//        return ['mail'];
-//    }
-
     /**
      * Get the mail representation of the notification.
      */
-//    public function toMail(object $notifiable): MailMessage
-//    {
-//        return (new MailMessage)
-//                    ->line('The introduction to the notification.')
-//                    ->action('Notification Action', url('/'))
-//                    ->line('Thank you for using our application!');
-//    }
-	  
 	  public function toMail($notifiable):MailMessage
 	  {
 			 return (new MailMessage)
@@ -56,7 +39,6 @@ class AdminRegistrationPending extends Notification
 				  ->action('Review Request', url("/admin/approvals/{$this->admin->id}"))
 				  ->line('This request will expire in 72 hours.');
 	  }
-
     /**
      * Get the array representation of the notification.
      *

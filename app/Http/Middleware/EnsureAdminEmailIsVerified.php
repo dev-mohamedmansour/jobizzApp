@@ -13,8 +13,14 @@ class EnsureAdminEmailIsVerified
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
-    {
-        return $next($request);
-    }
+	  public function handle($request, Closure $next)
+	  {
+			 if (!$request->user('admin')->hasVerifiedEmail()) {
+					return responseJson(403,
+						  'Email verification required'
+					);
+			 }
+			 
+			 return $next($request);
+	  }
 }

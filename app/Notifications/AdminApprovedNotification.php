@@ -34,10 +34,10 @@ class AdminApprovedNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-                    ->line('The introduction to the notification.')
-                    ->action('Notification Action', url('/'))
-                    ->line('Thank you for using our application!');
+			return (new MailMessage)
+				 ->subject('Account Approved')
+				 ->line('Your admin account has been approved.')
+				 ->action('Login', url('/admin/login'));
     }
 
     /**

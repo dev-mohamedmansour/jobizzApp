@@ -11,9 +11,9 @@
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
-	  use Illuminate\Validation\ValidationException;
 	  use Laravel\Socialite\Facades\Socialite;
-	  use mysql_xdevapi\Exception;
+	  use Google\Client as GoogleClient;
+	  use Google\Exception as GoogleException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
@@ -91,18 +91,19 @@
 								]
 						  );
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = 'Validation error: ';
-						  $errorMessage .= implode(
-								'', array_map(
-									 fn($error, $index) => "$error",
-									 $errors,
-									 array_keys($errors)
-								)
-						  );
+//						  $errors = $e->validator->errors()->all();
+//						  $errorMessage = 'Validation error: ';
+//						  $errorMessage .= implode(
+//								'', array_map(
+//									 fn($error, $index) => "$error",
+//									 $errors,
+//									 array_keys($errors)
+//								)
+//						  );
 						  return responseJson(
 								422,
-								$errorMessage
+								" validation error",
+									 $e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
 						  // Handle other exceptions
@@ -250,7 +251,7 @@
 								[
 									 'token' => $token,
 									 'id'    => $user->id,
-									 'name'  => $user->name,
+									 'fullName'  => $user->name,
 									 'email' => $user->email
 								]
 						  );
@@ -276,7 +277,7 @@
 								= "Login failed: Something went wrong. Please try again later.";
 						  // For development: Detailed error message
 						  if (config('app.debug')) {
-								 $errorMessage = "Server error:\n" . $e->getMessage();
+								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
 						  return responseJson(500, $errorMessage);
 					}
@@ -349,6 +350,82 @@
 								401, 'Authentication failed. Please try again.'
 						  );
 					}
+			 }
+			 
+			 public function socialLogin(Request $request): JsonResponse
+			 {
+					try {
+						  $validProviders = ['google'];
+						  $provider = $request->input('provider');
+						  $token = $request->input('token');
+						  
+						  // Validate inputs
+						  if (!in_array($provider, $validProviders)) {
+								 return responseJson(400, 'Invalid provider. Supported: google');
+						  }
+						  
+						  if (empty($token)) {
+								 return responseJson(400, 'Authorization token is required');
+						  }
+						  
+						  // Verify social token
+						  $socialUser = $this->verifySocialToken($provider, $token);
+						  
+						  // Find or create user
+						  $user = User::firstOrCreate(
+								['email' => $socialUser['email']],
+								[
+									 'name' => $socialUser['name'],
+									 'provider_id' => $socialUser['id'],
+									 'provider_name' => $provider,
+									 'password' => Hash::make(Str::random(32)),
+									 'email_verified_at' => now(),
+									 'confirmed_email' => true,
+								]
+						  );
+						  
+						  // Generate JWT token
+						  $jwtToken = JWTAuth::fromUser($user, [
+								'provider' => $provider,
+								'exp' => now()->addHours(2)->timestamp
+						  ]);
+						  
+						  return responseJson(200, 'Login successful', [
+								'token' => $jwtToken,
+									 'id' => $user->id,
+									 'fullName' => $user->name,
+									 'email' => $user->email,
+									 'provider' => $provider
+						  ]);
+						  
+					} catch (\Exception $e) {
+						  Log::error("Social auth failed: " . $e->getMessage());
+						  return responseJson(401, 'Authentication failed: ' . $e->getMessage());
+					}
+			 }
+			 
+			 private function verifySocialToken(string $provider, string $token): array
+			 {
+					if ($provider === 'google') {
+						  $client = new GoogleClient(['client_id' => env('GOOGLE_CLIENT_ID')]);
+						  
+						  try {
+								 $payload = $client->verifyIdToken($token);
+								 if (!$payload || $payload['aud'] !== env('GOOGLE_CLIENT_ID')) {
+										throw new \Exception('Invalid Google token');
+								 }
+								 
+								 return [
+									  'id' => $payload['sub'],
+									  'name' => $payload['name'] ?? '',
+									  'email' => $payload['email']
+								 ];
+						  } catch (GoogleException $e) {
+								 throw new \Exception('Google authentication failed');
+						  }
+					}
+					
+					throw new \Exception('Unsupported provider');
 			 }
 			 
 			 // Logout
@@ -495,7 +572,7 @@
 						  }
 						  $token = JWTAuth::claims([
 								'purpose' => 'password_reset',
-								'exp'     => now()->addMinutes(30)->timestamp
+								'exp'     => now()->addMinutes(5)->timestamp
 						  ])->fromUser($user);
 						  
 						  // Clear reset PIN record
@@ -549,7 +626,11 @@
 						  $user->save();
 						  // Invalidate token
 						  auth()->invalidate(true);
-						  
+						  auth()->logout();
+						  // Optional: Add token invalidation if using JWT
+						  JWTAuth::invalidate(JWTAuth::getToken());
+						  // Optional: Clear session data
+						  session()->flush();
 						  return responseJson(200, 'Your Password updated successfully');
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  $errors = implode(" ", $e->validator->errors()->all());
