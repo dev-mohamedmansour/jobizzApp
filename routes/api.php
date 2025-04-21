@@ -26,7 +26,7 @@
 			 );
 			 
 			 // Authenticated routes
-			 Route::middleware(['auth:admin', 'verified', 'approved.admin'])
+			 Route::middleware(['auth:admin', 'approved.admin'])
 				  ->group(function () {
 						 // Auth routes
 						 Route::post('/logout', [AdminAuthController::class, 'logout']
@@ -41,20 +41,15 @@
 							  ->middleware(
 									'permission:manage-all-jobs|manage-company-jobs'
 							  );
-						 
+						 Route::post(
+							  '/approve/{admin}',
+							  [AdminAuthController::class, 'approve']
+						 )->middleware('role:super-admin');
 						 // Admin management
-						 Route::middleware('role:super-admin|admin')->group(
-							  function () {
-									 Route::post(
-										  '/approve/{admin}',
-										  [AdminAuthController::class, 'approve']
-									 );
-									 Route::post(
-										  '/sub-admin',
-										  [AdminAuthController::class, 'createSubAdmin']
-									 );
-							  }
-						 );
+						 Route::post(
+							  '/sub-admin',
+							  [AdminAuthController::class, 'createSubAdmin']
+						 )->middleware('role:admin');
 				  });
 			 
 	  });
@@ -71,12 +66,15 @@
 			 });
 			 
 			 // Social auth
-			 Route::get(
-				  '/{provider}', [AuthController::class, 'redirectToProvider']
-			 );
-			 Route::get(
-				  '/{provider}/callback',
-				  [AuthController::class, 'handleProviderCallback']
+//			 Route::get(
+//				  '/{provider}', [AuthController::class, 'redirectToProvider']
+//			 );
+//			 Route::get(
+//				  '/{provider}/callback',
+//				  [AuthController::class, 'handleProviderCallback']
+//			 );
+			 Route::post(
+				  '/google-login', [AuthController::class, 'socialLogin']
 			 );
 			 //password Logic
 			 Route::post(
@@ -84,11 +82,12 @@
 				  [AuthController::class, 'requestPasswordReset']
 			 );
 			 Route::post(
-				  '/password/verify-pin', [AuthController::class, 'checkResetPasswordPinCode']
+				  '/password/verify-pin',
+				  [AuthController::class, 'checkResetPasswordPinCode']
 			 );
 			 Route::post(
-				  '/password/reset', [AuthController::class, 'newPassword'])
-				  ->middleware(['auth:api', 'check.reset.token']);
+				  '/password/reset', [AuthController::class, 'newPassword']
+			 )->middleware(['auth:api', 'check.reset.token']);
 	  });
 	  
 	  Route::prefix('profiles')->middleware('auth:api')->group(function () {
