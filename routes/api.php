@@ -26,7 +26,7 @@
 			 );
 			 
 			 // Authenticated routes
-			 Route::middleware(['auth:admin', 'approved.admin'])
+			 Route::middleware(['auth:admin'])
 				  ->group(function () {
 						 // Auth routes
 						 Route::post('/logout', [AdminAuthController::class, 'logout']
@@ -44,12 +44,12 @@
 						 Route::post(
 							  '/approve/{admin}',
 							  [AdminAuthController::class, 'approve']
-						 )->middleware('role:super-admin');
+						 );
 						 // Admin management
 						 Route::post(
 							  '/sub-admin',
 							  [AdminAuthController::class, 'createSubAdmin']
-						 )->middleware('role:admin');
+						 );
 				  });
 			 
 	  });
