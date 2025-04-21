@@ -42,7 +42,7 @@
 									'permission:manage-all-jobs|manage-company-jobs'
 							  );
 						 Route::post(
-							  '/approve/{admin}',
+							  '/approve/{pendingAdmin}',
 							  [AdminAuthController::class, 'approve']
 						 );
 						 // Admin management
