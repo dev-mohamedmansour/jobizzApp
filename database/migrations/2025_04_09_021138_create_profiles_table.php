@@ -14,7 +14,7 @@
 						  $table->string('title_job');
 						  $table->string('job_position');
 						  $table->boolean('is_default')->default(false);
-						  $table->string('profile_image')->nullable();
+						  $table->string('profile_image')->default('https://jobizaa.com/still_images/userDefault.jpg');
 						  $table->timestamps();
 					});
 			 }
