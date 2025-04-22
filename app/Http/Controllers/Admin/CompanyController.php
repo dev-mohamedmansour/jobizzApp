@@ -68,32 +68,84 @@
 			 }
 			 public function store(Request $request): \Illuminate\Http\JsonResponse
 			 {
-					/** @var Admin $admin */
-					
-					$admin = auth('admin')->user();
-					
-					if ($admin->hasRole('super-admin')) {
-						  $validated = $request->validate([
-								'name' => 'required|unique:companies',
-								'admin_id' => 'required|exists:admins,id'
-						  ]);
+					try {
+						  $admin = auth('admin')->user();
 						  
-						  $company = Company::create($validated);
-					} else {
-						  if (!$admin->hasPermissionTo('manage-own-company')) {
-								 return responseJson(403, 'Unauthorized');
+						  // Define validation rules based on user role
+						  $validationRules = [];
+						  $validationCustomMessages = [];
+						  
+						  if ($admin->hasRole('super-admin')) {
+								 $validationRules = [
+									  'name' => 'required|string|max:255|unique:companies',
+									  'admin_id' => 'required|exists:admins,id',
+									  'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+									  'description' => 'nullable|string|max:1000',
+									  'location' => 'nullable|string|max:255',
+									  'website' => 'nullable|url',
+									  'size' => 'nullable|string|max:255',
+									  'open_jobs' => 'nullable|numeric|min:0',
+									  'hired_people' => 'nullable|numeric|min:0',
+								 ];
+						  } else {
+								 if (!$admin->hasPermissionTo('manage-own-company')) {
+										return responseJson(403, 'Unauthorized');
+								 }
+								 
+								 $validationRules = [
+									  'name' => 'required|string|max:255|unique:companies',
+									  'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+									  'description' => 'nullable|string|max:1000',
+									  'location' => 'nullable|string|max:255',
+									  'website' => 'nullable|url',
+									  'size' => 'nullable|string|max:255',
+									  'open_jobs' => 'nullable|numeric|min:0',
+									  'hired_people' => 'nullable|numeric|min:0',
+								 ];
 						  }
 						  
-						  $validated = $request->validate([
-								'name' => 'required|unique:companies'
+						  // Add custom validation messages
+						  $validationCustomMessages = [
+								'name.unique' => 'A company with this name already exists.',
+								'name.max' => 'Company name cannot exceed 255 characters.',
+								'logo.image' => 'The logo must be an image.',
+								'logo.mimes' => 'The logo must be a file of type: jpeg, png, jpg, gif, svg.',
+								'logo.max' => 'The logo cannot exceed 2MB in size.',
+								'description.max' => 'Company description cannot exceed 1000 characters.',
+								'location.max' => 'Location cannot exceed 255 characters.',
+								'size.max' => 'Company size cannot exceed 255 characters.',
+								'open_jobs.min' => 'Open jobs count cannot be negative.',
+								'hired_people.min' => 'Hired people count cannot be negative.',
+						  ];
+						  
+						  // Validate request data
+						  $validated = $request->validate($validationRules, $validationCustomMessages);
+						  
+						  // Handle logo upload
+						  if ($request->hasFile('logo')) {
+								 $logoPath = $request->file('logo')->store('company_logos', 'public');
+								 $validated['logo'] = $logoPath;
+						  }
+						  
+						  // Create company
+						  if ($admin->hasRole('super-admin')) {
+								 $company = Company::create($validated);
+						  } else {
+								 $validated['admin_id'] = $admin->id;
+								 $company = Company::create($validated);
+						  }
+						  
+						  // Return success response
+						  return responseJson(201, 'Company created successfully', [
+								'company' => $company,
+								'open_jobs' => $company->open_jobs,
+								'hired_people' => $company->hired_people,
 						  ]);
 						  
-						  $company = $admin->company()->create($validated);
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error: ' . $e->getMessage());
 					}
-					
-					return responseJson(201, 'Company created', $company);
 			 }
-			 
 			 public function update(Request $request, Company $company): \Illuminate\Http\JsonResponse
 			 {
 					/** @var Admin $admin */

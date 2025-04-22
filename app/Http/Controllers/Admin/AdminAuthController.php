@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Mail\SubAdminCredentialsMail;
 	  use App\Models\Admin;
 	  use App\Models\PasswordResetPin;
 	  use App\Notifications\AdminApprovedNotification;
@@ -13,7 +14,9 @@
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
+	  use Illuminate\Support\Facades\Mail;
 	  use Illuminate\Support\Facades\Notification;
+	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
 	  use Spatie\Permission\Exceptions\PermissionAlreadyExists;
 	  use Spatie\Permission\Exceptions\RoleAlreadyExists;
@@ -227,49 +230,94 @@
 					
 			 }
 			 
-			 // Update approve method
-			 
 			 public function createSubAdmin(Request $request): JsonResponse
 			 {
-					$request->validate([
-						 'fullName' => 'required|string|max:255',
-						 'email'    => 'required|email|unique:admins',
-						 'password' => 'required|min:8',
-						 'role'     => 'required|in:hr,coo'
-					]);
-					
-					$admin = auth('admin')->user();
-					
-					if (!$admin instanceof \App\Models\Admin
-						 || !$admin->hasPermissionTo('manage-company-admins')
-					) {
-						  return responseJson(403, 'Unauthorized');
+					try {
+						  // Validate input
+						  $validated = $request->validate([
+								'fullName' => [
+									 'required',
+									 'string',
+									 'max:255',
+									 'regex:/^[a-zA-Z\s]+$/', // Only letters and spaces
+								],
+								'email' => [
+									 'required',
+									 'string',
+									 'email',
+									 'max:255',
+									 'unique:admins,email',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+								],
+								'role' => 'required|in:hr,coo',
+						  ], [
+								'fullName.regex' => 'Name must only contain letters and spaces',
+						  ]);
+						  
+						  $admin = auth('admin')->user();
+						  
+						  // Check if an authenticated user is valid and has permission
+						  if (!$admin instanceof Admin || !$admin->hasPermissionTo('manage-company-admins')) {
+								 return responseJson(403, 'Unauthorized For Add Sub Admin');
+						  }
+						  
+						  // Check if admin has a company
+						  if (empty($admin->company_id)) {
+								 return responseJson(403, 'You must create a company before adding sub-admins');
+						  }
+						  
+						  // Limit sub-admins to 8
+						  $subAdminCount = Admin::where('company_id', $admin->company_id)
+								->where('id', '!=', $admin->id)
+								->count();
+						  
+						  if ($subAdminCount >= 8) {
+								 return responseJson(403, 'You can only create up to 8 sub-admins');
+						  }
+						  
+						  // Generate random password
+						  $password = Str::random(12);
+						  
+						  // Create sub-admin
+						  $subAdmin = Admin::create([
+								'name'            => $validated['fullName'],
+								'email'           => $validated['email'],
+								'password'        => Hash::make($password),
+								'company_id'      => $admin->company_id,
+								'is_approved'     => true,
+								'approved_by'     => $admin->id,
+								'confirmed_email' => true,
+								'email_verified_at' => now(), // Auto-verify email
+						  ]);
+						  // Mark email as verified for MustVerifyEmail
+						  if (!$subAdmin ->hasVerifiedEmail()) {
+								 $subAdmin ->markEmailAsVerified();
+						  }
+						  // Assign role
+						  $subAdmin->assignRole($validated['role']);
+						  
+						  // Send credentials email
+						  Mail::to($validated['email'])->send(new SubAdminCredentialsMail(
+								name: $validated['fullName'],
+								email: $validated['email'],
+								password: $password,
+								role: $validated['role']
+						  ));
+						  
+						  return responseJson(201, 'Sub-admin created and email sent', [
+								'sub_admin_id'    => $subAdmin->id,
+								'sub_admin_name'  => $subAdmin->name,
+								'sub_admin_email' => $subAdmin->email,
+								'sub_admin_role'  => $validated['role'],
+						  ]);
+						  
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error: '. $e->validator->errors()->all());
+					} catch (\Exception $e) {
+						  Log::error('Server error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error: ' . $e->getMessage());
 					}
-					
-					$subAdmin = Admin::create([
-						 'name'            => $request->fullName,
-						 'email'           => $request->email,
-						 'password'        => bcrypt($request->password),
-						 'company_id'      => $admin->company_id,
-						 'is_approved'     => true,
-						 'approved_by'     => $admin->id,
-						 'confirmed_email' => true,
-					
-					]);
-					// Mark email as verified for MustVerifyEmail
-					if (!$admin->hasVerifiedEmail()) {
-						  $admin->markEmailAsVerified();
-					}
-					
-					$subAdmin->assignRole($request->role);
-					
-					return responseJson(201, 'Sub-admin created', [
-						 'SubAdmin_id'    => $subAdmin->id,
-						 'SubAdmin_name'  => $subAdmin->name,
-						 'SubAdmin_email' => $subAdmin->email,
-					]);
 			 }
-
 			 
 			 public function login(Request $request): \Illuminate\Http\JsonResponse
 			 {
