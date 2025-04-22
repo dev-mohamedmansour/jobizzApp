@@ -31,7 +31,7 @@
 								? $this->profile_image
 								: Storage::url($this->profile_image);
 					}
-					return 'https://jobizaa.com/images/nonPhoto.jpg'; // Default placeholder
+					return 'https://jobizaa.com/still_images/userDefault.jpg'; // Default placeholder
 			 }
 			 public function educations(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {

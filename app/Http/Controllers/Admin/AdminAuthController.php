@@ -30,6 +30,109 @@
 					$this->pinService = $pinService;
 			 }
 			 
+			 public function superAdminSignUp(Request $request): JsonResponse
+			 {
+					try {
+						  // Validate the request data
+						  $validated = $request->validate([
+								'fullName' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'email'    => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'unique:admins,email',
+									 'unique:users,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+								'photo' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
+								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+						  ], [
+								 // Custom error messages
+								 'fullName.required' => 'The name field is required.',
+								 'fullName.regex'    => 'Name must contain only English letters and spaces.',
+								 
+								 'email.required' => 'The email field is required.',
+								 'email.regex'    => 'Invalid email format. Please use English characters only.',
+								 'email.ascii'    => 'Email must contain only English characters.',
+								 
+								 'photo.image' => 'The photo must be an image.',
+								 'photo.mimes' => 'The photo must be a file of type: jpeg, png, jpg, gif, svg.',
+								 'photo.max' => 'The photo cannot exceed 2MB in size.',
+								 
+								 'password.required'  => 'The password field is required.',
+								 'password.confirmed' => 'Password confirmation does not match.',
+								 'password.min'       => 'Password must be at least 8 characters.',
+								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+						  ]);
+						  
+						  // Handle logo upload
+						  if ($request->hasFile('photo')) {
+								 $photoPath = $request->file('photo')->store('admin_images', 'public');
+								 $validated['photo'] = $photoPath;
+						  } else {
+								 // Set default image URL
+								 $validated['photo'] = 'https://jobizaa.com/still_images/userDefault.jpg';
+						  }
+						  
+						  // Create admin if validation passes
+						  $admin = Admin::create([
+								'name'        => $validated['fullName'],
+								'email'       => $validated['email'],
+								'phone'       => $validated['phone'],
+								'photo'       => $validated['photo'],
+								'password'    => Hash::make($validated['password']),
+								'is_approved' => true,
+								'company_id'  => null,
+						  ]);
+						  
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$admin, 'verification'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 $admin->delete();
+								 return responseJson(
+									  500, 'Registration failed - email not sent'
+								 );
+						  }
+						  $admin->update([
+								'approved_by' => $admin->id,
+						  ]);
+						  // Assign a super-admin role and basic permissions
+						  $admin->assignRole('super-admin');
+						  
+						  return responseJson(
+								201,
+								'Verify email to activate. Admin created. Your account As super-admin '
+								, [
+									 'id'       => $admin->id,
+									 'fullName' => $admin->name,
+									 'email'    => $admin->email,
+								]
+						  );
+						  
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 
 			 public function register(Request $request): JsonResponse
 			 {
 					try {
@@ -44,6 +147,7 @@
 									 'unique:users,email',
 									 'ascii' // Ensures only ASCII characters
 								],
+								'photo' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
 								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
 						  ], [
@@ -55,17 +159,31 @@
 								 'email.regex'    => 'Invalid email format. Please use English characters only.',
 								 'email.ascii'    => 'Email must contain only English characters.',
 								 
+								 'photo.image' => 'The photo must be an image.',
+								 'photo.mimes' => 'The photo must be a file of type: jpeg, png, jpg, gif, svg.',
+								 'photo.max' => 'The photo cannot exceed 2MB in size.',
+								 
 								 'password.required'  => 'The password field is required.',
 								 'password.confirmed' => 'Password confirmation does not match.',
 								 'password.min'       => 'Password must be at least 8 characters.',
 								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
 						  ]);
 						  
+						  // Handle logo upload
+						  if ($request->hasFile('photo')) {
+								 $photoPath = $request->file('photo')->store('admin_images', 'public');
+								 $validated['photo'] = $photoPath;
+						  } else {
+								 // Set default image URL
+								 $validated['photo'] = 'https://jobizaa.com/still_images/userDefault.jpg';
+						  }
+						  
 						  // Create admin if validation passes
 						  $admin = Admin::create([
 								'name'        => $validated['fullName'],
 								'email'       => $validated['email'],
 								'phone'       => $validated['phone'],
+								'photo'       => $validated['photo'],
 								'password'    => Hash::make($validated['password']),
 								'is_approved' => false, // Default unapproved
 								'company_id'  => null,
@@ -502,90 +620,6 @@
 						  return responseJson(500, 'Password reset failed', [
 								'error' => config('app.debug') ? $e->getMessage() : null
 						  ]);
-					}
-			 }
-			 
-			 protected function registerSuperAdmin(Request $request): JsonResponse
-			 {
-					try {
-						  // Validate the request data
-						  $validated = $request->validate([
-								'fullName' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'email'    => [
-									 'required',
-									 'string',
-									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-									 'unique:admins,email',
-									 'unique:users,email',
-									 'ascii' // Ensures only ASCII characters
-								],
-								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
-								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
-						  ], [
-								 // Custom error messages
-								 'fullName.required' => 'The name field is required.',
-								 'fullName.regex'    => 'Name must contain only English letters and spaces.',
-								 
-								 'email.required' => 'The email field is required.',
-								 'email.regex'    => 'Invalid email format. Please use English characters only.',
-								 'email.ascii'    => 'Email must contain only English characters.',
-								 
-								 'password.required'  => 'The password field is required.',
-								 'password.confirmed' => 'Password confirmation does not match.',
-								 'password.min'       => 'Password must be at least 8 characters.',
-								 'password.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
-						  ]);
-						  
-						  // Create admin if validation passes
-						  $admin = Admin::create([
-								'name'        => $validated['fullName'],
-								'email'       => $validated['email'],
-								'phone'       => $validated['phone'],
-								'password'    => Hash::make($validated['password']),
-								'is_approved' => 1, // Default unapproved
-								'company_id'  => null,
-						  ]);
-						  
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$admin, 'verification'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 $admin->delete();
-								 return responseJson(
-									  500, 'Registration failed - email not sent'
-								 );
-						  }
-						  
-						  // Assign a pending role and basic permissions
-						  $admin->assignRole('super-admin');
-						  
-						  return responseJson(
-								201,
-								'Admin created. Verify email to activate. And  Your account requires super-admin approval'
-								, [
-									 'id'    => $admin->id,
-									 'email' => $admin->email,
-								]
-						  );
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422,
-								" validation error",
-								$e->validator->errors()->all()
-						  );
-					} catch (\Exception $e) {
-						  // Handle other exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  // For production: Generic error message
-						  $errorMessage
-								= "Server error: Something went wrong. Please try again later.";
-						  // For development: Detailed error message
-						  if (config('app.debug')) {
-								 $errorMessage = "Server error: " . $e->getMessage();
-						  }
-						  return responseJson(500, $errorMessage);
 					}
 			 }
 			 

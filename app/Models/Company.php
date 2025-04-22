@@ -18,6 +18,15 @@
 						'open_jobs',
 						'hired_people',
 				  ];
+			 /**
+			  * The attributes that should be cast to native types.
+			  *
+			  * @var array
+			  */
+			 protected $casts = [
+				  'created_at' => 'date:Y-m-d',
+				  'updated_at' => 'date:Y-m-d',
+			 ];
 			 
 			 public function admin()
 			 {

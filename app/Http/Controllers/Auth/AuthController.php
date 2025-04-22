@@ -41,7 +41,7 @@
 									 'required',
 									 'string',
 									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-									 'unique:users',
+									 'unique:users|unique:admins',
 									 'ascii' // Ensures only ASCII characters
 								],
 								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'

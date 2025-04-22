@@ -16,7 +16,7 @@
 			 
 			 protected $fillable = [
 				  'name', 'email', 'password',
-				  'phone','is_approved',
+				  'phone','is_approved','photo',
 				  'pin_code', 'pin_created_at',
 				  'confirmed_email', 'email_verified_at',
 				  'approved_by'

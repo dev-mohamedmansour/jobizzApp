@@ -136,7 +136,7 @@
 					} else {
 						  // Set default image URL
 						  $validatedData['profile_image']
-								= 'https://jobizaa.com/images/nonPhoto.jpg';
+								= 'https://jobizaa.com/still_images/userDefault.jpg';
 					}
 					
 					if ($validator->fails()) {
