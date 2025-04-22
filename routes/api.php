@@ -11,6 +11,11 @@
 	  
 	  Route::prefix('admin')->group(function () {
 			 // Public routes
+			 Route::post(
+				  '/AddSuperAdmin/{id}',
+				  [AdminAuthController::class, 'superAdminSignUp']
+			 );
+			 
 			 Route::post('/register', [AdminAuthController::class, 'register']);
 			 Route::post(
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
@@ -32,10 +37,14 @@
 						 Route::post('/logout', [AdminAuthController::class, 'logout']
 						 );
 						 // Company routes
-						 Route::apiResource('companies', CompanyController::class)
-							  ->middleware(
-									'permission:manage-all-companies|manage-own-company'
-							  );
+						 Route::prefix('companies')->group(function () {
+								Route::post(
+									 '/add-company', [CompanyController::class, 'store']
+								);
+								
+								Route::get('/{id}', [CompanyController::class, 'show']);
+								
+						 });
 						 // Job routes
 						 Route::apiResource('jobs', JobController::class)
 							  ->middleware(
@@ -88,99 +97,114 @@
 			 Route::post(
 				  '/password/reset', [AuthController::class, 'newPassword']
 			 )->middleware(['auth:api', 'check.reset.token']);
-	  });
-	  
-	  Route::prefix('profiles')->middleware('auth:api')->group(function () {
-			 Route::get('/', [ProfileController::class, 'getAllProfiles']);
-			 Route::post('/add-profile', [ProfileController::class, 'addProfile']);
-			 Route::get('/{id}', [ProfileController::class, 'getProfileById']);
-			 Route::put('/{id}', [ProfileController::class, 'updateProfile']);
-			 Route::delete('/{id}', [ProfileController::class, 'deleteProfile']);
 			 
-			 // Profile educations
-			 Route::post(
-				  '/{profileId}/educations',
-				  [ProfileController::class, 'addEducation']
-			 );
-			 Route::put(
-				  '/{profileId}/educations/{educationId}',
-				  [ProfileController::class, 'updateEducation']
-			 );
-			 Route::delete(
-				  '/{profileId}/educations/{educationId}',
-				  [ProfileController::class, 'deleteEducation']
-			 );
 			 
-			 // Profile experiences
-			 Route::post(
-				  '/{profileId}/experiences',
-				  [ProfileController::class, 'addExperience']
-			 );
-			 Route::put(
-				  '/{profileId}/experiences/{experienceId}',
-				  [ProfileController::class, 'editExperience']
-			 );
-			 Route::delete(
-				  '/{profileId}/experiences/{experienceId}',
-				  [ProfileController::class, 'deleteExperience']
-			 );
-			 
-			 // Profile documents
-			 // CV Routes
-			 Route::post('/{profileId}/cvs', [ProfileController::class, 'uploadCV']
-			 );
-			 Route::put(
-				  '/{profileId}/cvs/{cvId}', [ProfileController::class, 'editCV']
-			 );
-			 Route::delete(
-				  '/{profileId}/cvs/{cvId}', [ProfileController::class, 'deleteCV']
-			 );
-			 
-			 // Portfolio Routes
-			 Route::prefix('{profileId}/portfolio')->group(function () {
+			 Route::prefix('profiles')->middleware('auth:api')->group(function () {
+					Route::get('/', [ProfileController::class, 'getAllProfiles']);
 					Route::post(
-						 '/images',
-						 [ProfileController::class, 'addPortfolioTypeImages']
+						 '/add-profile', [ProfileController::class, 'addProfile']
 					);
-					Route::post(
-						 '/pdf',
-						 [ProfileController::class, 'addPortfolioTypePdf']
+					Route::get('/{id}', [ProfileController::class, 'getProfileById']
 					);
+					Route::put('/{id}', [ProfileController::class, 'updateProfile']);
+					Route::delete(
+						 '/{id}', [ProfileController::class, 'deleteProfile']
+					);
+					
+					// Profile educations
 					Route::post(
-						 '/url',
-						 [ProfileController::class, 'addPortfolioTypeLink']
+						 '/{profileId}/educations',
+						 [ProfileController::class, 'addEducation']
 					);
 					Route::put(
-						 '/images/{portfolioId}',
-						 [ProfileController::class, 'editPortfolioImages']
-					);
-					Route::put(
-						 '/pdf/{portfolioId}',
-						 [ProfileController::class, 'editPortfolioPdf']
-					);
-					Route::put(
-						 '/url/{portfolioId}',
-						 [ProfileController::class, 'editPortfolioUrl']
+						 '/{profileId}/educations/{educationId}',
+						 [ProfileController::class, 'updateEducation']
 					);
 					Route::delete(
-						 '/{portfolioId}',
-						 [ProfileController::class, 'deletePortfolio']
+						 '/{profileId}/educations/{educationId}',
+						 [ProfileController::class, 'deleteEducation']
 					);
+					
+					// Profile experiences
+					Route::post(
+						 '/{profileId}/experiences',
+						 [ProfileController::class, 'addExperience']
+					);
+					Route::put(
+						 '/{profileId}/experiences/{experienceId}',
+						 [ProfileController::class, 'editExperience']
+					);
+					Route::delete(
+						 '/{profileId}/experiences/{experienceId}',
+						 [ProfileController::class, 'deleteExperience']
+					);
+					
+					// Profile documents
+					// CV Routes
+					Route::post(
+						 '/{profileId}/cvs', [ProfileController::class, 'uploadCV']
+					);
+					Route::put(
+						 '/{profileId}/cvs/{cvId}',
+						 [ProfileController::class, 'editCV']
+					);
+					Route::delete(
+						 '/{profileId}/cvs/{cvId}',
+						 [ProfileController::class, 'deleteCV']
+					);
+					
+					// Portfolio Routes
+					Route::prefix('{profileId}/portfolio')->group(function () {
+						  Route::post(
+								'/images',
+								[ProfileController::class, 'addPortfolioTypeImages']
+						  );
+						  Route::post(
+								'/pdf',
+								[ProfileController::class, 'addPortfolioTypePdf']
+						  );
+						  Route::post(
+								'/url',
+								[ProfileController::class, 'addPortfolioTypeLink']
+						  );
+						  Route::put(
+								'/images/{portfolioId}',
+								[ProfileController::class, 'editPortfolioImages']
+						  );
+						  Route::put(
+								'/pdf/{portfolioId}',
+								[ProfileController::class, 'editPortfolioPdf']
+						  );
+						  Route::put(
+								'/url/{portfolioId}',
+								[ProfileController::class, 'editPortfolioUrl']
+						  );
+						  Route::delete(
+								'/{portfolioId}',
+								[ProfileController::class, 'deletePortfolio']
+						  );
+					});
+					
+					
 			 });
 			 
-			 
-	  });
-	  
-	  Route::prefix('applications')->middleware('auth:api')->group(function () {
-			 Route::get(
-				  '/{profileId}/all',
-				  [ApplicationController::class, 'getUserProfileApplications']
+			 Route::prefix('applications')->middleware('auth:api')->group(
+				  function () {
+						 Route::get(
+							  '/{profileId}/all',
+							  [ApplicationController::class,
+								'getUserProfileApplications']
+						 );
+						 Route::post(
+							  '/{profileId}/add',
+							  [ApplicationController::class, 'store']
+						 );
+				  }
 			 );
-			 Route::post(
-				  '/{profileId}/add', [ApplicationController::class, 'store']
+			 Route::prefix('companies')->middleware('auth:api')->group(
+				  function () {
+						 Route::get('/get-all', [CompanyController::class, 'index']);
+						 Route::get('/{id}', [CompanyController::class, 'show']);
+				  }
 			 );
-	  });
-	  Route::prefix('companies')->middleware('auth:api')->group(function () {
-			 Route::get('/get-all', [CompanyController::class, 'index']);
-			 Route::post('/{companyId}/get', [CompanyController::class, 'show']);
 	  });
