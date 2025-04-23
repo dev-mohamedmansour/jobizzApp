@@ -93,20 +93,81 @@
 					return false;
 			 }
 			 
-			 public function show(Job $job)
+//			 public function show2(Job $job)
+//			 {
+//					return responseJson(200, 'Job details', [
+//						 'job'          => $job->load('company', 'categories'),
+//						 'similar_jobs' => Job::whereHas(
+//							  'categories', fn($q) => $q->whereIn(
+//							  'id', $job->categories->pluck('id')
+//						 )
+//						 )
+//							  ->where('id', '!=', $job->id)
+//							  ->limit(5)
+//							  ->get()
+//					]);
+//			 }
+			 
+			 private function isAdminAuthorizedToShow($admin,$job): bool
 			 {
-					return responseJson(200, 'Job details', [
-						 'job'          => $job->load('company', 'categories'),
-						 'similar_jobs' => Job::whereHas(
-							  'categories', fn($q) => $q->whereIn(
-							  'id', $job->categories->pluck('id')
-						 )
-						 )
-							  ->where('id', '!=', $job->id)
-							  ->limit(5)
-							  ->get()
-					]);
+					// Check if the user is a super-admin
+					if ($admin->hasRole('super-admin')) {
+						  return true;
+					}
+					// Check if the user is the admin who created the company
+					if ($admin->id === $job->company->admin_id) {
+						  return true;
+					}
+					// Check if the user is an HR or COO associated with the company
+					if ($admin->hasAnyRole(['hr', 'coo']) && $admin->company_id === $job->company->id) {
+						  return true;
+					}
+					return false;
 			 }
+			 
+			 public function show($id): JsonResponse
+			 {
+					try {
+						  // Check if the user is authenticated
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $job = Job::find($id);
+						  
+						  if (!$job) {
+								 return responseJson(404, 'Job not found');
+						  }
+						  
+						  // Determine which guard the user is authenticated with
+						  if (auth()->guard('admin')->check()) {
+								 $user = auth('admin')->user();
+								 if (!$this->isAdminAuthorizedToShow($user, $job)) {
+										return responseJson(
+											 403,
+											 'Forbidden: You do not have permission to view this job'
+										);
+								 }
+						  } elseif (!auth()->guard('api')->check()) {
+								 // Deny access if the user is authenticated with an unknown guard
+								 return responseJson(
+									  403,
+									  'Forbidden: You do not have permission to view this job'
+								 );
+						  }
+
+						  return responseJson(200, 'Company details retrieved', [
+								'job'     => $job,
+								'logo' => optional($job->company)->logo,
+						  ]);
+						  
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
+			 
 //			 public function index()
 //			 {
 //					/** @var Admin $admin */
@@ -130,7 +191,7 @@
 //					return responseJson(200, 'Jobs retrieved', $jobs);
 //			 }
 			 
-			 public function store(Request $request)
+			 public function store(Request $request):JsonResponse
 			 {
 					try {
 						  $admin = auth('admin')->user();
@@ -139,16 +200,53 @@
 						  
 						  if ($admin->hasRole('super-admin')) {
 								 $validationRules = [
-									  
-//									  'category'     => 'required|integer|exists:categories,id',
-									  'title'        => 'required|string|max:255',
-									  'company_id'   => 'required|exists:companies,id',
-									  'job_type'     => 'required|string|in:Full-time,Part-time,Internship,Contract',
-									  'salary'       => 'required|numeric',
-									  'location'     => 'required|string|max:255',
-									  'description'  => 'required|string',
-									  'requirements' => 'required|string',
-									  'benefits'     => 'sometimes|string',
+									  'category' => [
+											'required',
+											'integer',
+											'exists:categories,id',
+									  ],
+									  'title' => [
+											'required',
+											'string',
+											'max:255',
+									  ],
+									  'company_id' => [
+											'required',
+											'exists:companies,id',
+									  ],
+									  'job_type' => [
+											'required',
+											'string',
+											'in:Full-time,Part-time,Internship,Contract',
+									  ],
+									  'salary' => [
+											'required',
+											'numeric',
+											'min:1000', // Ensure salary is at least 1000
+											'max:100000000', // Ensure salary is at most 100,000,000
+									  ],
+									  'location' => [
+											'required',
+											'string',
+											'max:255',
+											'regex:/^[a-zA-Z0-9\s,.+-]+$/u', // Allow letters, numbers, spaces, and common special characters
+									  ],
+									  'description' => [
+											'required',
+											'string',
+											'max:65535', // Allow longer descriptions
+									  ],
+									  'requirements' => [
+											'required',
+											'string',
+											'max:65535', // Allow longer requirements
+									  ],
+									  'benefits' => [
+											'sometimes',
+											'string',
+											'max:65535', // Allow longer benefits descriptions
+									  ],
+									  // Add more advanced validation rules as needed
 								 ];
 						  } else {
 								 if (!$admin->hasPermissionTo('manage-company-jobs')) {
@@ -156,14 +254,49 @@
 								 }
 								 
 								 $validationRules = [
-//									  'category'     => 'required|integer|exists:categories,id',
-									  'name'         => 'required|string|max:255|unique:companies',
-									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-									  'description'  => 'required|string|max:1000',
-									  'location'     => 'required|string|max:255',
-									  'website'      => 'sometimes|url',
-									  'size'         => 'required|string|max:255',
-									  'hired_people' => 'required|numeric|min:5',
+									  'category' => [
+											'required',
+											'integer',
+											'exists:categories,id',
+									  ],
+									  'title' => [
+											'required',
+											'string',
+											'max:255',
+									  ],
+									  'job_type' => [
+											'required',
+											'string',
+											'in:Full-time,Part-time,Internship,Contract',
+									  ],
+									  'salary' => [
+											'required',
+											'numeric',
+											'min:1000', // Ensure salary is at least 1000
+											'max:100000000', // Ensure salary is at most 100,000,000
+									  ],
+									  'location' => [
+											'required',
+											'string',
+											'max:255',
+											'regex:/^[a-zA-Z0-9\s,.+-]+$/u', // Allow letters, numbers, spaces, and common special characters
+									  ],
+									  'description' => [
+											'required',
+											'string',
+											'max:65535', // Allow longer descriptions
+									  ],
+									  'requirements' => [
+											'required',
+											'string',
+											'max:65535', // Allow longer requirements
+									  ],
+									  'benefits' => [
+											'sometimes',
+											'string',
+											'max:65535', // Allow longer benefits descriptions
+									  ],
+									  // Add more advanced validation rules as needed
 								 ];
 								 
 								 if (!$admin->company_id) {
@@ -178,15 +311,15 @@
 						  
 						  // Add custom validation messages
 						  $validationCustomMessages = [
-								'name.unique'      => 'A company with this name already exists.',
-								'name.max'         => 'Company name cannot exceed 255 characters.',
-								'logo.image'       => 'The logo must be an image.',
-								'logo.mimes'       => 'The logo must be a file of type: jpeg, png, jpg, gif, svg.',
-								'logo.max'         => 'The logo cannot exceed 2MB in size.',
-								'description.max'  => 'Company description cannot exceed 1000 characters.',
-								'location.max'     => 'Location cannot exceed 255 characters.',
-								'size.max'         => 'Company size cannot exceed 255 characters.',
-								'hired_people.min' => 'Hired people count cannot be negative.',
+								'category.required' => 'The category field is required.',
+								'category.exists' => 'The selected category does not exist.',
+								'title.required' => 'The job title field is required.',
+								'job_type.required' => 'The job type field is required.',
+								'job_type.in' => 'The selected job type is invalid.',
+								'salary.required' => 'The salary field is required.',
+								'location.required' => 'The location field is required.',
+								'description.required' => 'The description field is required.',
+								'requirements.required' => 'The requirements field is required.',
 						  ];
 						  
 						  // Validate request data
@@ -222,43 +355,134 @@
 					}
 			 }
 			 
-			 public function update(Request $request, Job $job)
+			 public function update(Request $request, Job $job): JsonResponse
 			 {
-					/** @var Admin $admin */
-					$admin = auth('admin')->user();
-					
-					// Validate input
-					$validated = $request->validate([
-						 'title'       => 'sometimes|string|max:255',
-						 'description' => 'sometimes|string',
-						 'status'      => 'sometimes|in:open,close',
-						 'category'    => 'sometimes|array|exists:categories,id'
-					]);
-					
-					// Authorization check using policy
-					if (!$admin || !$admin->can('update', $job)) {
-						  return responseJson(403, 'Unauthorized');
+					try {
+						  // Check if the user is authenticated
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $admin = auth('admin')->user();
+						  
+						  // Check if the job exists
+						  if (!$job) {
+								 return responseJson(404, 'Job not found');
+						  }
+						  
+						  // Define validation rules based on user role
+						  $validationRules = [];
+						  
+						  if ($admin->hasRole('super-admin')) {
+								 $validationRules = [
+//									  'category' => 'sometimes|integer|exists:categories,id',
+									  'title' => 'sometimes|string|max:255',
+									  'company_id' => 'sometimes|exists:companies,id',
+									  'job_type' => 'sometimes|string|in:Full-time,Part-time,Internship,Contract',
+									  'salary' => 'sometimes|numeric|min:1000|max:100000000',
+									  'location' => 'sometimes|string|max:255|regex:/^[a-zA-Z0-9\s,.+-]+$/u',
+									  'description' => 'sometimes|string|max:65535',
+									  'requirements' => 'sometimes|string|max:65535',
+									  'benefits' => 'sometimes|string|max:65535',
+								 ];
+						  } else {
+								 if (!$admin->hasPermissionTo('manage-company-jobs')) {
+										return responseJson(403, 'Unauthorized');
+								 }
+								 
+								 if ($admin->company_id !== $job->company_id) {
+										return responseJson(403, 'Forbidden: You can only update jobs from your own company');
+								 }
+								 
+								 $validationRules = [
+//									  'category' => 'sometimes|integer|exists:categories,id',
+									  'title' => 'sometimes|string|max:255',
+									  'job_type' => 'sometimes|string|in:Full-time,Part-time,Internship,Contract',
+									  'salary' => 'sometimes|numeric|min:1000|max:100000000',
+									  'location' => 'sometimes|string|max:255|regex:/^[a-zA-Z0-9\s,.+-]+$/u',
+									  'description' => 'sometimes|string|max:65535',
+									  'requirements' => 'sometimes|string|max:65535',
+									  'benefits' => 'sometimes|string|max:65535',
+								 ];
+						  }
+						  
+						  // Add custom validation messages
+						  $validationCustomMessages = [
+//								'category.exists' => 'The selected category does not exist.',
+								'job_type.in' => 'The selected job type is invalid.',
+								'salary.min' => 'The salary must be at least 1000.',
+								'salary.max' => 'The salary must be less than 100,000,000.',
+						  ];
+						  
+						  // Validate request data
+						  $validated = $request->validate($validationRules, $validationCustomMessages);
+						  
+						  // Update the job
+						  $job->update($validated);
+						  
+						  // Return success response
+						  return responseJson(200, 'Job updated successfully', [
+								'job'  => $job,
+								'logo' => $job->company->logo,
+						  ]);
+						  
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								"Validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage = "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
 					}
-					
-					$job->update($validated);
-					if ($request->has('category')) {
-						  $job->category()->sync($request->category);
+			 }
+			 public function destroy(Job $job): JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth('admin')->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $admin = auth('admin')->user();
+						  
+						  // Check if the job exists
+						  if (!$job) {
+								 return responseJson(404, 'Job not found');
+						  }
+						  
+						  // Check authorization
+						  if (!$this->isAuthorizedToDelete($admin, $job)) {
+								 return responseJson(403, 'Forbidden: You do not have permission to delete this job');
+						  }
+						  
+						  // Delete the job
+						  $job->delete();
+						  
+						  return responseJson(200, 'Job deleted successfully');
+						  
+					} catch (\Exception $e) {
+						  // Handle exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
 					}
-					return responseJson(200, 'Job updated', $job);
 			 }
 			 
-			 public function destroy(Job $job)
+			 /**
+			  * Check if the admin is authorized to delete the job.
+			  */
+			 private function isAuthorizedToDelete($admin, $job): bool
 			 {
-					/** @var Admin $admin */
-					$admin = auth('admin')->user();
-					
-					// Authorization check using policy
-					if (!$admin || !$admin->can('delete', $job)) {
-						  return responseJson(403, 'Unauthorized');
-					}
-					
-					$job->delete();
-					
-					return responseJson(200, 'Job deleted');
+					return $admin->hasRole('super-admin') ||
+						 ($admin->hasPermissionTo('manage-company-jobs') && $admin->company_id === $job->company_id);
 			 }
 	  }

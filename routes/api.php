@@ -6,6 +6,7 @@
 	  use App\Http\Controllers\Admin\JobController;
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\ProfileController;
+	  use App\Http\Controllers\Main\CategoryController;
 	  use Illuminate\Support\Facades\Route;
 	  
 	  
@@ -29,18 +30,19 @@
 //				  '/password/reset',
 //				  [AdminAuthController::class, 'resetAdminPassword']
 //			 );
-				
+			 
 			 //password Logic
-				  Route::post(
-						'/password/reset-request',
-						[AdminAuthController::class, 'requestPasswordReset']
-				  );
+			 Route::post(
+				  '/password/reset-request',
+				  [AdminAuthController::class, 'requestPasswordReset']
+			 );
 			 Route::post(
 				  '/password/verify-pin',
 				  [AdminAuthController::class, 'checkResetPasswordPinCode']
 			 );
 			 Route::post(
-				  '/password/new-password', [AdminAuthController::class, 'newPassword']
+				  '/password/new-password',
+				  [AdminAuthController::class, 'newPassword']
 			 )->middleware(['auth:admin', 'check.reset.token']);
 			 
 			 // Authenticated routes
@@ -54,17 +56,28 @@
 								Route::post(
 									 '/add-company', [CompanyController::class, 'store']
 								);
-								
+								Route::get('/', [CompanyController::class, 'index']);
 								Route::get('/{id}', [CompanyController::class, 'show']);
 								
 						 });
 						 // Job routes
-						 Route::prefix('jobs', )->group(function (){
-								Route::post('/add-job', [JobController::class, 'store']);
+						 Route::prefix('jobs')->group(function () {
+								Route::post('/add-job', [JobController::class, 'store']
+								);
+								Route::get('/{job}', [JobController::class, 'show']
+								);
+								Route::get('/', [JobController::class, 'index']
+								);
+								Route::put(
+									 '/update/{job}', [JobController::class, 'update']
+								);
+								Route::delete(
+									 '/delete/{job}', [JobController::class, 'destroy']
+								);
+								
 						 });
 						 
 						 // Admin management
-						 
 						 Route::post(
 							  '/approve/{pendingAdmin}',
 							  [AdminAuthController::class, 'approve']
@@ -73,9 +86,32 @@
 							  '/sub-admin',
 							  [AdminAuthController::class, 'createSubAdmin']
 						 );
+						 //categories route
+						 Route::prefix('categories')->group(
+							  function () {
+									 Route::get('/', [CategoryController::class, 'index']
+									 );
+									 Route::get(
+										  '/{category}',
+										  [CategoryController::class, 'show']
+									 );
+									 Route::post(
+										  '/add-category',
+										  [CategoryController::class, 'store']
+									 );
+									 Route::put(
+										  '/{category}',
+										  [CategoryController::class, 'update']
+									 );
+									 Route::delete(
+										  '/{category}',
+										  [CategoryController::class, 'destroy']
+									 );
+							  }
+						 );
 				  });
-			 
 	  });
+	  
 	  
 	  Route::prefix('auth')->group(function () {
 			 // Regular auth
@@ -217,8 +253,16 @@
 			 );
 			 Route::prefix('companies')->middleware('auth:api')->group(
 				  function () {
-						 Route::get('/get-all', [CompanyController::class, 'index']);
+						 Route::get('/', [CompanyController::class, 'index']);
 						 Route::get('/{id}', [CompanyController::class, 'show']);
 				  }
 			 );
+			 // Job routes
+			 Route::prefix('jobs')->middleware('auth:api')->group(function () {
+					
+					Route::get('/', [JobController::class, 'index']
+					);
+					Route::get('/{job}', [JobController::class, 'show']
+					);
+			 });
 	  });
