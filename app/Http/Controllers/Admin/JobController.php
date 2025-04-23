@@ -5,23 +5,92 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\JobListing as Job;
+	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Log;
 	  
 	  class JobController extends Controller
 	  {
-			 public function index(Request $request)
+			 public function index(Request $request): JsonResponse
 			 {
-					$jobs = Job::with('company', 'categories')
-						 ->when($request->category, function ($query) use ($request) {
-								$query->whereHas(
-									 'categories',
-									 fn($q) => $q->where('slug', $request->category)
-								);
-						 })
-						 ->paginate(15);
+					try {
+						  // Check if the user is authenticated
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Determine which guard the user is authenticated with
+						  if (auth()->guard('admin')->check()) {
+								 $user = auth('admin')->user();
+								 if (!$this->isAdminAuthorized($user)) {
+										return responseJson(
+											 403,
+											 'Forbidden: You do not have permission to view this jobs'
+										);
+								 }
+						  } elseif (!auth()->guard('api')->check()) {
+								 // Deny access if the user is authenticated with an unknown guard
+								 return responseJson(
+									  403,
+									  'Forbidden: You do not have permission to view this jobs'
+								 );
+						  }
+						  $jobs = Job::with(
+								'company'
+						  ) // Eager load the company relationship
+						  ->withCount('scopeActiveJobs')
+								->paginate(10);
+						  
+						  if ($jobs->isEmpty()) {
+								 return responseJson(404, 'No Jobs found');
+						  }
+						  
+						  return responseJson(
+								200,
+								'Jobs retrieved successfully',
+								$jobs->map(function ($job) {
+									  return [
+											'job'  => $job,
+											'logo' => optional($job->company)->logo,
+											// Get company logo if company exists
+									  ];
+								})
+						  );
+//						  $jobs = Job::withCount('scopeActiveJobs')->paginate(10);
+//
+//						  if ($jobs->isEmpty()) {
+//								 return responseJson(404, 'No Jobs found');
+//						  }
+//
+//						  return responseJson(
+//								200, 'Jobs retrieved successfully', $jobs
+//						  );
 					
-					return responseJson(200, 'Jobs retrieved', $jobs);
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+					/***/
+//					$jobs = Job::with('company', 'categories')
+//						 ->when($request->category, function ($query) use ($request) {
+//								$query->whereHas(
+//									 'categories',
+//									 fn($q) => $q->where('slug', $request->category)
+//								);
+//						 })
+//						 ->paginate(15);
+//
+//					return responseJson(200, 'Jobs retrieved', $jobs);
+			 }
+			 
+			 private function isAdminAuthorized($admin): bool
+			 {
+					// Check if the user is a super-admin
+					if ($admin->hasRole('super-admin')) {
+						  return true;
+					}
+					return false;
 			 }
 			 
 			 public function show(Job $job)
@@ -70,42 +139,41 @@
 						  
 						  if ($admin->hasRole('super-admin')) {
 								 $validationRules = [
-									  'category'     => 'required|integer|exists:categories,id',
-									  /**/
-									  'title'          => 'required|string|max:255',
-									  'company_id'     => 'required|exists:companies,id',
-									  'job_type'       => 'required|string|in:Full-time,Part-time,Internship,Contract',
-									  'salary'         => 'required|numeric',
-									  'location'       => 'required|string|max:255',
-									  'description'    => 'required|string',
-									  'requirements'   => 'required|string',
-									  'benefits'       => 'sometimes|string',
-//									  'logo'           => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-								 
+									  
+//									  'category'     => 'required|integer|exists:categories,id',
+									  'title'        => 'required|string|max:255',
+									  'company_id'   => 'required|exists:companies,id',
+									  'job_type'     => 'required|string|in:Full-time,Part-time,Internship,Contract',
+									  'salary'       => 'required|numeric',
+									  'location'     => 'required|string|max:255',
+									  'description'  => 'required|string',
+									  'requirements' => 'required|string',
+									  'benefits'     => 'sometimes|string',
 								 ];
 						  } else {
-								 if (!$admin->hasPermissionTo('manage-own-company')) {
+								 if (!$admin->hasPermissionTo('manage-company-jobs')) {
 										return responseJson(403, 'Unauthorized');
 								 }
 								 
-								 // Check if admin already has a company
-								 if (!$admin->company_id) {
-										return responseJson(
-											 403,
-											 'You not have a company and cannot create job'
-										);
-								 }
-								 
 								 $validationRules = [
+//									  'category'     => 'required|integer|exists:categories,id',
 									  'name'         => 'required|string|max:255|unique:companies',
 									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 									  'description'  => 'required|string|max:1000',
 									  'location'     => 'required|string|max:255',
 									  'website'      => 'sometimes|url',
 									  'size'         => 'required|string|max:255',
-									  // Make size required
 									  'hired_people' => 'required|numeric|min:5',
 								 ];
+								 
+								 if (!$admin->company_id) {
+										return responseJson(
+											 403,
+											 'Forbidden: You can only add jobs to your own company'
+										);
+								 }
+								 
+								 $validationRules['company_id'] = $admin->company_id;
 						  }
 						  
 						  // Add custom validation messages
@@ -126,6 +194,14 @@
 								$validationRules, $validationCustomMessages
 						  );
 						  
+						  $job = Job::create($validated);
+						  
+						  // Return success response
+						  return responseJson(201, 'Job created successfully', [
+								'job'  => $job,
+								'logo' => $job->company->logo,
+						  ]);
+						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  return responseJson(
 								422,
@@ -144,35 +220,6 @@
 						  }
 						  return responseJson(500, $errorMessage);
 					}
-					
-					
-					/** @var Admin $admin */
-					$admin = auth('admin')->user();
-					
-					// Authorization check
-					if (!$admin || !$admin->hasPermissionTo('manage-company-jobs')) {
-						  return responseJson(403, 'Unauthorized');
-					}
-					
-					// Validate input
-					$validated = $request->validate([
-						 'title'       => 'required|string|max:255',
-						 'description' => 'required|string',
-						 'categories'  => 'required|array|exists:categories,id'
-					]);
-					
-					// Company check
-					if (!$admin->company_id) {
-						  return responseJson(
-								403, 'No company associated with this account'
-						  );
-					}
-					
-					// Create a job
-					$job = $admin->company->jobs()->create($validated);
-					$job->categories()->sync($request->categories);
-					
-					return responseJson(201, 'Job created', $job);
 			 }
 			 
 			 public function update(Request $request, Job $job)

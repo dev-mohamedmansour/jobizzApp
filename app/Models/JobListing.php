@@ -12,7 +12,7 @@ class JobListing extends Model
 			'requirement', 'location',
 			'job_status',
 			'benefits', 'salary',
-			'job_type'
+			'job_type','company_id'
 	  ];
 	  
 	  protected $casts = [
@@ -39,6 +39,7 @@ class JobListing extends Model
 	  {
 			 return $query->where('job_status', 'open'); // Adjust the condition based on how you track active jobs
 	  }
+	  
 //	  public function activeJobs(): \Illuminate\Database\Eloquent\Relations\HasMany
 //	  {
 //			 return $this->hasMany(JobListing::class)->where('job_status', 'open');

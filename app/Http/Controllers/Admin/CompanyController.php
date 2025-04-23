@@ -62,6 +62,22 @@
 					}
 					return false;
 			 }
+			 private function isAdminAuthorizedToShow($admin,$company): bool
+			 {
+					// Check if the user is a super-admin
+					if ($admin->hasRole('super-admin')) {
+						  return true;
+					}
+					// Check if the user is the admin who created the company
+					if ($admin->id === $company->admin_id) {
+						  return true;
+					}
+					// Check if the user is an HR or COO associated with the company
+					if ($admin->hasAnyRole(['hr', 'coo']) && $admin->company_id === $company->id) {
+						  return true;
+					}
+					return false;
+			 }
 			 
 			 public function show($id): JsonResponse
 			 {
@@ -80,7 +96,7 @@
 						  // Determine which guard the user is authenticated with
 						  if (auth()->guard('admin')->check()) {
 								 $user = auth('admin')->user();
-								 if (!$this->isAdminAuthorized($user, $company)) {
+								 if (!$this->isAdminAuthorizedToShow($user, $company)) {
 										return responseJson(
 											 403,
 											 'Forbidden: You do not have permission to view this company'
@@ -201,13 +217,13 @@
 										);
 								 }
 								 $company = Company::create($validated);
-//								 $targetAdmin->update(['company_id' => $company->id]);
+								 $targetAdmin->update(['company_id' => $company->id]);
 						  } else {
 								 $validated['admin_id'] = $admin->id;
 								 $company = Company::create($validated);
-//								 $admin->update([
-//									  'company_id' => $company->id
-//								 ]);
+								 $admin->update([
+									  'company_id' => $company->id
+								 ]);
 						  }
 						  
 						  // Return success response
@@ -424,7 +440,7 @@
 						  
 						  // Delete associated resources if needed (e.g., jobs, admins)
 						  $company->jobs()->delete();
-						  $company->admins()->delete();
+						  $company->deleteNonAdminsAndNonSuperAdmins();
 						  
 						  // Delete the company
 						  $company->delete();

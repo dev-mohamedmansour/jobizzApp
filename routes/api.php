@@ -59,15 +59,16 @@
 								
 						 });
 						 // Job routes
-						 Route::apiResource('jobs', JobController::class)
-							  ->middleware(
-									'permission:manage-all-jobs|manage-company-jobs'
-							  );
+						 Route::prefix('jobs', )->group(function (){
+								Route::post('/add-job', [JobController::class, 'store']);
+						 });
+						 
+						 // Admin management
+						 
 						 Route::post(
 							  '/approve/{pendingAdmin}',
 							  [AdminAuthController::class, 'approve']
 						 );
-						 // Admin management
 						 Route::post(
 							  '/sub-admin',
 							  [AdminAuthController::class, 'createSubAdmin']

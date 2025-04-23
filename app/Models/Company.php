@@ -38,13 +38,18 @@
 					return $this->hasMany(Admin::class);
 			 }
 			 
+			 public function deleteNonAdminsAndNonSuperAdmins(): void
+			 {
+					$this->admins()->whereNotIn('role', ['admin', 'super admin'])->delete();
+			 }
+			 
 			 public function jobs()
 			 {
 					return $this->hasMany(JobListing::class);
 			 }
 			 
-			 public function jobListings()
-			 {
-					return $this->hasMany(JobListing::class);
-			 }
+//			 public function jobListings()
+//			 {
+//					return $this->hasMany(JobListing::class);
+//			 }
 	  }
