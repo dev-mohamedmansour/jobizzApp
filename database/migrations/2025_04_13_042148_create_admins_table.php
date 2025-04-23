@@ -17,7 +17,7 @@
 						  $table->string('password');
 						  $table->string('phone')->unique();
 						  $table->string('photo')->default('https://jobizaa.com/still_images/userDefault.jpg');
-						  $table->string('pin_code')->nullable();
+						  $table->string('pin_code',7)->nullable();
 						  $table->timestamp('pin_created_at')->nullable();
 						  $table->boolean('confirmed_email')->default(false);
 						  $table->timestamp('email_verified_at')->nullable();

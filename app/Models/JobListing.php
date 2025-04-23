@@ -7,8 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class JobListing extends Model
 {
 	  protected $fillable = [
-			'title', 'description','requirement', 'location','job_status',
-			'salary_range', 'employment_type', 'expiry_date'
+			'title', 'description',
+			'logo',
+			'requirement', 'location',
+			'job_status',
+			'benefits', 'salary',
+			'job_type'
+	  ];
+	  
+	  protected $casts = [
+			'created_at' => 'date:Y-m-d',
+			'updated_at' => 'date:Y-m-d',
 	  ];
 	  
 	  public function category()

@@ -21,14 +21,27 @@
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
 			 );
 			 Route::post('/login', [AdminAuthController::class, 'login']);
+//			 Route::post(
+//				  '/password/forgot',
+//				  [AdminAuthController::class, 'forgotAdminPassword']
+//			 );
+//			 Route::post(
+//				  '/password/reset',
+//				  [AdminAuthController::class, 'resetAdminPassword']
+//			 );
+				
+			 //password Logic
+				  Route::post(
+						'/password/reset-request',
+						[AdminAuthController::class, 'requestPasswordReset']
+				  );
 			 Route::post(
-				  '/password/forgot',
-				  [AdminAuthController::class, 'forgotAdminPassword']
+				  '/password/verify-pin',
+				  [AdminAuthController::class, 'checkResetPasswordPinCode']
 			 );
 			 Route::post(
-				  '/password/reset',
-				  [AdminAuthController::class, 'resetAdminPassword']
-			 );
+				  '/password/new-password', [AdminAuthController::class, 'newPassword']
+			 )->middleware(['auth:admin', 'check.reset.token']);
 			 
 			 // Authenticated routes
 			 Route::middleware(['auth:admin'])

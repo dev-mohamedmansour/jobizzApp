@@ -19,7 +19,7 @@
 				  'phone','is_approved','photo',
 				  'pin_code', 'pin_created_at',
 				  'confirmed_email', 'email_verified_at',
-				  'approved_by'
+				  'approved_by','company_id'
 			 ];
 			 protected $guarded = ['is_approved', 'approved_by'];
 			 

@@ -284,73 +284,73 @@
 			 }
 			 
 			 // Social login redirect
-			 public function redirectToProvider($provider):JsonResponse
-			 {
-					$validProviders = ['google', 'linkedin', 'github'];
-					
-					if (!in_array($provider, $validProviders)) {
-						  return responseJson(400, 'Invalid provider');
-					}
-					
-					$redirectUrl = url("/auth/{$provider}/callback");
-					
-					config(["services.{$provider}.redirect" => $redirectUrl]);
-					
-					$url = Socialite::driver($provider)
-						 ->stateless()
-						 ->redirectUrl($redirectUrl) // Explicitly set redirect URL
-						 ->redirect()
-						 ->getTargetUrl();
-					
-					return responseJson(200, 'Redirect URL generated', [
-						 'redirect_url' => $url
-					]);
-			 }
-			 
-			 // Social login callback
-			 public function handleProviderCallback($provider): JsonResponse
-			 {
-					try {
-						  $socialUser = Socialite::driver($provider)->stateless()
-								->user();
-						  
-						  // Find or create user
-						  $user = User::firstOrCreate(
-								['email' => $socialUser->getEmail()],
-								[
-									 'name'              => $socialUser->getName(),
-									 'provider_id'       => $socialUser->getId(),
-									 'provider_name'     => $provider,
-									 'password'          => Hash::make(Str::random(32)),
-									 'confirmed_email'   => 1,
-									 'email_verified_at' => now() // Mark as verified
-								]
-						  );
-						  
-						  // Generate JWT token
-						  $token = JWTAuth::fromUser($user, [
-								'provider' => $provider,
-						  ]);
-						  
-						  return responseJson(200, 'Login successful', [
-								'access_token' => $token,
-								'token_type'   => 'bearer',
-								'expires_in'   => auth()->factory()->getTTL() * 60,
-								'user'         => [
-									 'id'       => $user->id,
-									 'name'     => $user->name,
-									 'email'    => $user->email,
-									 'provider' => $provider
-								]
-						  ]);
-						  
-					} catch (\Exception $e) {
-						  Log::error("Social auth failed: " . $e->getMessage());
-						  return responseJson(
-								401, 'Authentication failed. Please try again.'
-						  );
-					}
-			 }
+//			 public function redirectToProvider($provider):JsonResponse
+//			 {
+//					$validProviders = ['google', 'linkedin', 'github'];
+//
+//					if (!in_array($provider, $validProviders)) {
+//						  return responseJson(400, 'Invalid provider');
+//					}
+//
+//					$redirectUrl = url("/auth/{$provider}/callback");
+//
+//					config(["services.{$provider}.redirect" => $redirectUrl]);
+//
+//					$url = Socialite::driver($provider)
+//						 ->stateless()
+//						 ->redirectUrl($redirectUrl) // Explicitly set redirect URL
+//						 ->redirect()
+//						 ->getTargetUrl();
+//
+//					return responseJson(200, 'Redirect URL generated', [
+//						 'redirect_url' => $url
+//					]);
+//			 }
+//
+//			 // Social login callback
+//			 public function handleProviderCallback($provider): JsonResponse
+//			 {
+//					try {
+//						  $socialUser = Socialite::driver($provider)->stateless()
+//								->user();
+//
+//						  // Find or create user
+//						  $user = User::firstOrCreate(
+//								['email' => $socialUser->getEmail()],
+//								[
+//									 'name'              => $socialUser->getName(),
+//									 'provider_id'       => $socialUser->getId(),
+//									 'provider_name'     => $provider,
+//									 'password'          => Hash::make(Str::random(32)),
+//									 'confirmed_email'   => 1,
+//									 'email_verified_at' => now() // Mark as verified
+//								]
+//						  );
+//
+//						  // Generate JWT token
+//						  $token = JWTAuth::fromUser($user, [
+//								'provider' => $provider,
+//						  ]);
+//
+//						  return responseJson(200, 'Login successful', [
+//								'access_token' => $token,
+//								'token_type'   => 'bearer',
+//								'expires_in'   => auth()->factory()->getTTL() * 60,
+//								'user'         => [
+//									 'id'       => $user->id,
+//									 'name'     => $user->name,
+//									 'email'    => $user->email,
+//									 'provider' => $provider
+//								]
+//						  ]);
+//
+//					} catch (\Exception $e) {
+//						  Log::error("Social auth failed: " . $e->getMessage());
+//						  return responseJson(
+//								401, 'Authentication failed. Please try again.'
+//						  );
+//					}
+//			 }
 			 
 			 public function socialLogin(Request $request): JsonResponse
 			 {
@@ -456,7 +456,7 @@
 					} catch (JWTException $e) {
 						  return responseJson(500, 'Could not invalidate token');
 						  
-					} catch (Exception $e) {
+					} catch (\Exception $e) {
 						  Log::error('Logout Error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Logout failed due to server error'

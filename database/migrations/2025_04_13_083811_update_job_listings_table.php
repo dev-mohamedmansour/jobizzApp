@@ -14,13 +14,15 @@ return new class extends Migration
 			Schema::table('job_listings', function (Blueprint $table) {
 				  $table->foreignId('company_id')->constrained('companies');
 				  $table->string('title');
+				  $table->string('job_type');
+				  $table->decimal('salary', 15, 2);
 				  $table->text('description');
 				  $table->text('requirement');
 				  $table->enum('job_status', ['open', 'closed'])->default('open');
 				  $table->string('location');
-				  $table->string('salary_range');
-				  $table->string('employment_type');
-				  $table->timestamp('expiry_date');
+				  $table->json('benefits')->nullable();
+//				  $table->string('logo')->nullable();
+				  $table->timestamps();
 			});
     }
 
