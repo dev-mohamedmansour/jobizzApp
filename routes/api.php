@@ -58,7 +58,6 @@
 								);
 								Route::get('/', [CompanyController::class, 'index']);
 								Route::get('/{id}', [CompanyController::class, 'show']);
-								
 						 });
 						 // Job routes
 						 Route::prefix('jobs')->group(function () {
