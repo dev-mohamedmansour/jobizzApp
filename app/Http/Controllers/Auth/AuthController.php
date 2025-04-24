@@ -41,7 +41,8 @@
 									 'required',
 									 'string',
 									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-									 'unique:users|unique:admins',
+									 'unique:users',
+									 'unique:admins',
 									 'ascii' // Ensures only ASCII characters
 								],
 								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
@@ -113,7 +114,7 @@
 								= "Server error: Something went wrong. Please try again later.";
 						  // For development: Detailed error message
 						  if (config('app.debug')) {
-								 $errorMessage = "Server error:\n" . $e->getMessage();
+								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
 						  return responseJson(500, $errorMessage);
 					}
@@ -133,7 +134,7 @@
 								],
 								'pinCode' => [
 									 'required',
-									 'digits:4',
+									 'digits:6',
 									 'numeric',
 									 'not_in:0000,1111,1234,4321',
 									 // Block common weak PINs
@@ -143,7 +144,7 @@
 								'email.regex'      => 'Invalid email format. Please use English characters only.',
 								'email.ascii'      => 'Email must contain only English characters.',
 								'pinCode.required' => 'PIN code is required',
-								'pinCode.digits'   => 'PIN must be exactly 4 digits',
+								'pinCode.digits'   => 'PIN must be exactly 6 digits',
 								'pinCode.numeric'  => 'PIN must contain only numbers',
 								'pinCode.not_in'   => 'This PIN is too common and insecure',
 						  ]);
@@ -538,9 +539,9 @@
 								],
 								'pinCode' => [
 									 'required',
-									 'digits:4',
+									 'digits:6',
 									 'numeric',
-									 'not_in:0000,1111,1234,4321',
+									 'not_in:000000,111111,123456,654321',
 									 // Block common weak PINs
 								]
 						  ], [
@@ -548,7 +549,7 @@
 								'email.regex'      => 'Invalid email format. Please use English characters only.',
 								'email.ascii'      => 'Email must contain only English characters.',
 								'pinCode.required' => 'PIN code is required',
-								'pinCode.digits'   => 'PIN must be exactly 4 digits',
+								'pinCode.digits'   => 'PIN must be exactly 6 digits',
 								'pinCode.numeric'  => 'PIN must contain only numbers',
 								'pinCode.not_in'   => 'This PIN is too common and insecure',
 						  ]);

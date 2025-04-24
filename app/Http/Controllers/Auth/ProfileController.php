@@ -74,9 +74,6 @@
 					}
 			 }
 			 
-			 /**
-			  * Display the specified profile.
-			  */
 			 public function getProfileById(Request $request, $id
 			 ): JsonResponse {
 					try {
@@ -87,11 +84,11 @@
 								 return responseJson(403, 'Unauthorized access');
 						  }
 						  
-						  return responseJson(200, 'Profile retrieved successfully', [
-								'profile' => $profile->load(
+						  return responseJson(200, 'Profile retrieved successfully',
+								 $profile->load(
 									 ['educations', 'experiences', 'documents']
 								)
-						  ]);
+						  );
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
@@ -149,7 +146,7 @@
 					if ($request->is_default) {
 						  $user->profiles()->update(['is_default' => false]);
 					}
-//
+					
 					$profile = $user->profiles()->create($validatedData);
 					
 					return responseJson(
@@ -253,7 +250,6 @@
 						  }
 						  
 						  // Delete all related records first to maintain data integrity
-						  $profile->images()->delete();
 						  $profile->educations()->delete();
 						  $profile->experiences()->delete();
 						  $profile->documents()->delete();

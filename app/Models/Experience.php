@@ -20,10 +20,11 @@
 				  'description'
 			 ];
 			 
-			 protected $dates = [
-				  'created_at' => DateCast::class,
-				  'updated_at' => DateCast::class,
-			 ];
+			 protected $casts
+				  = [
+						'created_at'        => DateCast::class,
+						'updated_at'        => DateCast::class,
+				  ];
 			 
 			 public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {

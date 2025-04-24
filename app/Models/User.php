@@ -2,6 +2,7 @@
 	  
 	  namespace App\Models;
 	  
+	  use App\Casts\DateCast;
 	  use Illuminate\Contracts\Auth\MustVerifyEmail;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,8 +50,11 @@
 			  *
 			  * @var array<int, string>
 			  */
+			 
 			 protected $casts = [
 				  'pin_created_at' => 'datetime',
+				  'created_at'        => DateCast::class,
+				  'updated_at'        => DateCast::class,
 			 ];
 			 protected $hidden
 				  = [

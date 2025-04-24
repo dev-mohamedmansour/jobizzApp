@@ -2,6 +2,7 @@
 	  
 	  namespace App\Models;
 	  
+	  use App\Casts\DateCast;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
 	  use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,12 @@
 				  'is_default',
 				  'profile_image',
 			 ];
+			 
+			 protected $casts
+				  = [
+						'created_at'        => DateCast::class,
+						'updated_at'        => DateCast::class,
+				  ];
 			 
 			 public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {

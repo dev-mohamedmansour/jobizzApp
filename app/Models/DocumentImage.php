@@ -2,6 +2,7 @@
 	  
 	  namespace App\Models;
 	  
+	  use App\Casts\DateCast;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
 	  use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,12 @@
 				  'path',
 				  'mime_type'
 			 ];
+			 
+			 protected $casts
+				  = [
+						'created_at'        => DateCast::class,
+						'updated_at'        => DateCast::class,
+				  ];
 			 
 			 public function document(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 			 {

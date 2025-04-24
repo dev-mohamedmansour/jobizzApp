@@ -2,10 +2,17 @@
 
 namespace App\Models;
 
+use App\Casts\DateCast;
 use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
 {
+	  
+	  protected $casts
+			= [
+				 'created_at'        => DateCast::class,
+				 'updated_at'        => DateCast::class,
+			];
 	  
 	  public function job(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 	  {

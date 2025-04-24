@@ -3,6 +3,7 @@
 // app/Models/Document.php
 	  namespace App\Models;
 	  
+	  use App\Casts\DateCast;
 	  use App\DocumentType;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,8 @@
 			 protected $casts
 				  = [
 						'type' => DocumentType::class,
+						'created_at'        => DateCast::class,
+						'updated_at'        => DateCast::class,
 				  ];
 			 
 			 public static function cvCount($profileId)
