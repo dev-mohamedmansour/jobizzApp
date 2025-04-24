@@ -18,6 +18,8 @@
 						  $table->date('end_date')->nullable();
 						  $table->boolean('is_current')->default(false);
 						  $table->text('description')->nullable();
+						  $table->string('location')->nullable();
+						  $table->string('image')->nullable();
 						  $table->timestamps();
 					});
 			 }

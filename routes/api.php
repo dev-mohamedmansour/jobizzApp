@@ -21,7 +21,7 @@
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
 			 );
 			 Route::post('/login', [AdminAuthController::class, 'login']);
-			 
+
 //			 Route::post(
 //				  '/password/forgot',
 //				  [AdminAuthController::class, 'forgotAdminPassword']
@@ -82,23 +82,25 @@
 								
 						 });
 						 
-						 Route::prefix('applications')->middleware('auth:admin')->group(
-							  function () {
-									 Route::get(
-										  '/',
-										  [ApplicationController::class,
-											'index']
-									 );
-									 Route::put(
-										  '/{application}/status',
-										  [ApplicationController::class, 'updateStatus']
-									 );
-									 Route::delete(
-										  '/{application}',
-										  [ApplicationController::class, 'destroy']
-									 );
-							  }
-						 );
+						 Route::prefix('applications')->middleware('auth:admin')
+							  ->group(
+									function () {
+										  Route::get(
+												'/',
+												[ApplicationController::class,
+												 'index']
+										  );
+										  Route::put(
+												'/{application}/status',
+												[ApplicationController::class,
+												 'updateStatus']
+										  );
+										  Route::delete(
+												'/{application}',
+												[ApplicationController::class, 'destroy']
+										  );
+									}
+							  );
 						 
 						 // Admin management
 						 Route::post(
@@ -185,9 +187,18 @@
 					);
 					
 					// Profile educations
+					
 					Route::post(
-						 '/{profileId}/educations',
+						 '/{profileId}/educations/add-education',
 						 [ProfileController::class, 'addEducation']
+					);
+					Route::get(
+						 '/{profileId}/educations/{educationId}',
+						 [ProfileController::class, 'getEducationById']
+					);
+					Route::get(
+						 '/{profileId}/educations',
+						 [ProfileController::class, 'getAllEducations']
 					);
 					Route::put(
 						 '/{profileId}/educations/{educationId}',

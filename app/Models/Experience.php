@@ -17,7 +17,9 @@
 				  'start_date',
 				  'end_date',
 				  'is_current',
-				  'description'
+				  'description',
+				  'location',
+				  'image',
 			 ];
 			 
 			 protected $casts

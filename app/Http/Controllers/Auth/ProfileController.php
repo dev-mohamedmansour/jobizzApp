@@ -84,8 +84,9 @@
 								 return responseJson(403, 'Unauthorized access');
 						  }
 						  
-						  return responseJson(200, 'Profile retrieved successfully',
-								 $profile->load(
+						  return responseJson(
+								200, 'Profile retrieved successfully',
+								$profile->load(
 									 ['educations', 'experiences', 'documents']
 								)
 						  );
@@ -270,6 +271,86 @@
 			 }
 			 
 			 // Education Logic
+			 public function getAllEducations(Request $request, $profileId
+			 ): JsonResponse {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Find the profile
+						  $profile = Profile::findOrFail($profileId);
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action');
+						  }
+						  
+						  // Get all educations for the profile
+						  $educations = $profile->educations()->get();
+						  
+						  if ($educations->isEmpty()) {
+								 return responseJson(
+									  404, 'No Educations found for this profile'
+								 );
+						  }
+						  
+						  return responseJson(
+								200, 'Educations retrieved successfully', [
+									 'educations' => $educations,
+								]
+						  );
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found');
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Failed to retrieve educations', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
+			 
+			 public function getEducationById(Request $request, $profileId,
+				  $educationId
+			 ): JsonResponse {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Find the profile
+						  $profile = Profile::findOrFail($profileId);
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action');
+						  }
+						  
+						  // Find the education
+						  $education = $profile->educations()->where(
+								'id', $educationId
+						  )->first();
+						  
+						  if (!$education) {
+								 return responseJson(404, 'Education not found');
+						  }
+						  
+						  return responseJson(
+								200, 'Education retrieved successfully', [
+									 'education' => $education,
+								]
+						  );
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found');
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Failed to retrieve education', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
 			 
 			 public function addEducation(Request $request, $profileId
 			 ): JsonResponse {
@@ -283,9 +364,9 @@
 						  }
 						  
 						  $validator = Validator::make($request->all(), [
-								'institution'    => 'required|string|max:255',
-								'degree'         => 'required|string|max:255',
-								'field_of_study' => 'required|string|max:255',
+								'institution'    => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'start_date'     => [
 									 'required',
 									 'date',
@@ -310,7 +391,9 @@
 								],
 								'end_date'       => 'nullable|date|after:start_date',
 								'is_current'     => 'sometimes|boolean',
-								'description'    => 'nullable|string|max:500'
+								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
+								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  if ($validator->fails()) {
