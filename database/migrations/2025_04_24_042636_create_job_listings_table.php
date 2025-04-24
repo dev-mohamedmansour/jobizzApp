@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-			Schema::table('job_listings', function (Blueprint $table) {
-				  $table->foreignId('company_id')->constrained('companies')->nullOnDelete();
+			Schema::create('job_listings', function (Blueprint $table) {
+				  $table->id();
+				  $table->foreignId('company_id')->constrained('companies');
 				  $table->string('title');
 				  $table->string('job_type');
 				  $table->decimal('salary', 15, 2);
@@ -30,6 +31,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
-    }
+			Schema::dropIfExists('job_listings');
+			
+	 }
 };
