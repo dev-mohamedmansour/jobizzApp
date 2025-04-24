@@ -204,6 +204,38 @@
 								 ]);
 						  }
 						  
+						  // Handle profile_image upload or removal
+						  if ($request->hasFile('profile_image')) {
+								 if ($profile->profile_image
+									  && Storage::disk('public')->exists(
+											$profile->profile_image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $profile->profile_image
+										);
+								 }
+								 $imagePath = $request->file('profile_image')->store(
+									  'profiles', 'public'
+								 );
+								 $validator['profile_image'] = $imagePath;
+						  } elseif (isset($validator['profile_image'])
+								&& $validator['profile_image'] === ''
+						  ) {
+								 // If the profile_image is empty, remove the existing profile_image
+								 if ($profile->profile_image
+									  && Storage::disk('public')->exists(
+											$profile->profile_image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $profile->profile_image
+										);
+								 }
+								 $validator['profile_image']
+									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
+						  }
+						  
 						  // If setting as default, remove default from other profiles
 						  if ($request->is_default) {
 								 $profile->user->profiles()
@@ -296,6 +328,13 @@
 								 );
 						  }
 						  
+						  // Append image URLs if they exist
+						  $educations->each(function ($education) {
+								 if ($education->image) {
+										$education->image_url = Storage::disk('public')->url($education->image);
+								 }
+						  });
+						  
 						  return responseJson(
 								200, 'Educations retrieved successfully', [
 									 'educations' => $educations,
@@ -335,6 +374,11 @@
 						  
 						  if (!$education) {
 								 return responseJson(404, 'Education not found');
+						  }
+						  
+						  // Append image URL if it exists
+						  if ($education->image) {
+								 $education->image_url = Storage::disk('public')->url($education->image);
 						  }
 						  
 						  return responseJson(
@@ -396,10 +440,22 @@
 								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
+						  
 						  if ($validator->fails()) {
 								 return responseJson(422, 'Validation failed', [
 									  'errors' => $validator->errors()
 								 ]);
+						  }
+						  
+						  if ($request->hasFile('image')) {
+								 $validator['image'] = $request->file(
+									  'image'
+								 )
+									  ->store('educations', 'public');
+						  } else {
+								 // Set default image URL
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/education.jpg';
 						  }
 						  
 						  // Prepare data
@@ -452,7 +508,9 @@
 									 'before_or_equal:today'],
 								'end_date'       => 'nullable|date|after:start_date',
 								'is_current'     => 'sometimes|boolean',
-								'description'    => 'nullable|string|max:500'
+								'description'    => 'nullable|string|max:500',
+								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  if ($validator->fails()) {
@@ -464,7 +522,8 @@
 						  // Get original data before update
 						  $originalData = $education->only([
 								'institution', 'degree', 'field_of_study',
-								'start_date', 'end_date', 'is_current', 'description'
+								'start_date', 'end_date', 'is_current', 'description',
+								'image', 'location'
 						  ]);
 						  
 						  // Prepare update data
@@ -473,6 +532,38 @@
 						  // Handle the current education case
 						  if ($updateData['is_current'] ?? false) {
 								 $updateData['end_date'] = null;
+						  }
+						  
+						  // Handle logo upload or removal
+						  if ($request->hasFile('image')) {
+								 if ($education->image
+									  && Storage::disk('public')->exists(
+											$education->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $education->image
+										);
+								 }
+								 $imagePath = $request->file('image')->store(
+									  'educations', 'public'
+								 );
+								 $validator['image'] = $imagePath;
+						  } elseif (isset($validator['image'])
+								&& $validator['image'] === ''
+						  ) {
+								 // If the image is empty, remove the existing image
+								 if ($education->image
+									  && Storage::disk('public')->exists(
+											$education->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $education->image
+										);
+								 }
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/education.jpg';
 						  }
 						  
 						  // Check for actual changes
@@ -531,6 +622,15 @@
 						  }
 						  
 						  // Delete the education record
+						  if ($education->image
+								&& Storage::disk('public')->exists(
+									 $education->image
+								)
+						  )
+						  {
+								 Storage::disk('public')->delete($education->image);
+						  }
+						  
 						  $education->delete();
 						  
 						  return responseJson(200, 'Education deleted successfully', [
@@ -554,6 +654,91 @@
 			 }
 			 
 			 // Experience Logic
+			 
+			 public function getAllExperiences(Request $request, $profileId): \Illuminate\Http\JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Find the profile
+						  $profile = Profile::findOrFail($profileId);
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action');
+						  }
+						  
+						  // Get all experiences for the profile
+						  $experiences = $profile->experiences()->get();
+						  
+						  if ($experiences->isEmpty()) {
+								 return responseJson(404, 'No Experiences found for this profile');
+						  }
+						  
+						  
+						  // Append image URLs if they exist
+						  $experiences->each(function ($experience) {
+								 if ($experience->image) {
+										$experience->image_url = Storage::disk('public')->url($experience->image);
+								 }
+						  });
+						  
+						  return responseJson(200, 'Experiences retrieved successfully', [
+								'experiences' => $experiences,
+						  ]);
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found');
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Failed to retrieve experiences', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
+			 
+			 public function getExperienceById(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Find the profile
+						  $profile = Profile::findOrFail($profileId);
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action');
+						  }
+						  
+						  // Find the experience
+						  $experience = $profile->experiences()->where('id', $experienceId)->first();
+						  
+						  if (!$experience) {
+								 return responseJson(404, 'Experience not found');
+						  }
+						  
+						  // Append image URL if it exists
+						  if ($experience->image) {
+								 $experience->image_url = Storage::disk('public')->url($experience->image);
+						  }
+						  
+						  return responseJson(200, 'Experience retrieved successfully', [
+								'experience' => $experience,
+						  ]);
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found');
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Failed to retrieve experience', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
 			 public function addExperience(Request $request, $profileId
 			 ): JsonResponse {
 					try {
@@ -573,7 +758,9 @@
 								'start_date'  => 'required|date|before_or_equal:today',
 								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
 								'is_current'  => 'sometimes|boolean',
-								'description' => 'nullable|string|max:1000'
+								'description' => 'nullable|string|max:1000',
+								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  $existingExperience = $profile->experiences()
@@ -587,10 +774,23 @@
 									  'company already exists with the same start_date',
 								 ); // 409 Conflict status code
 						  }
+						  
+						  
 						  if ($validator->fails()) {
 								 return responseJson(422, 'Validation failed', [
 									  'errors' => $validator->errors()
 								 ]);
+						  }
+						  
+						  if ($request->hasFile('image')) {
+								 $validator['image'] = $request->file(
+									  'image'
+								 )
+									  ->store('experiences', 'public');
+						  } else {
+								 // Set default image URL
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/experience.jpg';
 						  }
 						  
 						  // Handle the current job case
@@ -639,7 +839,9 @@
 								'start_date'  => 'sometimes|date|before_or_equal:today',
 								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
 								'is_current'  => 'sometimes|boolean',
-								'description' => 'nullable|string|max:1000'
+								'description' => 'nullable|string|max:1000',
+								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  if ($validator->fails()) {
@@ -651,7 +853,9 @@
 						  // Get original data
 						  $originalData = $experience->only(
 								['company', 'position', 'start_date', 'end_date',
-								 'is_current', 'description']
+								 'is_current', 'description',
+								 'image', 'location'
+								]
 						  );
 						  $updateData = $validator->validated();
 						  
@@ -679,6 +883,38 @@
 									  'changes'    => null,
 									  'unchanged'  => true
 								 ]);
+						  }
+						  
+						  // Handle logo upload or removal
+						  if ($request->hasFile('image')) {
+								 if ($experience->image
+									  && Storage::disk('public')->exists(
+											$experience->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $experience->image
+										);
+								 }
+								 $imagePath = $request->file('image')->store(
+									  'experiences', 'public'
+								 );
+								 $validator['image'] = $imagePath;
+						  } elseif (isset($validator['image'])
+								&& $validator['image'] === ''
+						  ) {
+								 // If the image is empty, remove the existing image
+								 if ($experience->image
+									  && Storage::disk('public')->exists(
+											$experience->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $experience->image
+										);
+								 }
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/experience.jpg';
 						  }
 						  
 						  // Update the experience
@@ -716,6 +952,16 @@
 									  403,
 									  'Unauthorized - You cannot delete this experience'
 								 );
+						  }
+						  
+						  // Delete the experience record
+						  if ($experience->image
+								&& Storage::disk('public')->exists(
+									 $experience->image
+								)
+						  )
+						  {
+								 Storage::disk('public')->delete($experience->image);
 						  }
 						  
 						  $experience->delete();

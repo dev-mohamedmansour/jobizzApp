@@ -92,15 +92,6 @@
 								]
 						  );
 					} catch (\Illuminate\Validation\ValidationException $e) {
-//						  $errors = $e->validator->errors()->all();
-//						  $errorMessage = 'Validation error: ';
-//						  $errorMessage .= implode(
-//								'', array_map(
-//									 fn($error, $index) => "$error",
-//									 $errors,
-//									 array_keys($errors)
-//								)
-//						  );
 						  return responseJson(
 								422,
 								" validation error",
@@ -553,14 +544,6 @@
 								'pinCode.numeric'  => 'PIN must contain only numbers',
 								'pinCode.not_in'   => 'This PIN is too common and insecure',
 						  ]);
-						  //								'password' => 'required|string|min:8|confirmed'
-//						  ], [
-//								'email.required'    => 'User email is required',
-//								'email.exists'      => 'No User account found with this email',
-//								'pin.required'      => 'Verification PIN is required',
-//								'pin.digits'        => 'PIN must be a 4-digit number',
-////								'password.required' => 'New password is required'
-//						  ]);
 						  $user = User::where('email', $validated['email'])->first();
 						  // Verify PIN through PinService
 						  if (!$this->pinService->verifyPin(
@@ -587,12 +570,12 @@
 						  );
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errorMessage = "Validation failed:\n" . implode("\n", $e->validator->errors()->all());
+						  $errorMessage = "Validation failed: " . implode(" ", $e->validator->errors()->all());
 						  return responseJson(422, $errorMessage);
 						  
 					} catch (\Exception $e) {
 						  $message = config('app.debug')
-								? "Check failed:\n" . $e->getMessage()
+								? "Check failed: " . $e->getMessage()
 								: "Check failed. Please try again later";
 						  
 						  return responseJson(500, $message);
@@ -648,109 +631,5 @@
 						  return responseJson(500, $message);
 					}
 			 }
-
-
-//			 public function verifyResetPin(Request $request):JsonResponse
-//			 {
-//					try {
-//						  $validated = $request->validate([
-//								'email' => 'required|email|exists:users,email',
-//								'pinCode'   => 'required|digits:4'
-//						  ], [
-//								'email.required' => 'The email field is required.',
-//								'email.email'    => 'Please enter a valid email address.',
-//								'email.exists'   => 'No account found with this email address.',
-//								'pinCode.required'   => 'The PIN code is required.',
-//								'pinCode.digits'     => 'The PIN must be a 4-digit number.'
-//						  ]);
-//
-//						  // Verify PIN
-//						  $pinRecord = PasswordResetPin::where(
-//								'email', $validated['email']
-//						  )
-//								->where('pin', $validated['pinCode'])
-//								->where('created_at', '>', now()->subHours(1))
-//								->first();
-//
-//						  if (!$pinRecord) {
-//								 return responseJson(400, 'Invalid or expired PIN', [
-//									  'suggestion' => 'Please request a new PIN'
-//								 ]);
-//						  }
-//
-//						  // Generate JWT token
-//						  $user = User::where('email', $validated['email'])->first();
-//						  $token = JWTAuth::claims([
-//								'purpose' => 'password_reset',
-//								'reset_id' => $pinRecord->id,
-//								'exp' => now()->addMinutes(30)->timestamp
-//						  ])->fromUser($user);
-//
-//						  // Invalidate the PIN after successful verification
-//						  $pinRecord->update([
-//								'pin'        => null,
-//								'created_at' => null
-//						  ]);
-//
-//						  return responseJson(200, 'PIN verified successfully', [
-//								'access_token' => $token,
-//								'token_type'   => 'bearer',
-//								'expires_in'   => config('jwt.reset_token_ttl', 1800)
-//						  ]);
-//
-//					} catch (ValidationException $e) {
-//						  return responseJson(422, 'Validation failed', [
-//								'errors' => $e->errors()
-//						  ]);
-//					} catch (\Exception $e) {
-//						  return responseJson(500, 'PIN verification failed', [
-//								'error' => config('app.debug') ? $e->getMessage() : null
-//						  ]);
-//					}
-//			 }
-
-//			 public function resetPassword(Request $request)
-//			 {
-//					try {
-//						  // Verify token purpose
-//						  $payload = auth()->payload();
-//						  if ($payload->get('purpose') !== 'password_reset') {
-//								 return responseJson(401, "Invalid token purpose\nThis token cannot be used for password reset");
-//						  }
-//
-//						  // Validate new password
-//						  $validated = $request->validate([
-//								'new_password' => 'required|min:8|confirmed'
-//						  ], [
-//								'new_password.required'  => 'New password is required',
-//								'new_password.min'       => 'Password must be at least 8 characters',
-//								'new_password.confirmed' => 'Password confirmation does not match'
-//						  ]);
-//
-//						  // Update password
-//						  $user = auth()->user();
-//						  $user->password = Hash::make($validated['new_password']);
-//						  $user->save();
-//
-//						  // Invalidate the token
-//						  auth()->invalidate(true);
-//
-//						  return responseJson(200, 'Password reset successfully');
-//
-//					} catch (\Illuminate\Validation\ValidationException $e) {
-//						  $errors = implode('', $e->errors());
-//						  return responseJson(422, "Validation errors:" . $errors);
-//
-//					} catch (TokenInvalidException $e) {
-//						  return responseJson(401, "Invalid token :This password reset link has expired or is invalid");
-//
-//					} catch (\Exception $e) {
-//						  Log::error('Password Reset Error: ' . $e->getMessage());
-//						  $message = config('app.debug')
-//								? "Password reset failed: " . $e->getMessage()
-//								: "Password reset failed. Please try again later.";
-//
-//						  return responseJson(500, $message);
-//					}
-//			 }
+			 
 	  }

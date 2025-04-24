@@ -146,7 +146,6 @@
 									  'location'     => 'required|string|max:255',
 									  'website'      => 'sometimes|url',
 									  'size'         => 'required|string|max:255',
-									  // Make size required
 									  'hired_people' => 'required|numeric|min:5',
 								 ];
 						  } else {
