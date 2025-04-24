@@ -16,4 +16,17 @@ class Application extends Model
 	  {
 			 return $this->belongsTo(Profile::class);
 	  }
+	  
+	  public function statuses()
+	  {
+			 return $this->hasMany(ApplicationStatusHistory::class)
+				  ->orderByDesc('created_at');
+	  }
+	  
+	  public function currentStatus()
+	  {
+			 return $this->hasOne(ApplicationStatusHistory::class)
+				  ->orderByDesc('created_at')
+				  ->limit(1);
+	  }
 }

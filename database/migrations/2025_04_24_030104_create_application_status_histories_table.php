@@ -12,8 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('application_status_histories', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+				 $table->id();
+				 $table->foreignId('application_id')->constrained()->onDelete('cascade');
+				 $table->string('status');
+				 $table->text('feedback')->nullable();
+				 $table->timestamps();
         });
     }
 

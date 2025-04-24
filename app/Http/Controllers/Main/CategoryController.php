@@ -4,13 +4,14 @@
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Category;
+	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
 	  
 	  class CategoryController extends Controller
 	  {
-			 public function index(Request $request): \Illuminate\Http\JsonResponse
+			 public function index(Request $request): JsonResponse
 			 {
 					try {
 						  // Check authentication
@@ -35,7 +36,7 @@
 			 }
 			 
 			 public function show(Category $category
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
@@ -59,7 +60,7 @@
 					}
 			 }
 			 
-			 public function store(Request $request): \Illuminate\Http\JsonResponse
+			 public function store(Request $request): JsonResponse
 			 {
 					try {
 						  // Check authentication
@@ -70,7 +71,7 @@
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
-						  if (!$admin->hasPermissionTo('manage-categories')) {
+						  if (!$admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
 						  
@@ -102,7 +103,7 @@
 			 }
 			 
 			 public function update(Request $request, Category $category
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
@@ -112,7 +113,7 @@
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
-						  if (!$admin->hasPermissionTo('manage-categories')) {
+						  if (!$admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
 						  
@@ -156,7 +157,7 @@
 			 }
 			 
 			 public function destroy(Category $category
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
@@ -166,7 +167,7 @@
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
-						  if (!$admin->hasPermissionTo('manage-categories')) {
+						  if (!$admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
 						  

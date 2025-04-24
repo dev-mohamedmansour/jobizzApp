@@ -9,7 +9,6 @@
 	  use App\Http\Controllers\Main\CategoryController;
 	  use Illuminate\Support\Facades\Route;
 	  
-	  
 	  Route::prefix('admin')->group(function () {
 			 // Public routes
 			 Route::post(
@@ -22,6 +21,7 @@
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
 			 );
 			 Route::post('/login', [AdminAuthController::class, 'login']);
+			 
 //			 Route::post(
 //				  '/password/forgot',
 //				  [AdminAuthController::class, 'forgotAdminPassword']
@@ -58,6 +58,12 @@
 								);
 								Route::get('/', [CompanyController::class, 'index']);
 								Route::get('/{id}', [CompanyController::class, 'show']);
+								Route::put('/{id}', [CompanyController::class, 'update']
+								);
+								Route::delete(
+									 '/{id}', [CompanyController::class, 'destroy']
+								);
+								
 						 });
 						 // Job routes
 						 Route::prefix('jobs')->group(function () {
@@ -68,13 +74,31 @@
 								Route::get('/', [JobController::class, 'index']
 								);
 								Route::put(
-									 '/update/{job}', [JobController::class, 'update']
+									 '/{job}', [JobController::class, 'update']
 								);
 								Route::delete(
-									 '/delete/{job}', [JobController::class, 'destroy']
+									 '/{job}', [JobController::class, 'destroy']
 								);
 								
 						 });
+						 
+						 Route::prefix('applications')->middleware('auth:admin')->group(
+							  function () {
+									 Route::get(
+										  '/',
+										  [ApplicationController::class,
+											'index']
+									 );
+									 Route::put(
+										  '/{application}/status',
+										  [ApplicationController::class, 'updateStatus']
+									 );
+									 Route::delete(
+										  '/{application}',
+										  [ApplicationController::class, 'destroy']
+									 );
+							  }
+						 );
 						 
 						 // Admin management
 						 Route::post(
@@ -85,6 +109,7 @@
 							  '/sub-admin',
 							  [AdminAuthController::class, 'createSubAdmin']
 						 );
+						 
 						 //categories route
 						 Route::prefix('categories')->group(
 							  function () {
@@ -117,7 +142,6 @@
 			 Route::post('/register', [AuthController::class, 'register']);
 			 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
 			 Route::post('/login', [AuthController::class, 'login']);
-			 
 			 
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::post('/logout', [AuthController::class, 'logout']);
@@ -233,20 +257,22 @@
 								[ProfileController::class, 'deletePortfolio']
 						  );
 					});
-					
-					
 			 });
 			 
 			 Route::prefix('applications')->middleware('auth:api')->group(
 				  function () {
 						 Route::get(
-							  '/{profileId}/all',
+							  '/profile/{profileId}',
 							  [ApplicationController::class,
 								'getUserProfileApplications']
 						 );
 						 Route::post(
-							  '/{profileId}/add',
+							  '/submit/{profileId}/{jobId}',
 							  [ApplicationController::class, 'store']
+						 );
+						 Route::get(
+							  '/{applicationId}/history',
+							  [ApplicationController::class, 'getStatusHistoryForUser']
 						 );
 				  }
 			 );
@@ -264,4 +290,16 @@
 					Route::get('/{job}', [JobController::class, 'show']
 					);
 			 });
+			 
+			 Route::prefix('categories')->middleware('auth:api')->group(
+				  function () {
+						 Route::get('/', [CategoryController::class, 'index']
+						 );
+						 Route::get(
+							  '/{category}',
+							  [CategoryController::class, 'show']
+						 );
+				  }
+			 );
+			 
 	  });

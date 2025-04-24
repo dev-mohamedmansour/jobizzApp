@@ -4,93 +4,103 @@
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Application;
+	  use App\Models\ApplicationStatusHistory;
 	  use App\Models\JobListing as Job;
 	  use App\Models\Profile;
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Auth;
+	  use Illuminate\Support\Facades\Log;
+	  use Illuminate\Validation\ValidationException;
 	  
 	  class ApplicationController extends Controller
 	  {
-			 public function store(Request $request, $profileId, Job $jobId
-			 ): JsonResponse {
-					// Check if the user is authenticated
-					if (!Auth::check()) {
-						  return responseJson(401, 'Unauthorized');
-					}
-					
-					// Validate the request data
-					$validated = $request->validate([
-						 'cover_letter' => 'required|string|max:1000',
-						 'cv_id'        => 'required|integer|exists:documents,id'
-					]);
-					// Find the profile
-					$profile = Profile::with('documents')->findOrFail($profileId);
-					
-					// Authorization check: Ensure the current user owns this profile
-					if ($request->user()->id !== $profile->user_id) {
-						  return responseJson(
-								403,
-								'Unauthorized action this profile not allowed'
-						  );
-					}
-					
-					// Verify that the CV belongs to this profile
-					$cv = $profile->documents()->where('type', 'cv')
-						 ->where('id', $validated['cv_id'])
-						 ->first();
-					
-					if (!$cv) {
-						  return responseJson(
-								404,
-								'CV not found or does not belong to this profile'
-						  );
-					}
-					
+			 public function store(Request $request, $profileId, Job $job): JsonResponse
+			 {
 					try {
-						  $job = Job::findOrFail($jobId);
-						  $application = $job->applications()->create([
-								'profile_id'      => $profile->id,
-								'cover_letter' => $validated['cover_letter'],
-								'resume_path'  => $cv->path
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Validate request data
+						  $validated = $request->validate([
+								'cover_letter' => 'sometimes|string|max:1000',
+								'cv_id' => 'required|integer|exists:documents,id',
 						  ]);
 						  
-						  return responseJson(
-								201,
-								'Application submitted successfully',
-						  );
+						  // Find the profile
+						  $profile = Profile::with('documents')->findOrFail($profileId);
 						  
+						  // Authorization check: Ensure the current user owns this profile
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action. This profile does not belong to you.');
+						  }
+						  
+						  // Verify that the CV belongs to this profile
+						  $cv = $profile->documents()->where('type', 'cv')
+								->where('id', $validated['cv_id'])
+								->first();
+						  
+						  if (!$cv) {
+								 return responseJson(404, 'CV not found or does not belong to this profile');
+						  }
+						  
+						  // Create application
+						  $application = $job->applications()->create([
+								'profile_id' => $profile->id,
+								'cover_letter' => $validated['cover_letter'],
+								'resume_path' => $cv->path,
+								'status' => 'submitted', // Initial status
+						  ]);
+						  
+						  // Record initial status history
+						  $application->statuses()->create([
+								'status' => 'submitted',
+								'feedback' => null,
+						  ]);
+						  
+						  return responseJson(201, 'Application submitted successfully', [
+								'application' => $application,
+						  ]);
+						  
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile or CV not found');
 					} catch (\Exception $e) {
-						  // Catch any unexpected errors
-						  return responseJson(
-								500,
-								'An unexpected error occurred.' . $e->getMessage()
-						  );
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
 					}
 			 }
 			 
-			 public function getUserProfileApplications(Request $request, $profileId)
+			 public function getUserProfileApplications(Request $request, $profileId): JsonResponse
 			 {
 					try {
-						  // Get authenticated user
-						  $user = $request->user();
-						  
-						  // Validate authentication
-						  if (!$user) {
-								 return responseJson(401, 'Authentication required');
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
 						  }
+						  
+						  $user = auth()->user();
 						  
 						  // Find profile with authorization check
 						  $profile = Profile::where('id', $profileId)
 								->where('user_id', $user->id)
-								->firstOrFail();
+								->first();
+						  
+						  if (!$profile) {
+								 return responseJson(404, 'Profile not found or does not belong to you');
+						  }
 						  
 						  // Get applications with relationships
 						  $applications = Application::with([
 								'job:id,title,description',
 								'job.company:id,name',
-								'job.category:id,name'
+								'job.category:id,name',
+								'statuses',
 						  ])
 								->where('profile_id', $profile->id)
 								->paginate(10);
@@ -104,56 +114,154 @@
 								]
 						  ]);
 						  
-					} catch (ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile not found or access denied');
-						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Failed to retrieve applications', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
 					}
-			 }			// Admin Application Management
-			 public function index(): JsonResponse
-			 {
-					/** @var \App\Models\Admin $admin */
-					$admin = auth('admin')->user();
-					// Check authentication and basic permissions
-					if (!$admin
-						 || (!$admin->hasPermissionTo('manage-applications'))
-						 && (!$admin->hasPermissionTo('view-applicant-profiles'))
-					) {
-						  return responseJson(403, 'Unauthorized');
-					}
-					// Verify admin has a company association
-					if (!$admin->company_id) {
-						  return responseJson(
-								403, 'No company associated with this account'
-						  );
-					}
-					$applications = Application::whereHas(
-						 'job', function ($query) use ($admin) {
-						  $query->where('company_id', $admin->company_id);
-					}
-					)->with('profile', 'job')
-						 ->paginate(15);
-					return responseJson(
-						 200, 'Applications retrieved', $applications
-					);
 			 }
 			 
-			 public function updateStatus(Application $application,
-				  Request $request
-			 ) {
-					$this->authorize('manage-application', $application);
-					
-					$validated = $request->validate([
-						 'status'   => 'required|in:reviewed,accepted,rejected',
-						 'feedback' => 'sometimes|string|max:500'
-					]);
-					
-					$application->update($validated);
-					return responseJson(
-						 200, 'Application status updated', $application
-					);
+			 public function index(): JsonResponse
+			 {
+					try {
+						  $admin = auth('admin')->user();
+						  
+						  // Check authentication and permissions
+						  if (!$admin->hasPermissionTo('manage-applications')) {
+								 return responseJson(403, 'Unauthorized');
+						  }
+						  
+						  // Verify admin has a company association
+						  if (!$admin->company_id) {
+								 return responseJson(403, 'No company associated with this account');
+						  }
+						  
+						  // Get applications for the admin's company
+						  $applications = Application::whereHas(
+								'job', function ($query) use ($admin) {
+								 $query->where('company_id', $admin->company_id);
+						  })
+								->with('profile', 'job', 'statuses')
+								->paginate(15);
+						  
+						  return responseJson(200, 'Applications retrieved', [
+								'applications' => $applications->items(),
+								'meta' => [
+									 'current_page' => $applications->currentPage(),
+									 'total_pages' => $applications->lastPage(),
+									 'total_applications' => $applications->total(),
+								]
+						  ]);
+						  
+					} catch (\Exception $e) {
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function updateStatus(Application $application, Request $request): JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $admin = auth('admin')->user();
+						  
+						  // Check authorization
+						  if (!$admin->hasPermissionTo('manage-applications')) {
+								 return responseJson(403, 'Unauthorized');
+						  }
+						  
+						  // Validate request data
+						  $validated = $request->validate([
+								'status' => 'required|string|in:submitted,reviewed,accepted,rejected,team-matching,final-hr-interview,technical-interview,screening-interview',
+								'feedback' => 'sometimes|string|max:500',
+						  ]);
+						  
+						  // Update application status
+						  $application->update([
+								'status' => $validated['status'],
+						  ]);
+						  
+						  // Record status history
+						  $application->statuses()->create([
+								'status' => $validated['status'],
+								'feedback' => $validated['feedback'] ?? null,
+						  ]);
+						  
+						  return responseJson(200, 'Application status updated successfully', [
+								'application' => $application,
+								'current_status' => $validated['status'],
+								'history' => $application->statuses,
+						  ]);
+						  
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
+					} catch (\Exception $e) {
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function getStatusHistoryForUser(Request $request, $applicationId): JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $user = auth()->user();
+						  
+						  // Find the application
+						  $application = Application::with('statuses', 'job', 'profile')
+								->whereHas('profile', function ($query) use ($user) {
+									  $query->where('user_id', $user->id);
+								})
+								->findOrFail($applicationId);
+						  
+						  return responseJson(200, 'Status history retrieved successfully', [
+								'application' => $application,
+								'history' => $application->statuses,
+						  ]);
+						  
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Application not found');
+					} catch (\Exception $e) {
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function destroy(Application $application): JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth()->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $admin = auth('admin')->user();
+						  
+						  // Check authorization
+						  if (!$admin->hasPermissionTo('manage-applications')) {
+								 return responseJson(403, 'Unauthorized');
+						  }
+						  
+						  // Delete the application
+						  $application->delete();
+						  
+						  return responseJson(200, 'Application deleted successfully');
+						  
+					} catch (\Exception $e) {
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
+					}
 			 }
 	  }

@@ -18,19 +18,13 @@ return new class extends Migration
 				  $table->string('slug')->unique();
 				  $table->timestamps();
 			});
-
-			// Create job_category pivot
-			Schema::create('job_listings_category', function (Blueprint $table) {
-				  $table->foreignId('job_listings_id')->constrained();
-				  $table->foreignId('category_id')->constrained();
-			});
-
+			
 			// Create applications' table
 			Schema::create('applications', function (Blueprint $table) {
 				  $table->id();
 				  $table->foreignId('profile_id')->constrained();
 				  $table->foreignId('job_listings_id')->constrained();
-				  $table->text('cover_letter')->nullable();
+				  $table->text('cover_letter')->default('No Thing');
 				  $table->string('resume_path');
 				  $table->enum('status', ['pending', 'reviewed', 'accepted', 'rejected'])->default('pending');
 				  $table->timestamps();
@@ -43,7 +37,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('categories');
-        Schema::dropIfExists('job_category');
         Schema::dropIfExists('applications');
     }
 };

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
 			Schema::table('job_listings', function (Blueprint $table) {
-				  $table->foreignId('company_id')->constrained('companies');
+				  $table->foreignId('company_id')->constrained('companies')->nullOnDelete();
 				  $table->string('title');
 				  $table->string('job_type');
 				  $table->decimal('salary', 15, 2);
