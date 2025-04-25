@@ -252,12 +252,12 @@
 					try {
 						  $validated = $request->validate([
 								'email'    => 'required|email',
-								'pin_code' => 'required|digits:4'
+								'pin_code' => 'required|digits:6'
 						  ], [
 								'email.required'    => 'Email is required',
 								'email.email'       => 'Invalid email format',
 								'pin_code.required' => 'PIN code is required',
-								'pin_code.digits'   => 'PIN must be 4 digits'
+								'pin_code.digits'   => 'PIN must be 6 digits'
 						  ]);
 						  
 						  // Find user without failing immediately

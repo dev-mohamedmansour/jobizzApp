@@ -15,7 +15,7 @@ return new class extends Migration
 			 Schema::create('documents', function (Blueprint $table) {
 					$table->id();
 					$table->foreignId('profile_id')->constrained()->onDelete('cascade');
-					$table->string('name')->default('Document');
+					$table->string('name')->nullable()->default('Document');
 					$table->unsignedInteger('image_count')->default(0);
 					$table->enum('type', ['cv', 'portfolio']);
 					$table->enum('format', ['images', 'pdf', 'url','cv'])->default('images');

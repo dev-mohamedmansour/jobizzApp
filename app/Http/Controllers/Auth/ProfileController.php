@@ -203,38 +203,38 @@
 									  'unchanged' => true
 								 ]);
 						  }
-						  
-						  // Handle profile_image upload or removal
-						  if ($request->hasFile('profile_image')) {
-								 if ($profile->profile_image
-									  && Storage::disk('public')->exists(
-											$profile->profile_image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $profile->profile_image
-										);
-								 }
-								 $imagePath = $request->file('profile_image')->store(
-									  'profiles', 'public'
-								 );
-								 $validator['profile_image'] = $imagePath;
-						  } elseif (isset($validator['profile_image'])
-								&& $validator['profile_image'] === ''
-						  ) {
-								 // If the profile_image is empty, remove the existing profile_image
-								 if ($profile->profile_image
-									  && Storage::disk('public')->exists(
-											$profile->profile_image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $profile->profile_image
-										);
-								 }
-								 $validator['profile_image']
-									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
-						  }
+
+//						  // Handle profile_image upload or removal
+//						  if ($request->hasFile('profile_image')) {
+//								 if ($profile->profile_image
+//									  && Storage::disk('public')->exists(
+//											$profile->profile_image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $profile->profile_image
+//										);
+//								 }
+//								 $imagePath = $request->file('profile_image')->store(
+//									  'profiles', 'public'
+//								 );
+//								 $validator['profile_image'] = $imagePath;
+//						  } elseif (isset($validator['profile_image'])
+//								&& $validator['profile_image'] === ''
+//						  ) {
+//								 // If the profile_image is empty, remove the existing profile_image
+//								 if ($profile->profile_image
+//									  && Storage::disk('public')->exists(
+//											$profile->profile_image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $profile->profile_image
+//										);
+//								 }
+//								 $validator['profile_image']
+//									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
+//						  }
 						  
 						  // If setting as default, remove default from other profiles
 						  if ($request->is_default) {
@@ -331,7 +331,8 @@
 						  // Append image URLs if they exist
 						  $educations->each(function ($education) {
 								 if ($education->image) {
-										$education->image_url = Storage::disk('public')->url($education->image);
+										$education->image_url = Storage::disk('public')
+											 ->url($education->image);
 								 }
 						  });
 						  
@@ -378,7 +379,9 @@
 						  
 						  // Append image URL if it exists
 						  if ($education->image) {
-								 $education->image_url = Storage::disk('public')->url($education->image);
+								 $education->image_url = Storage::disk('public')->url(
+									  $education->image
+								 );
 						  }
 						  
 						  return responseJson(
@@ -446,17 +449,17 @@
 									  'errors' => $validator->errors()
 								 ]);
 						  }
-						  
-						  if ($request->hasFile('image')) {
-								 $validator['image'] = $request->file(
-									  'image'
-								 )
-									  ->store('educations', 'public');
-						  } else {
-								 // Set default image URL
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/education.jpg';
-						  }
+//
+//						  if ($request->hasFile('image')) {
+//								 $validator['image'] = $request->file(
+//									  'image'
+//								 )
+//									  ->store('educations', 'public');
+//						  } else {
+//								 // Set default image URL
+//								 $validator['image']
+//									  = 'https://jobizaa.com/still_images/education.jpg';
+//						  }
 						  
 						  // Prepare data
 						  $educationData = $validator->validated();
@@ -533,38 +536,38 @@
 						  if ($updateData['is_current'] ?? false) {
 								 $updateData['end_date'] = null;
 						  }
-						  
-						  // Handle logo upload or removal
-						  if ($request->hasFile('image')) {
-								 if ($education->image
-									  && Storage::disk('public')->exists(
-											$education->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $education->image
-										);
-								 }
-								 $imagePath = $request->file('image')->store(
-									  'educations', 'public'
-								 );
-								 $validator['image'] = $imagePath;
-						  } elseif (isset($validator['image'])
-								&& $validator['image'] === ''
-						  ) {
-								 // If the image is empty, remove the existing image
-								 if ($education->image
-									  && Storage::disk('public')->exists(
-											$education->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $education->image
-										);
-								 }
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/education.jpg';
-						  }
+
+//						  // Handle logo upload or removal
+//						  if ($request->hasFile('image')) {
+//								 if ($education->image
+//									  && Storage::disk('public')->exists(
+//											$education->image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $education->image
+//										);
+//								 }
+//								 $imagePath = $request->file('image')->store(
+//									  'educations', 'public'
+//								 );
+//								 $validator['image'] = $imagePath;
+//						  } elseif (isset($validator['image'])
+//								&& $validator['image'] === ''
+//						  ) {
+//								 // If the image is empty, remove the existing image
+//								 if ($education->image
+//									  && Storage::disk('public')->exists(
+//											$education->image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $education->image
+//										);
+//								 }
+//								 $validator['image']
+//									  = 'https://jobizaa.com/still_images/education.jpg';
+//						  }
 						  
 						  // Check for actual changes
 						  $changes = [];
@@ -626,8 +629,7 @@
 								&& Storage::disk('public')->exists(
 									 $education->image
 								)
-						  )
-						  {
+						  ) {
 								 Storage::disk('public')->delete($education->image);
 						  }
 						  
@@ -655,8 +657,8 @@
 			 
 			 // Experience Logic
 			 
-			 public function getAllExperiences(Request $request, $profileId): \Illuminate\Http\JsonResponse
-			 {
+			 public function getAllExperiences(Request $request, $profileId
+			 ): \Illuminate\Http\JsonResponse {
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
@@ -675,20 +677,25 @@
 						  $experiences = $profile->experiences()->get();
 						  
 						  if ($experiences->isEmpty()) {
-								 return responseJson(404, 'No Experiences found for this profile');
+								 return responseJson(
+									  404, 'No Experiences found for this profile'
+								 );
 						  }
 						  
 						  
 						  // Append image URLs if they exist
 						  $experiences->each(function ($experience) {
 								 if ($experience->image) {
-										$experience->image_url = Storage::disk('public')->url($experience->image);
+										$experience->image_url = Storage::disk('public')
+											 ->url($experience->image);
 								 }
 						  });
 						  
-						  return responseJson(200, 'Experiences retrieved successfully', [
-								'experiences' => $experiences,
-						  ]);
+						  return responseJson(
+								200, 'Experiences retrieved successfully', [
+									 'experiences' => $experiences,
+								]
+						  );
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
@@ -699,8 +706,9 @@
 					}
 			 }
 			 
-			 public function getExperienceById(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
-			 {
+			 public function getExperienceById(Request $request, $profileId,
+				  $experienceId
+			 ): \Illuminate\Http\JsonResponse {
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
@@ -716,7 +724,9 @@
 						  }
 						  
 						  // Find the experience
-						  $experience = $profile->experiences()->where('id', $experienceId)->first();
+						  $experience = $profile->experiences()->where(
+								'id', $experienceId
+						  )->first();
 						  
 						  if (!$experience) {
 								 return responseJson(404, 'Experience not found');
@@ -724,12 +734,16 @@
 						  
 						  // Append image URL if it exists
 						  if ($experience->image) {
-								 $experience->image_url = Storage::disk('public')->url($experience->image);
+								 $experience->image_url = Storage::disk('public')->url(
+									  $experience->image
+								 );
 						  }
 						  
-						  return responseJson(200, 'Experience retrieved successfully', [
-								'experience' => $experience,
-						  ]);
+						  return responseJson(
+								200, 'Experience retrieved successfully', [
+									 'experience' => $experience,
+								]
+						  );
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
@@ -739,6 +753,7 @@
 						  ]);
 					}
 			 }
+			 
 			 public function addExperience(Request $request, $profileId
 			 ): JsonResponse {
 					try {
@@ -759,8 +774,8 @@
 								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
 								'is_current'  => 'sometimes|boolean',
 								'description' => 'nullable|string|max:1000',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  $existingExperience = $profile->experiences()
@@ -781,17 +796,17 @@
 									  'errors' => $validator->errors()
 								 ]);
 						  }
-						  
-						  if ($request->hasFile('image')) {
-								 $validator['image'] = $request->file(
-									  'image'
-								 )
-									  ->store('experiences', 'public');
-						  } else {
-								 // Set default image URL
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/experience.jpg';
-						  }
+
+//						  if ($request->hasFile('image')) {
+//								 $validator['image'] = $request->file(
+//									  'image'
+//								 )
+//									  ->store('experiences', 'public');
+//						  } else {
+//								 // Set default image URL
+//								 $validator['image']
+//									  = 'https://jobizaa.com/still_images/experience.jpg';
+//						  }
 						  
 						  // Handle the current job case
 						  $experienceData = $validator->validated();
@@ -840,8 +855,8 @@
 								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
 								'is_current'  => 'sometimes|boolean',
 								'description' => 'nullable|string|max:1000',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
 						  if ($validator->fails()) {
@@ -884,38 +899,38 @@
 									  'unchanged'  => true
 								 ]);
 						  }
-						  
-						  // Handle logo upload or removal
-						  if ($request->hasFile('image')) {
-								 if ($experience->image
-									  && Storage::disk('public')->exists(
-											$experience->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $experience->image
-										);
-								 }
-								 $imagePath = $request->file('image')->store(
-									  'experiences', 'public'
-								 );
-								 $validator['image'] = $imagePath;
-						  } elseif (isset($validator['image'])
-								&& $validator['image'] === ''
-						  ) {
-								 // If the image is empty, remove the existing image
-								 if ($experience->image
-									  && Storage::disk('public')->exists(
-											$experience->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $experience->image
-										);
-								 }
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/experience.jpg';
-						  }
+
+//						  // Handle logo upload or removal
+//						  if ($request->hasFile('image')) {
+//								 if ($experience->image
+//									  && Storage::disk('public')->exists(
+//											$experience->image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $experience->image
+//										);
+//								 }
+//								 $imagePath = $request->file('image')->store(
+//									  'experiences', 'public'
+//								 );
+//								 $validator['image'] = $imagePath;
+//						  } elseif (isset($validator['image'])
+//								&& $validator['image'] === ''
+//						  ) {
+//								 // If the image is empty, remove the existing image
+//								 if ($experience->image
+//									  && Storage::disk('public')->exists(
+//											$experience->image
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $experience->image
+//										);
+//								 }
+//								 $validator['image']
+//									  = 'https://jobizaa.com/still_images/experience.jpg';
+//						  }
 						  
 						  // Update the experience
 						  $experience->update($updateData);
@@ -959,8 +974,7 @@
 								&& Storage::disk('public')->exists(
 									 $experience->image
 								)
-						  )
-						  {
+						  ) {
 								 Storage::disk('public')->delete($experience->image);
 						  }
 						  
@@ -1009,7 +1023,7 @@
 						  }
 						  
 						  $validator = Validator::make($request->all(), [
-								'name' => 'required|string|max:255',
+								'name' => 'sometimes|string|max:255',
 								'file' => 'required|file|mimes:pdf,doc,docx|max:5120'
 						  ]);
 						  
@@ -1155,12 +1169,11 @@
 			 public function addPortfolioTypeImages(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
-						 'name'     => 'required|string|max:255',
+						 'name'     => 'sometimes|string|max:255',
 						 'images'   => 'nullable|array|max:12',
 						 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
 					], [
-						 'name.required' => 'Portfolio name is required',
-						 'images.max'    => 'Maximum 12 images allowed',
+						 'images.max' => 'Maximum 12 images allowed',
 					]);
 					
 					if ($validator->fails()) {
@@ -1211,7 +1224,7 @@
 								->exists()
 						  ) {
 								 throw new \Exception(
-									  'You already have a portfolio with this format'
+									  'You already have a portfolio images with this format'
 								 );
 						  }
 						  
@@ -1228,7 +1241,7 @@
 						  
 						  return responseJson(
 								201,
-								'Portfolio created successfully',
+								' Images Portfolio created successfully',
 								$portfolio->load('images')
 						  );
 						  
@@ -1326,13 +1339,101 @@
 					$portfolio->update(['path' => $path]);
 			 }
 			 
+			 public function deletePortfolioImage(Request $request, $profileId,
+				  $portfolioId
+			 ): JsonResponse {
+					try {
+						  $profile = Profile::findOrFail($profileId);
+						  $portfolio = $profile->documents()
+								->where('type', 'portfolio')
+								->findOrFail($portfolioId);
+						  
+						  if ($portfolio->format !== 'images') {
+								 return responseJson(
+									  422, 'This portfolio is not an image portfolio'
+								 );
+						  }
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(
+									  403,
+									  'Unauthorized action'
+								 );
+						  }
+						  
+						  // Validate request data
+						  $validator = Validator::make($request->all(), [
+								'deleted_images'   => 'sometimes|array',
+								'deleted_images.*' => 'exists:document_images,id',
+						  ]);
+						  
+						  if ($validator->fails()) {
+								 return responseJson(
+									  422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
+						  }
+						  
+						  // Check if any images are provided for deletion
+						  if (!isset($request->deleted_images)
+								|| empty($request->deleted_images)
+								|| empty($request->array('deleted_images'))
+						  ) {
+								 return responseJson(
+									  422, 'No images provided for deletion'
+								 );
+						  }
+						  
+						  DB::beginTransaction();
+						  
+						  $deletedCount = $portfolio->images()
+								->whereIn('id', $request->deleted_images)
+								->get();
+						  dd($deletedCount->path);
+						  
+//								DocumentImage::whereIn(
+//								'id', $request->deleted_images
+//						  )
+//								->where('document_id', $portfolio->id)
+//								->get();
+						  
+						  Storage::disk('public')->delete($deletedCount->path);
+						  $deletedCount->delete();
+						  // Update the image count in the portfolio
+						  $portfolio->image_count -= $deletedCount;
+						  $portfolio->updated_at = now(
+						  ); // Use Carbon to set the correct datetime
+						  $portfolio->save();
+						  
+						  // Handle format-specific updates
+//						  $changesMade = $this->handleImageUpdate(
+//								$request, $portfolio
+//						  );
+//
+//						  if ($changesMade) {
+//								 $portfolio->save();
+						  //						  }
+						  DB::commit();
+						  
+						  return responseJson(200, 'Image deleted successfully');
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile or Image not found');
+					} catch (\Exception $e) {
+						  DB::rollBack();
+						  return responseJson(500, 'Failed to delete image', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
+			 
 			 public function addPortfolioTypePdf(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
-						 'name' => 'required|string|max:255',
+						 'name' => 'sometimes|string|max:255',
 						 'pdf'  => 'required|file|mimes:pdf|max:10240',
 					], [
-						 'name'      => 'Portfolio name is required',
 						 'pdf.mimes' => 'Only PDF files are allowed',
 					]);
 					
@@ -1368,7 +1469,7 @@
 								->exists()
 						  ) {
 								 throw new \Exception(
-									  'You already have a portfolio with this format'
+									  'You already have a portfolio pdf with this format'
 								 );
 						  }
 						  
@@ -1385,7 +1486,7 @@
 						  
 						  return responseJson(
 								201,
-								'Portfolio created successfully',
+								'Pdf Portfolio created successfully',
 								$portfolio->load('images')
 						  );
 						  
@@ -1402,11 +1503,10 @@
 			 public function addPortfolioTypeLink(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
-						 'name' => 'required|string|max:255',
+						 'name' => 'sometimes|string|max:255',
 						 'url'  => 'required|url'
 					], [
-						 'name.required' => 'Portfolio name is required',
-						 'url.url'       => 'Invalid URL format'
+						 'url.url' => 'Invalid URL format'
 					]);
 					
 					if ($validator->fails()) {
@@ -1441,7 +1541,7 @@
 								->exists()
 						  ) {
 								 throw new \Exception(
-									  'You already have a portfolio with this format'
+									  'You already have a portfolio link with this format'
 								 );
 						  }
 						  
@@ -1458,7 +1558,7 @@
 						  
 						  return responseJson(
 								201,
-								'Portfolio created successfully',
+								' Link Portfolio created successfully',
 								$portfolio->load('images')
 						  );
 						  
@@ -1470,7 +1570,6 @@
 						  );
 					}
 			 }
-			 // end
 			 
 			 // Update Portfolio
 			 
@@ -1547,7 +1646,7 @@
 								 
 								 return responseJson(
 									  200,
-									  'Portfolio updated successfully',
+									  'Images Portfolio updated successfully',
 									  $portfolio->fresh(['images'])
 								 );
 						  }
@@ -1677,7 +1776,7 @@
 								 
 								 return responseJson(
 									  200,
-									  'Portfolio updated successfully',
+									  'Pdf Portfolio updated successfully',
 									  $portfolio
 								 );
 						  }
@@ -1783,7 +1882,7 @@
 								 
 								 return responseJson(
 									  200,
-									  'Portfolio updated successfully',
+									  'Link Portfolio updated successfully',
 									  $portfolio
 								 );
 						  }

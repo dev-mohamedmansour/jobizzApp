@@ -36,7 +36,7 @@ class JobListing extends Model
 	  
 	  public function scopeActiveJobs($query)
 	  {
-			 return $query->where('job_status', 'open'); // Adjust the condition based on how you track active jobs
+			 return $query->where('job_status', 'open');
 	  }
 	  
 //	  public function activeJobs(): \Illuminate\Database\Eloquent\Relations\HasMany

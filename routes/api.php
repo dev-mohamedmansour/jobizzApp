@@ -211,7 +211,7 @@
 					
 					// Profile experiences
 					Route::post(
-						 '/{profileId}/experiences',
+						 '/{profileId}/experiences/add-experience',
 						 [ProfileController::class, 'addExperience']
 					);
 					Route::put(
@@ -221,6 +221,14 @@
 					Route::delete(
 						 '/{profileId}/experiences/{experienceId}',
 						 [ProfileController::class, 'deleteExperience']
+					);
+					Route::get(
+						 '/{profileId}/experiences/{experienceId}',
+						 [ProfileController::class, 'getExperienceById']
+					);
+					Route::get(
+						 '/{profileId}/experiences',
+						 [ProfileController::class, 'getAllExperiences']
 					);
 					
 					// Profile documents
@@ -267,6 +275,7 @@
 								'/{portfolioId}',
 								[ProfileController::class, 'deletePortfolio']
 						  );
+						  Route::delete('/{portfolioId}/image',[ProfileController::class,'deletePortfolioImage']);
 					});
 			 });
 			 
@@ -290,6 +299,7 @@
 			 Route::prefix('companies')->middleware('auth:api')->group(
 				  function () {
 						 Route::get('/', [CompanyController::class, 'index']);
+						 
 						 Route::get('/{id}', [CompanyController::class, 'show']);
 				  }
 			 );
@@ -307,7 +317,7 @@
 						 Route::get('/', [CategoryController::class, 'index']
 						 );
 						 Route::get(
-							  '/{category}',
+							  '/{categoryId}',
 							  [CategoryController::class, 'show']
 						 );
 				  }

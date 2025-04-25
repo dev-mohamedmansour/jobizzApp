@@ -20,14 +20,15 @@
 						'format',
 						'path',
 						'url',
-						'image_count'
+						'image_count',
+						'updated_at'
 				  ];
 			 
 			 protected $casts
 				  = [
 						'type' => DocumentType::class,
 						'created_at'        => DateCast::class,
-						'updated_at'        => DateCast::class,
+						'updated_at'        => 'datetime',
 				  ];
 			 
 			 public static function cvCount($profileId)

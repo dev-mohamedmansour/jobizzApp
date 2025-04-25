@@ -21,6 +21,10 @@
 						  
 						  $categories = Category::all();
 						  
+						  if ($categories->isEmpty()) {
+								 return responseJson(404, 'No categories found');
+						  }
+						  
 						  return responseJson(
 								200, 'Categories retrieved successfully', [
 								'categories' => $categories,
@@ -35,7 +39,7 @@
 					}
 			 }
 			 
-			 public function show(Category $category
+			 public function show(Category $categoryId
 			 ): JsonResponse {
 					try {
 						  // Check authentication
@@ -44,12 +48,12 @@
 						  }
 						  
 						  // Check if the category exists
-						  if (!$category) {
+						  if (!$categoryId) {
 								 return responseJson(404, 'Category not found');
 						  }
 						  
 						  return responseJson(200, 'Category details retrieved', [
-								'category' => $category,
+								'category' => $categoryId,
 						  ]);
 						  
 					} catch (\Exception $e) {

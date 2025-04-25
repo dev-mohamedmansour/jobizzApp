@@ -11,6 +11,70 @@
 	  
 	  class JobController extends Controller
 	  {
+//			 public function index(Request $request): JsonResponse
+//			 {
+//					try {
+//						  // Check if the user is authenticated
+//						  if (!auth()->check()) {
+//								 return responseJson(401, 'Unauthenticated');
+//						  }
+//
+//						  // Determine which guard the user is authenticated with
+//						  if (auth()->guard('admin')->check()) {
+//								 $user = auth('admin')->user();
+//								 if (!$this->isAdminAuthorized($user)) {
+//										return responseJson(
+//											 403,
+//											 'Forbidden: You do not have permission to view this jobs'
+//										);
+//								 }
+//						  } elseif (!auth()->guard('api')->check()) {
+//								 // Deny access if the user is authenticated with an unknown guard
+//								 return responseJson(
+//									  403,
+//									  'Forbidden: You do not have permission to view this jobs'
+//								 );
+//						  }
+//						  $jobs = Job::with(
+//								'company'
+//						  ) // Eager load the company relationship
+//						  ->withCount('scopeActiveJobs')
+//								->paginate(10);
+//
+//						  if ($jobs->isEmpty()) {
+//								 return responseJson(404, 'No Jobs found');
+//						  }
+//
+//						  return responseJson(
+//								200,
+//								'Jobs retrieved successfully',
+//								$jobs->map(function ($job) {
+//									  return [
+//											'job'  => $job,
+//											'logo' => optional($job->company)->logo,
+//											// Get company logo if company exists
+//									  ];
+//								})
+//						  );
+//					} catch (\Exception $e) {
+//						  return responseJson(500, 'Server error', [
+//								'error' => config('app.debug') ? $e->getMessage() : null
+//						  ]);
+//					}
+//			 }
+//
+					/***/
+//					$jobs = Job::with('company', 'categories')
+//						 ->when($request->category, function ($query) use ($request) {
+//								$query->whereHas(
+//									 'categories',
+//									 fn($q) => $q->where('slug', $request->category)
+//								);
+//						 })
+//						 ->paginate(15);
+//
+//					return responseJson(200, 'Jobs retrieved', $jobs);
+//			 }
 			 public function index(Request $request): JsonResponse
 			 {
 					try {
@@ -23,67 +87,34 @@
 						  if (auth()->guard('admin')->check()) {
 								 $user = auth('admin')->user();
 								 if (!$this->isAdminAuthorized($user)) {
-										return responseJson(
-											 403,
-											 'Forbidden: You do not have permission to view this jobs'
-										);
+										return responseJson(403, 'Forbidden: You do not have permission to view this jobs');
 								 }
 						  } elseif (!auth()->guard('api')->check()) {
 								 // Deny access if the user is authenticated with an unknown guard
-								 return responseJson(
-									  403,
-									  'Forbidden: You do not have permission to view this jobs'
-								 );
+								 return responseJson(403, 'Forbidden: You do not have permission to view this jobs');
 						  }
-						  $jobs = Job::with(
-								'company'
-						  ) // Eager load the company relationship
-						  ->withCount('scopeActiveJobs')
+						  
+						  // Get active jobs count using a subquery
+						  $jobs = Job::with('company')
+								->withCount(['applications as active_applications' => function ($query) {
+									  $query->where('status', 'submitted');
+								}])
 								->paginate(10);
 						  
 						  if ($jobs->isEmpty()) {
 								 return responseJson(404, 'No Jobs found');
 						  }
 						  
-						  return responseJson(
-								200,
-								'Jobs retrieved successfully',
-								$jobs->map(function ($job) {
-									  return [
-											'job'  => $job,
-											'logo' => optional($job->company)->logo,
-											// Get company logo if company exists
-									  ];
-								})
-						  );
-//						  $jobs = Job::withCount('scopeActiveJobs')->paginate(10);
-//
-//						  if ($jobs->isEmpty()) {
-//								 return responseJson(404, 'No Jobs found');
-//						  }
-//
-//						  return responseJson(
-//								200, 'Jobs retrieved successfully', $jobs
-//						  );
-					
+						  return responseJson(200, 'Jobs retrieved successfully', [
+								'jobs' => $jobs,
+						  ]);
+						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Server error', [
 								'error' => config('app.debug') ? $e->getMessage() : null
 						  ]);
 					}
-					/***/
-//					$jobs = Job::with('company', 'categories')
-//						 ->when($request->category, function ($query) use ($request) {
-//								$query->whereHas(
-//									 'categories',
-//									 fn($q) => $q->where('slug', $request->category)
-//								);
-//						 })
-//						 ->paginate(15);
-//
-//					return responseJson(200, 'Jobs retrieved', $jobs);
 			 }
-			 
 			 private function isAdminAuthorized($admin): bool
 			 {
 					// Check if the user is a super-admin

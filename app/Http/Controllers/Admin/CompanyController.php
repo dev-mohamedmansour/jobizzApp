@@ -145,7 +145,7 @@
 									  'description'  => 'required|string|max:1000',
 									  'location'     => 'required|string|max:255',
 									  'website'      => 'sometimes|url',
-									  'size'         => 'required|string|max:255',
+									  'size'         => 'sometimes|string|max:255',
 									  'hired_people' => 'required|numeric|min:5',
 								 ];
 						  } else {
@@ -167,7 +167,7 @@
 									  'description'  => 'required|string|max:1000',
 									  'location'     => 'required|string|max:255',
 									  'website'      => 'sometimes|url',
-									  'size'         => 'required|string|max:255',
+									  'size'         => 'sometimes|string|max:255',
 									  // Make size required
 									  'hired_people' => 'required|numeric|min:5',
 								 ];
