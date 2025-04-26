@@ -498,7 +498,7 @@
 						  
 						  // Validate request data
 						  $validator = Validator::make($request->all(), [
-								'institution'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'college'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'degree'         => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'field_of_study' => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'start_date'     => 'sometimes|date|before_or_equal:today',
@@ -541,7 +541,7 @@
 						  
 						  // Get original data before update
 						  $originalData = $education->only([
-								'institution', 'degree', 'field_of_study',
+								'college', 'degree', 'field_of_study',
 								'start_date', 'end_date', 'is_current', 'description',
 								'image', 'location'
 						  ]);
@@ -583,48 +583,37 @@
 					}
 			 }
 			 
-			 public function deleteEducation(Request $request, $profileId,
-				  $educationId
-			 ): JsonResponse {
+			 public function deleteEducation(Request $request, $profileId, $educationId): \Illuminate\Http\JsonResponse
+			 {
 					try {
 						  // Find the profile and education
 						  $profile = Profile::findOrFail($profileId);
 						  $education = Education::findOrFail($educationId);
 						  
 						  // Verify ownership - user must own both profile and education
-						  if ($request->user()->id !== $profile->user_id
-								|| $education->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot delete this education record'
-								 );
+						  if ($request->user()->id !== $profile->user_id || $education->profile_id !== $profile->id) {
+								 return responseJson(403, 'Unauthorized - You cannot delete this education record');
 						  }
 						  
-						  // Delete the education record
-						  if ($education->image
-								&& Storage::disk('public')->exists(
-									 $education->image
-								)
-						  ) {
+						  // Delete the education image from storage if it exists
+						  if ($education->image && Storage::disk('public')->exists($education->image)) {
 								 Storage::disk('public')->delete($education->image);
 						  }
 						  
+						  // Delete the education record
 						  $education->delete();
 						  
 						  return responseJson(200, 'Education deleted successfully', [
-								'deleted_education'          => [
-									 'id'          => $education->id,
+								'deleted_education' => [
+									 'id' => $education->id,
 									 'college' => $education->college,
-									 'degree'      => $education->degree
+									 'degree' => $education->degree
 								],
-								'remaining_educations_count' => $profile->educations()
-									 ->count()
+								'remaining_educations_count' => $profile->educations()->count()
 						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Education record not found');
-						  
+						  return responseJson(404, 'Record not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to delete education', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -731,19 +720,18 @@
 					}
 			 }
 			 
-			 public function addExperience(Request $request, $profileId
-			 ): JsonResponse {
+			 public function addExperience(Request $request, $profileId): \Illuminate\Http\JsonResponse
+			 {
 					try {
+						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
 						  
 						  // Authorization check
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot add experiences to this profile'
-								 );
+								 return responseJson(403, 'Unauthorized - You cannot add experiences to this profile');
 						  }
 						  
+						  // Validate request data
 						  $validator = Validator::make($request->all(), [
 								'company'     => 'required|string|max:255',
 								'position'    => 'required|string|max:255',
@@ -755,45 +743,42 @@
 								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
+						  if ($validator->fails()) {
+								 return responseJson(422, 'Validation failed', [
+									  'errors' => $validator->errors()
+								 ]);
+						  }
+						  
+						  // Check for duplicate experience
 						  $existingExperience = $profile->experiences()
 								->where('company', $request->company)
 								->where('start_date', $request->start_date)
 								->first();
 						  
 						  if ($existingExperience) {
-								 return responseJson(
-									  409,
-									  'company already exists with the same start_date',
-								 ); // 409 Conflict status code
+								 return responseJson(409, 'An experience record with the same company and start date already exists');
 						  }
 						  
-						  
-						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
-						  }
-
+						  // Handle image upload
+						  $imagePath = null;
 						  if ($request->hasFile('image')) {
-								 $validator['image'] = $request->file(
-									  'image'
-								 )
-									  ->store('experiences', 'public');
+								 $imagePath = $request->file('image')->store('experiences', 'public');
 						  } else {
 								 // Set default image URL
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/experience.jpg';
+								 $imagePath = 'https://jobizaa.com/still_images/experience.jpg';
 						  }
 						  
-						  // Handle the current job case
+						  // Prepare data
 						  $experienceData = $validator->validated();
+						  $experienceData['image'] = $imagePath;
+						  
+						  // Handle the current job case
 						  if ($experienceData['is_current'] ?? false) {
 								 $experienceData['end_date'] = null;
 						  }
 						  
-						  $experience = $profile->experiences()->create(
-								$experienceData
-						  );
+						  // Create experience
+						  $experience = $profile->experiences()->create($experienceData);
 						  
 						  return responseJson(201, 'Experience added successfully', [
 								'experience' => $experience
@@ -808,30 +793,26 @@
 					}
 			 }
 			 
-			 public function editExperience(Request $request, $profileId,
-				  $experienceId
-			 ): JsonResponse {
+			 public function editExperience(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
+			 {
 					try {
+						  // Find the profile and experience
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id
-								|| $experience->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot update this experience'
-								 );
+						  // Verify ownership
+						  if ($request->user()->id !== $profile->user_id || $experience->profile_id !== $profile->id) {
+								 return responseJson(403, 'Unauthorized - You cannot update this experience');
 						  }
 						  
+						  // Validate request data
 						  $validator = Validator::make($request->all(), [
 								'company'     => 'sometimes|string|max:255',
 								'position'    => 'sometimes|string|max:255',
 								'start_date'  => 'sometimes|date|before_or_equal:today',
-								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
+								'end_date'    => 'nullable|date|after:start_date',
 								'is_current'  => 'sometimes|boolean',
-								'description' => 'nullable|string|max:1000',
+								'description' => 'sometimes|string|max:1000',
 								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
@@ -842,13 +823,13 @@
 								 ]);
 						  }
 						  
-						  // Get original data
-						  $originalData = $experience->only(
-								['company', 'position', 'start_date', 'end_date',
-								 'is_current', 'description',
-								 'image', 'location'
-								]
-						  );
+						  // Get original data before update
+						  $originalData = $experience->only([
+								'company', 'position', 'start_date', 'end_date',
+								'is_current', 'description', 'image', 'location'
+						  ]);
+						  
+						  // Prepare update data
 						  $updateData = $validator->validated();
 						  
 						  // Handle the current job case
@@ -856,12 +837,26 @@
 								 $updateData['end_date'] = null;
 						  }
 						  
-						  // Check for changes
+						  // Handle image upload or removal
+						  if ($request->hasFile('image')) {
+								 // Delete the old image if it exists
+								 if ($experience->image && Storage::disk('public')->exists($experience->image)) {
+										Storage::disk('public')->delete($experience->image);
+								 }
+								 // Store the new image
+								 $updateData['image'] = $request->file('image')->store('experiences', 'public');
+						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
+								 // If the image field is empty, remove the existing image
+								 if ($experience->image && Storage::disk('public')->exists($experience->image)) {
+										Storage::disk('public')->delete($experience->image);
+								 }
+								 $updateData['image'] = 'https://jobizaa.com/still_images/experience.jpg';
+						  }
+						  
+						  // Check for actual changes
 						  $changes = [];
 						  foreach ($updateData as $key => $value) {
-								 if (array_key_exists($key, $originalData)
-									  && $originalData[$key] != $value
-								 ) {
+								 if (isset($originalData[$key]) && $originalData[$key] != $value) {
 										$changes[$key] = [
 											 'from' => $originalData[$key],
 											 'to'   => $value
@@ -876,52 +871,18 @@
 									  'unchanged'  => true
 								 ]);
 						  }
-
-//						  // Handle logo upload or removal
-						  if ($request->hasFile('image')) {
-								 if ($experience->image
-									  && Storage::disk('public')->exists(
-											$experience->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $experience->image
-										);
-								 }
-								 $imagePath = $request->file('image')->store(
-									  'experiences', 'public'
-								 );
-								 $validator['image'] = $imagePath;
-						  } elseif (isset($validator['image'])
-								&& $validator['image'] === ''
-						  ) {
-								 // If the image is empty, remove the existing image
-								 if ($experience->image
-									  && Storage::disk('public')->exists(
-											$experience->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $experience->image
-										);
-								 }
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/experience.jpg';
-						  }
 						  
-						  // Update the experience
+						  // Perform the update
 						  $experience->update($updateData);
 						  
-						  return responseJson(
-								200, 'Experience updated successfully', [
-									 'experience' => $experience->fresh(),
-									 'changes'    => $changes,
-									 'unchanged'  => false
-								]
-						  );
+						  return responseJson(200, 'Experience updated successfully', [
+								'experience' => $experience->fresh(),
+								'changes'    => $changes,
+								'unchanged'  => false
+						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile or experience not found');
+						  return responseJson(404, 'Record not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to update experience', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -929,49 +890,37 @@
 					}
 			 }
 			 
-			 public function deleteExperience(Request $request, $profileId,
-				  $experienceId
-			 ): JsonResponse {
+			 public function deleteExperience(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
+			 {
 					try {
+						  // Find the profile and experience
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id
-								|| $experience->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot delete this experience'
-								 );
+						  // Verify ownership
+						  if ($request->user()->id !== $profile->user_id || $experience->profile_id !== $profile->id) {
+								 return responseJson(403, 'Unauthorized - You cannot delete this experience');
 						  }
 						  
-						  // Delete the experience record
-						  if ($experience->image
-								&& Storage::disk('public')->exists(
-									 $experience->image
-								)
-						  ) {
+						  // Delete the experience image from storage if it exists
+						  if ($experience->image && Storage::disk('public')->exists($experience->image)) {
 								 Storage::disk('public')->delete($experience->image);
 						  }
 						  
+						  // Delete the experience record
 						  $experience->delete();
 						  
-						  return responseJson(
-								200, 'Experience deleted successfully', [
-									 'deleted_experience'          => [
-										  'id'       => $experience->id,
-										  'company'  => $experience->company,
-										  'position' => $experience->position
-									 ],
-									 'remaining_experiences_count' => $profile->experiences(
-									 )
-										  ->count()
-								]
-						  );
+						  return responseJson(200, 'Experience deleted successfully', [
+								'deleted_experience' => [
+									 'id' => $experience->id,
+									 'company' => $experience->company,
+									 'position' => $experience->position
+								],
+								'remaining_experiences_count' => $profile->experiences()->count()
+						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile or experience not found');
+						  return responseJson(404, 'Record not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to delete experience', [
 								'error' => config('app.debug') ? $e->getMessage() : null
