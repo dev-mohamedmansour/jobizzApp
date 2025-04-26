@@ -412,7 +412,7 @@
 						  }
 						  
 						  $validator = Validator::make($request->all(), [
-								'institution'    => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'college'    => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'start_date'     => [
@@ -425,14 +425,14 @@
 											// Check for a duplicate institution + start_date
 											$exists = $profile->educations()
 												 ->where(
-													  'institution', $request->institution
+													  'college', $request->college
 												 )
 												 ->where('start_date', $value)
 												 ->exists();
 											
 											if ($exists) {
 												  $fail(
-														'You already have an education record from this institution with the same start date.'
+														'You already have an education record from this college with the same start date.'
 												  );
 											}
 									 }
@@ -450,17 +450,17 @@
 									  'errors' => $validator->errors()
 								 ]);
 						  }
-//
-//						  if ($request->hasFile('image')) {
-//								 $validator['image'] = $request->file(
-//									  'image'
-//								 )
-//									  ->store('educations', 'public');
-//						  } else {
-//								 // Set default image URL
-//								 $validator['image']
-//									  = 'https://jobizaa.com/still_images/education.jpg';
-//						  }
+						  
+						  if ($request->hasFile('image')) {
+								 $validator['image'] = $request->file(
+									  'image'
+								 )
+									  ->store('educations', 'public');
+						  } else {
+								 // Set default image URL
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/education.jpg';
+						  }
 						  
 						  // Prepare data
 						  $educationData = $validator->validated();
@@ -484,35 +484,27 @@
 					}
 			 }
 			 
-			 public function updateEducation(Request $request, $profileId,
-				  $educationId
-			 ): JsonResponse {
+			 public function updateEducation(Request $request, $profileId, $educationId): \Illuminate\Http\JsonResponse
+			 {
 					try {
 						  // Find the profile and education
 						  $profile = Profile::findOrFail($profileId);
 						  $education = Education::findOrFail($educationId);
 						  
 						  // Verify ownership
-						  if ($request->user()->id !== $profile->user_id
-								|| $education->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot update this education record'
-								 );
+						  if ($request->user()->id !== $profile->user_id || $education->profile_id !== $profile->id) {
+								 return responseJson(403, 'Unauthorized - You cannot update this education record');
 						  }
 						  
+						  // Validate request data
 						  $validator = Validator::make($request->all(), [
-								'institution'    => 'sometimes|string|max:255',
-								'degree'         => 'sometimes|string|max:255',
-								'field_of_study' => 'sometimes|string|max:255',
-								'start_date'     => [
-									 'sometimes',
-									 'date',
-									 'before_or_equal:today'],
+								'institution'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'degree'         => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'field_of_study' => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'start_date'     => 'sometimes|date|before_or_equal:today',
 								'end_date'       => 'nullable|date|after:start_date',
 								'is_current'     => 'sometimes|boolean',
-								'description'    => 'nullable|string|max:500',
+								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
 								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
@@ -523,13 +515,6 @@
 								 ]);
 						  }
 						  
-						  // Get original data before update
-						  $originalData = $education->only([
-								'institution', 'degree', 'field_of_study',
-								'start_date', 'end_date', 'is_current', 'description',
-								'image', 'location'
-						  ]);
-						  
 						  // Prepare update data
 						  $updateData = $validator->validated();
 						  
@@ -537,38 +522,29 @@
 						  if ($updateData['is_current'] ?? false) {
 								 $updateData['end_date'] = null;
 						  }
-
-//						  // Handle logo upload or removal
-//						  if ($request->hasFile('image')) {
-//								 if ($education->image
-//									  && Storage::disk('public')->exists(
-//											$education->image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $education->image
-//										);
-//								 }
-//								 $imagePath = $request->file('image')->store(
-//									  'educations', 'public'
-//								 );
-//								 $validator['image'] = $imagePath;
-//						  } elseif (isset($validator['image'])
-//								&& $validator['image'] === ''
-//						  ) {
-//								 // If the image is empty, remove the existing image
-//								 if ($education->image
-//									  && Storage::disk('public')->exists(
-//											$education->image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $education->image
-//										);
-//								 }
-//								 $validator['image']
-//									  = 'https://jobizaa.com/still_images/education.jpg';
-//						  }
+						  
+						  // Handle image upload or removal
+						  if ($request->hasFile('image')) {
+								 // Delete the old image if it exists
+								 if ($education->image && Storage::disk('public')->exists($education->image)) {
+										Storage::disk('public')->delete($education->image);
+								 }
+								 // Store the new image
+								 $updateData['image'] = $request->file('image')->store('educations', 'public');
+						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
+								 // If the image field is empty, remove the existing image
+								 if ($education->image && Storage::disk('public')->exists($education->image)) {
+										Storage::disk('public')->delete($education->image);
+								 }
+								 $updateData['image'] = 'https://jobizaa.com/still_images/education.jpg';
+						  }
+						  
+						  // Get original data before update
+						  $originalData = $education->only([
+								'institution', 'degree', 'field_of_study',
+								'start_date', 'end_date', 'is_current', 'description',
+								'image', 'location'
+						  ]);
 						  
 						  // Check for actual changes
 						  $changes = [];
@@ -639,7 +615,7 @@
 						  return responseJson(200, 'Education deleted successfully', [
 								'deleted_education'          => [
 									 'id'          => $education->id,
-									 'institution' => $education->institution,
+									 'college' => $education->college,
 									 'degree'      => $education->degree
 								],
 								'remaining_educations_count' => $profile->educations()
@@ -798,16 +774,16 @@
 								 ]);
 						  }
 
-//						  if ($request->hasFile('image')) {
-//								 $validator['image'] = $request->file(
-//									  'image'
-//								 )
-//									  ->store('experiences', 'public');
-//						  } else {
-//								 // Set default image URL
-//								 $validator['image']
-//									  = 'https://jobizaa.com/still_images/experience.jpg';
-//						  }
+						  if ($request->hasFile('image')) {
+								 $validator['image'] = $request->file(
+									  'image'
+								 )
+									  ->store('experiences', 'public');
+						  } else {
+								 // Set default image URL
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/experience.jpg';
+						  }
 						  
 						  // Handle the current job case
 						  $experienceData = $validator->validated();
@@ -902,36 +878,36 @@
 						  }
 
 //						  // Handle logo upload or removal
-//						  if ($request->hasFile('image')) {
-//								 if ($experience->image
-//									  && Storage::disk('public')->exists(
-//											$experience->image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $experience->image
-//										);
-//								 }
-//								 $imagePath = $request->file('image')->store(
-//									  'experiences', 'public'
-//								 );
-//								 $validator['image'] = $imagePath;
-//						  } elseif (isset($validator['image'])
-//								&& $validator['image'] === ''
-//						  ) {
-//								 // If the image is empty, remove the existing image
-//								 if ($experience->image
-//									  && Storage::disk('public')->exists(
-//											$experience->image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $experience->image
-//										);
-//								 }
-//								 $validator['image']
-//									  = 'https://jobizaa.com/still_images/experience.jpg';
-//						  }
+						  if ($request->hasFile('image')) {
+								 if ($experience->image
+									  && Storage::disk('public')->exists(
+											$experience->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $experience->image
+										);
+								 }
+								 $imagePath = $request->file('image')->store(
+									  'experiences', 'public'
+								 );
+								 $validator['image'] = $imagePath;
+						  } elseif (isset($validator['image'])
+								&& $validator['image'] === ''
+						  ) {
+								 // If the image is empty, remove the existing image
+								 if ($experience->image
+									  && Storage::disk('public')->exists(
+											$experience->image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $experience->image
+										);
+								 }
+								 $validator['image']
+									  = 'https://jobizaa.com/still_images/experience.jpg';
+						  }
 						  
 						  // Update the experience
 						  $experience->update($updateData);
@@ -1134,37 +1110,44 @@
 			 
 			 // Delete CV
 			 
-			 public
-			 function deleteCV(Request $request, $profileId, $cvId
-			 ) {
+			 public function deleteCV(Request $request, $profileId, $cvId): \Illuminate\Http\JsonResponse
+			 {
 					try {
+						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  $cv = $profile->documents()
-								->where('type', 'cv')
-								->findOrFail($cvId);
 						  
-						  // Authorization
+						  // Find the CV
+						  $cv = Document::where('profile_id', $profileId)
+								->where('type', 'cv')
+								->where('id', $cvId)
+								->firstOrFail();
+						  
+						  // Authorization check
 						  if ($request->user()->id !== $profile->user_id) {
 								 return responseJson(403, 'Unauthorized action');
 						  }
 						  
+						  // Delete the CV file from storage
+						  if ($cv->path && Storage::disk('public')->exists($cv->path)) {
+								 Storage::disk('public')->delete($cv->path);
+						  }
+						  
+						  // Delete the CV record
 						  $cv->delete();
-						  Storage::disk('public')->delete($cv->path);
 						  
 						  return responseJson(200, 'CV deleted successfully', [
-								'remaining_cvs' => $profile->documents()->where(
-									 'type', 'cv'
-								)->count()
+								'remaining_cvs' => $profile->documents()->where('type', 'cv')->count()
 						  ]);
 						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Resource not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'CV deletion failed', [
-								'error' => config('app.debug') ? $e->getMessage() : null
+								'error' => config('app.debug') ? $e->getMessage() : 'An error occurred during CV deletion'
 						  ]);
 					}
 			 }
 			 
-			 // Portfolio Logic
 			 
 			 // Upload Portfolio
 			 public function addPortfolioTypeImages(Request $request, $profileId
@@ -1546,96 +1529,116 @@
 			 
 			 // Update Portfolio
 			 
-			 public function editPortfolioImages(Request $request, $profileId,
-				  $portfolioId
-			 ): JsonResponse {
+			 public function editPortfolioImages(Request $request, $profileId, $portfolioId): \Illuminate\Http\JsonResponse
+			 {
 					try {
+						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()
-								->where('type', 'portfolio')
-								->findOrFail($portfolioId);
 						  
+						  // Find the portfolio
+						  $portfolio = Document::where('profile_id', $profileId)
+								->where('type', 'portfolio')
+								->where('id', $portfolioId)
+								->firstOrFail();
+						  
+						  // Check portfolio format
 						  if ($portfolio->format !== 'images') {
-								 return responseJson(
-									  422, 'This portfolio is not an image portfolio'
-								 );
+								 return responseJson(422, 'This portfolio is not an image portfolio');
 						  }
 						  
 						  // Authorization check
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized action'
-								 );
+								 return responseJson(403, 'Unauthorized action');
 						  }
+						  
+						  // Define validation rules
 						  $validationRules = [
 								'name' => 'sometimes|string|max:255',
+								'images' => 'sometimes|array|max:' . (12 - $portfolio->image_count),
+								'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+								'deleted_images' => 'sometimes|array',
+								'deleted_images.*' => 'exists:document_images,id',
 						  ];
 						  
-						  $validationRules['images'] = 'sometimes|array|max:'
-								. (12 - $portfolio->image_count);
-						  $validationRules['images.*']
-								= 'image|mimes:jpeg,png,jpg,gif|max:2048';
-						  $validationRules['deleted_images']
-								= 'sometimes|array';
-						  $validationRules['deleted_images.*']
-								= 'exists:document_images,id';
+						  // Custom validation messages
+						  $validationMessages = [
+								'images.max' => 'You can only upload ' . (12 - $portfolio->image_count) . ' more images',
+						  ];
 						  
-						  
-						  $validator = Validator::make(
-								$request->all(), $validationRules, [
-									 'images.max' => 'You can only upload :max more images',
-								]
-						  );
+						  // Validate request data
+						  $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(
-									  422,
-									  $validator->errors()
-								 );
+								 return responseJson(422, 'Validation failed', [
+									  'errors' => $validator->errors()
+								 ]);
 						  }
 						  
 						  DB::beginTransaction();
 						  
 						  $changesMade = false;
 						  
-						  // Update name
-						  if ($request->has('name')
-								&& $portfolio->name !== $request->name
-						  ) {
+						  // Update portfolio name if provided
+						  if ($request->has('name') && $request->name !== $portfolio->name) {
 								 $portfolio->name = $request->name;
 								 $changesMade = true;
 						  }
 						  
-						  // Handle format-specific updates
-						  $changesMade = $this->handleImageUpdate(
-									 $request, $portfolio
-								)
-								|| $changesMade;
+						  // Handle image uploads
+						  if ($request->hasFile('images')) {
+								 foreach ($request->file('images') as $image) {
+										// Store the image
+										$path = $image->store('portfolios/images', 'public');
+										$portfolio->images()->create([
+											 'path' => $path,
+											 'mime_type' => $image->getMimeType(),
+										]);
+								 }
+								 $portfolio->increment('image_count', count($request->file('images')));
+								 $changesMade = true;
+						  }
 						  
+						  // Handle image deletions
+						  if ($request->has('deleted_images') && !empty($request->deleted_images)) {
+								 // Validate each image ID
+								 foreach ($request->deleted_images as $imageId) {
+										$image = DocumentImage::where('id', $imageId)
+											 ->where('document_id', $portfolio->id)
+											 ->firstOrFail();
+								 }
+								 
+								 // Delete the images
+								 foreach ($request->deleted_images as $imageId) {
+										$image = DocumentImage::findOrFail($imageId);
+										if ($image->path && Storage::disk('public')->exists($image->path)) {
+											  Storage::disk('public')->delete($image->path);
+										}
+										$image->delete();
+								 }
+								 $portfolio->decrement('image_count', count($request->deleted_images));
+								 $changesMade = true;
+						  }
+						  
+						  // Commit changes if any were made
 						  if ($changesMade) {
 								 $portfolio->save();
 								 DB::commit();
-								 
-								 return responseJson(
-									  200,
-									  'Images Portfolio updated successfully',
-									  $portfolio->fresh(['images'])
-								 );
+								 return responseJson(200, 'Portfolio updated successfully', [
+									  'portfolio' => $portfolio->fresh(['images']),
+								 ]);
 						  }
 						  
 						  DB::rollBack();
-						  return responseJson(
-								200,
-								'No changes detected'
-						  );
+						  return responseJson(200, 'No changes detected');
 						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  DB::rollBack();
+						  return responseJson(404, 'Resource not found');
 					} catch (\Exception $e) {
 						  DB::rollBack();
-						  return responseJson(
-								500,
-								'Update failed' . $e->getMessage()
-						  );
+						  return responseJson(500, 'Failed to update portfolio', [
+								'error' => config('app.debug') ? $e->getMessage() : 'An error occurred during the update process'
+						  ]);
 					}
 			 }
 			 
@@ -1892,7 +1895,7 @@
 			 
 			 public function deletePortfolio(Request $request, $profileId,
 				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
@@ -1952,65 +1955,5 @@
 						  ]);
 					}
 			 }
-
-
-//			 public function deletePortfolio(Request $request, $profileId,
-//				  $portfolioId
-//			 ): JsonResponse {
-//					try {
-//						  $profile = Profile::findOrFail($profileId);
-//						  $portfolio = $profile->documents()
-//								->where('type', 'portfolio')
-//								->findOrFail($portfolioId);
-//
-//						  if (!$portfolio) {
-//								 return responseJson(
-//									  404, 'This portfolio is not be Found'
-//								 );
-//						  }
-//
-//						  // Authorization check
-//						  if ($request->user()->id !== $profile->user_id) {
-//								 return responseJson(
-//									  403,
-//									  'Unauthorized action'
-//								 );
-//						  }
-//
-//						  DB::transaction(function () use ($portfolio) {
-//								 // Delete associated files
-//								 switch ($portfolio->format) {
-//										case 'images':
-//											  $portfolio->images->each(function ($image) {
-//													 Storage::disk('public')->delete(
-//														  $image->path
-//													 );
-//													 $image->delete();
-//											  });
-//											  break;
-//
-//										case 'pdf':
-//											  Storage::disk('public')->delete(
-//													$portfolio->path
-//											  );
-//											  break;
-//								 }
-//
-//								 $portfolio->delete();
-//						  });
-//
-//						  return responseJson(
-//								200,
-//								'Portfolio deleted successfully'
-//						  );
-//
-//					} catch (\Exception $e) {
-//						  return responseJson(
-//								500,
-//								'Deletion failed , portfolio not found'
-//								. $e->getMessage()
-//						  );
-//					}
-//			 }
 			 
 	  }

@@ -11,7 +11,7 @@
 					Schema::create('educations', function (Blueprint $table) {
 						  $table->id();
 						  $table->foreignId('profile_id')->constrained()->onDelete('cascade');
-						  $table->string('institution');
+						  $table->string('college');
 						  $table->string('degree');
 						  $table->string('field_of_study');
 						  $table->date('start_date');

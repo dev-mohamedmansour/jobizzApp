@@ -13,7 +13,7 @@
 			 protected $table = 'educations';
 			 protected $fillable = [
 				  'profile_id',
-				  'institution',
+				  'college',
 				  'degree',
 				  'field_of_study',
 				  'start_date',
