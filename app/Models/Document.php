@@ -14,6 +14,7 @@
 			 
 			 protected $fillable
 				  = [
+						'id',
 						'profile_id',
 						'name',
 						'type',

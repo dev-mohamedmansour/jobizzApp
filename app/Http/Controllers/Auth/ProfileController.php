@@ -4,6 +4,7 @@
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Document;
+	  use App\Models\DocumentImage;
 	  use App\Models\Education;
 	  use App\Models\Experience;
 	  use App\Models\Profile;
@@ -1340,86 +1341,58 @@
 			 }
 			 
 			 public function deletePortfolioImage(Request $request, $profileId,
-				  $portfolioId
+				  $imageId
 			 ): JsonResponse {
 					try {
+						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()
-								->where('type', 'portfolio')
-								->findOrFail($portfolioId);
 						  
+						  // Find the portfolio (document)
+						  $portfolio = Document::where('profile_id', $profileId)
+								->where('type', 'portfolio')
+								->where('format', 'images')
+								->firstOrFail();
+						  
+						  // Authorization check
+						  if ($request->user()->id !== $profile->user_id) {
+								 return responseJson(403, 'Unauthorized action');
+						  }
+						  
+						  // Check portfolio format
 						  if ($portfolio->format !== 'images') {
 								 return responseJson(
 									  422, 'This portfolio is not an image portfolio'
 								 );
 						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized action'
-								 );
-						  }
-						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'deleted_images'   => 'sometimes|array',
-								'deleted_images.*' => 'exists:document_images,id',
-						  ]);
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  // Check if any images are provided for deletion
-						  if (!isset($request->deleted_images)
-								|| empty($request->deleted_images)
-								|| empty($request->array('deleted_images'))
-						  ) {
-								 return responseJson(
-									  422, 'No images provided for deletion'
-								 );
-						  }
+						  // Find the image
+						  $image = DocumentImage::where('id', $imageId)
+								->where('document_id', $portfolio->id)
+								->firstOrFail();
 						  
 						  DB::beginTransaction();
 						  
-						  $deletedCount = $portfolio->images()
-								->whereIn('id', $request->deleted_images)
-								->get();
-						  dd($deletedCount->path);
+						  // Delete the image file from storage
+						  if ($image->path
+								&& Storage::disk('public')->exists(
+									 $image->path
+								)
+						  ) {
+								 Storage::disk('public')->delete($image->path);
+						  }
 						  
-//								DocumentImage::whereIn(
-//								'id', $request->deleted_images
-//						  )
-//								->where('document_id', $portfolio->id)
-//								->get();
+						  // Delete the image record
+						  $image->delete();
 						  
-						  Storage::disk('public')->delete($deletedCount->path);
-						  $deletedCount->delete();
-						  // Update the image count in the portfolio
-						  $portfolio->image_count -= $deletedCount;
-						  $portfolio->updated_at = now(
-						  ); // Use Carbon to set the correct datetime
-						  $portfolio->save();
+						  // Decrement the image count in the portfolio
+						  $portfolio->decrement('image_count');
 						  
-						  // Handle format-specific updates
-//						  $changesMade = $this->handleImageUpdate(
-//								$request, $portfolio
-//						  );
-//
-//						  if ($changesMade) {
-//								 $portfolio->save();
-						  //						  }
 						  DB::commit();
 						  
 						  return responseJson(200, 'Image deleted successfully');
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile or Image not found');
+						  return responseJson(404, 'image not found');
 					} catch (\Exception $e) {
 						  DB::rollBack();
 						  return responseJson(500, 'Failed to delete image', [
@@ -1919,61 +1892,125 @@
 			 
 			 public function deletePortfolio(Request $request, $profileId,
 				  $portfolioId
-			 ): JsonResponse {
+			 ): \Illuminate\Http\JsonResponse {
 					try {
+						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()
+						  
+						  // Find the portfolio
+						  $portfolio = Document::where('id', $portfolioId)
+								->where('profile_id', $profileId)
 								->where('type', 'portfolio')
-								->findOrFail($portfolioId);
-						  
-						  if (!$portfolio) {
-								 return responseJson(
-									  404, 'This portfolio is not be Found'
-								 );
-						  }
-						  
+								->firstOrFail();
+
 						  // Authorization check
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized action'
-								 );
+								 return responseJson(403, 'Unauthorized action');
 						  }
 						  
-						  DB::transaction(function () use ($portfolio) {
-								 // Delete associated files
-								 switch ($portfolio->format) {
-										case 'images':
-											  $portfolio->images->each(function ($image) {
-													 Storage::disk('public')->delete(
-														  $image->path
-													 );
-													 $image->delete();
-											  });
-											  break;
-										
-										case 'pdf':
+						  DB::beginTransaction();
+						  
+						  // Delete associated files
+						  if ($portfolio->format === 'images') {
+								 // Delete all images related to this portfolio
+								 foreach ($portfolio->images as $image) {
+										if ($image->path
+											 && Storage::disk('public')->exists(
+												  $image->path
+											 )
+										) {
 											  Storage::disk('public')->delete(
-													$portfolio->path
+													$image->path
 											  );
-											  break;
+										}
+										$image->delete();
 								 }
-								 
-								 $portfolio->delete();
-						  });
+						  } elseif ($portfolio->format === 'pdf') {
+								 // Delete the PDF file
+								 if ($portfolio->path
+									  && Storage::disk('public')->exists(
+											$portfolio->path
+									  )
+								 ) {
+										Storage::disk('public')->delete($portfolio->path);
+								 }
+						  }
 						  
-						  return responseJson(
-								200,
-								'Portfolio deleted successfully'
-						  );
+						  // Delete the portfolio
+						  $portfolio->delete();
 						  
+						  DB::commit();
+						  
+						  return responseJson(200, 'Portfolio deleted successfully');
+						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Portfolio not found');
 					} catch (\Exception $e) {
-						  return responseJson(
-								500,
-								'Deletion failed , portfolio not found'
-								. $e->getMessage()
-						  );
+						  DB::rollBack();
+						  return responseJson(500, 'Failed to delete portfolio', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
 					}
 			 }
+
+
+//			 public function deletePortfolio(Request $request, $profileId,
+//				  $portfolioId
+//			 ): JsonResponse {
+//					try {
+//						  $profile = Profile::findOrFail($profileId);
+//						  $portfolio = $profile->documents()
+//								->where('type', 'portfolio')
+//								->findOrFail($portfolioId);
+//
+//						  if (!$portfolio) {
+//								 return responseJson(
+//									  404, 'This portfolio is not be Found'
+//								 );
+//						  }
+//
+//						  // Authorization check
+//						  if ($request->user()->id !== $profile->user_id) {
+//								 return responseJson(
+//									  403,
+//									  'Unauthorized action'
+//								 );
+//						  }
+//
+//						  DB::transaction(function () use ($portfolio) {
+//								 // Delete associated files
+//								 switch ($portfolio->format) {
+//										case 'images':
+//											  $portfolio->images->each(function ($image) {
+//													 Storage::disk('public')->delete(
+//														  $image->path
+//													 );
+//													 $image->delete();
+//											  });
+//											  break;
+//
+//										case 'pdf':
+//											  Storage::disk('public')->delete(
+//													$portfolio->path
+//											  );
+//											  break;
+//								 }
+//
+//								 $portfolio->delete();
+//						  });
+//
+//						  return responseJson(
+//								200,
+//								'Portfolio deleted successfully'
+//						  );
+//
+//					} catch (\Exception $e) {
+//						  return responseJson(
+//								500,
+//								'Deletion failed , portfolio not found'
+//								. $e->getMessage()
+//						  );
+//					}
+//			 }
 			 
 	  }

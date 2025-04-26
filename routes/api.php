@@ -275,7 +275,7 @@
 								'/{portfolioId}',
 								[ProfileController::class, 'deletePortfolio']
 						  );
-						  Route::delete('/{portfolioId}/image',[ProfileController::class,'deletePortfolioImage']);
+						  Route::delete('/image/{imageId}',[ProfileController::class,'deletePortfolioImage']);
 					});
 			 });
 			 
