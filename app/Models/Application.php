@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
 {
+	  protected $fillable = [
+			'job_listing_id','profile_id','resume_path'
+	  ];
 	  
 	  protected $casts
 			= [
@@ -16,7 +19,7 @@ class Application extends Model
 	  
 	  public function job(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 	  {
-			 return $this->belongsTo(JobListing::class);
+			 return $this->belongsTo(JobListing::class,'job_listing_id');
 	  }
 	  
 	  public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo

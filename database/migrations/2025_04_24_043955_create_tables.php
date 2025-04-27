@@ -22,8 +22,8 @@
 					// Create applications' table
 					Schema::create('applications', function (Blueprint $table) {
 						  $table->id();
-						  $table->foreignId('profile_id')->constrained();
-						  $table->foreignId('job_listings_id')->constrained();
+						  $table->foreignId('profile_id')->constrained('profiles')->onUpdate('cascade')->onDelete('cascade');
+						  $table->foreignId('job_listing_id')->constrained('job_listings')->onUpdate('cascade')->onDelete('cascade');
 						  $table->string('cover_letter')->default('No Thing');
 						  $table->string('resume_path');
 						  $table->enum('status', ['pending', 'reviewed', 'accepted', 'rejected'])->default('pending');

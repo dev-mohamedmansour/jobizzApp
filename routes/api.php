@@ -281,19 +281,19 @@
 					});
 			 });
 			 
-			 Route::prefix('applications')->middleware('auth:api')->group(
+			 Route::prefix('/profile/{profileId}/applications')->middleware('auth:api')->group(
 				  function () {
 						 Route::get(
-							  '/profile/{profileId}',
+							  '/',
 							  [ApplicationController::class,
 								'getUserProfileApplications']
 						 );
 						 Route::post(
-							  '/submit/{profileId}/{jobId}',
+							  'add-application/{jobId}',
 							  [ApplicationController::class, 'store']
 						 );
 						 Route::get(
-							  '/{applicationId}/history',
+							  '/{applicationId}/status',
 							  [ApplicationController::class, 'getStatusHistoryForUser']
 						 );
 				  }

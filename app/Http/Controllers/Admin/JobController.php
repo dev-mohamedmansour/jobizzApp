@@ -368,10 +368,7 @@
 					return responseJson(500, $errorMessage);
 			 }
 	  }
-			 
-			 /**
-			  * Check if the admin is authorized to delete the job.
-			  */
+	  
 			 private function isAuthorizedToDelete($admin, $job): bool
 	  {
 			 return $admin->hasRole('super-admin')

@@ -411,60 +411,55 @@
 								 return responseJson(403, 'Unauthorized action');
 						  }
 						  
+						  // Create a validator
 						  $validator = Validator::make($request->all(), [
 								'college'    => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
-								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
+								'degree'     => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
 								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
-								'start_date'     => [
+								'start_date' => [
 									 'required',
 									 'date',
 									 'before_or_equal:today',
-									 function ($attribute, $value, $fail) use (
-										  $profile, $request
-									 ) {
+									 function ($attribute, $value, $fail) use ($profile, $request) {
 											// Check for a duplicate institution + start_date
 											$exists = $profile->educations()
-												 ->where(
-													  'college', $request->college
-												 )
+												 ->where('college', $request->college)
 												 ->where('start_date', $value)
 												 ->exists();
 											
 											if ($exists) {
-												  $fail(
-														'You already have an education record from this college with the same start date.'
-												  );
+												  $fail('You already have an education record from this college with the same start date.');
 											}
 									 }
 								],
-								'end_date'       => 'nullable|date|after:start_date',
-								'is_current'     => 'sometimes|boolean',
-								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								'end_date'   => 'nullable|date|after:start_date',
+								'is_current' => 'sometimes|boolean',
+								'description' => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
+								'location'   => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'image'      => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
-						  
+						  // Check if validation fails
 						  if ($validator->fails()) {
 								 return responseJson(422, 'Validation failed', [
 									  'errors' => $validator->errors()
 								 ]);
 						  }
 						  
+						  // Prepare data
+						  $educationData = $validator->validated(); // Use validated() to get the validated data
+						  
+						  // Handle image upload
 						  if ($request->hasFile('image')) {
-								 $validator['image'] = $request->file(
-									  'image'
-								 )
-									  ->store('educations', 'public');
+								 $imagePath = $request->file('image')->store('educations', 'public');
+								 $educationData['image'] = $imagePath;
 						  } else {
 								 // Set default image URL
-								 $validator['image']
-									  = 'https://jobizaa.com/still_images/education.jpg';
+								 $educationData['image'] = 'https://jobizaa.com/still_images/education.jpg';
 						  }
 						  
-						  // Prepare data
-						  $educationData = $validator->validated();
-						  if ($educationData['is_current'] ?? false) {
+						  // If 'is_current' is true, set end_date to null
+						  if (isset($educationData['is_current']) && $educationData['is_current']) {
 								 $educationData['end_date'] = null;
 						  }
 						  
@@ -474,7 +469,6 @@
 						  return responseJson(201, 'Education added successfully', [
 								'education' => $education
 						  ]);
-						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
 					} catch (\Exception $e) {
