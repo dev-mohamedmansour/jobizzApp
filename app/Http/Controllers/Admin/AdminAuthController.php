@@ -514,7 +514,6 @@
 									  'Account pending approval, Please contact the administrator'
 								 );
 						  }
-//						  return $this->respondWithToken($token, $admin);
 						  return responseJson(
 								200, 'Login successful',
 								[
