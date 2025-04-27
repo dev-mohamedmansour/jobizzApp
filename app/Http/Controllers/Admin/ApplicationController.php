@@ -173,7 +173,7 @@
 			 {
 					try {
 						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -247,7 +247,7 @@
 					}
 			 }
 			 
-			 public function destroy(Application $application): JsonResponse
+			 public function destroy($applicationId): JsonResponse
 			 {
 					try {
 						  // Check authentication
@@ -261,7 +261,11 @@
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
-						  
+						  $application =Application::find($applicationId);
+						  if(!$application)
+						  {
+								 return responseJson(404, 'Application not found');
+						  }
 						  // Delete the application
 						  $application->delete();
 						  

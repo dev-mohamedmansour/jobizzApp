@@ -8,6 +8,7 @@
 	  use App\Models\Education;
 	  use App\Models\Experience;
 	  use App\Models\Profile;
+	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\DB;
@@ -103,9 +104,11 @@
 					}
 			 }
 			 
-			 public function addProfile(Request $request
-			 ): JsonResponse {
+			 public function addProfile(Request $request): JsonResponse
+			 {
 					$user = $request->user();
+					
+					// Validate request data
 					$validator = Validator::make($request->all(), [
 						 'title_job'     => 'required|string|max:255',
 						 'job_position'  => 'required|string|max:255',
@@ -113,7 +116,12 @@
 						 'profile_image' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048',
 					]);
 					
-					// Check if profile with same title_job already exists for this user
+					// Check if validation fails
+					if ($validator->fails()) {
+						  return responseJson(422, $validator->errors()->first());
+					}
+					
+					// Check if profile with the same title_job already exists for this user
 					$existingProfile = $user->profiles()
 						 ->where('title_job', $request->title_job)
 						 ->first();
@@ -124,63 +132,54 @@
 								'Profile already exists with the same job title',
 						  ); // 409 Conflict status code
 					}
-					$validatedData = $validator->validated(
-					); // Get validated data as array
 					
+					// Prepare data
+					$validatedData = $validator->validated();
+					
+					// Handle image upload
 					if ($request->hasFile('profile_image')) {
-						  $validatedData['profile_image'] = $request->file(
-								'profile_image'
-						  )
+						  $validatedData['profile_image'] = $request->file('profile_image')
 								->store('profiles', 'public');
 					} else {
-						  // Set default image URL
-						  $validatedData['profile_image']
-								= 'https://jobizaa.com/still_images/userDefault.jpg';
+						  // Set default image path (use a local default image)
+						  $validatedData['profile_image'] = 'https://jobizaa.com/still_images/userDefault.jpg'; // Ensure this image exists in your storage
 					}
 					
-					if ($validator->fails()) {
-						  return responseJson(422, $validator->errors()->first());
-					}
-					if ($request->title_job) {
-					
-					}
 					// If setting as default, remove default from other profiles
 					if ($request->is_default) {
 						  $user->profiles()->update(['is_default' => false]);
 					}
 					
+					// Create profile
 					$profile = $user->profiles()->create($validatedData);
 					
 					return responseJson(
 						 201,
-						 "Add Profile Successful ",
+						 "Profile created successfully",
 						 [
-							  $user->name,
-							  $profile
+							  'user_name' => $user->name,
+							  'profile'   => $profile
 						 ]
 					);
 			 }
 			 
-			 public function updateProfile(Request $request, $id
-			 ): JsonResponse {
+			 public function updateProfile(Request $request, $id): JsonResponse
+			 {
 					try {
 						  // Find the profile or fail
 						  $profile = Profile::findOrFail($id);
 						  
 						  // Manual authorization check
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot update this profile'
-								 );
+								 return responseJson(403, 'Unauthorized - You cannot update this profile');
 						  }
 						  
+						  // Validate request data
 						  $validator = Validator::make($request->all(), [
 								'title_job'     => 'sometimes|string|max:255',
 								'job_position'  => 'sometimes|string|max:255',
 								'is_default'    => 'sometimes|boolean',
 								'profile_image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-						  
 						  ]);
 						  
 						  if ($validator->fails()) {
@@ -190,69 +189,51 @@
 						  }
 						  
 						  // Get original data before update
-						  $originalData = $profile->only(
-								['title', 'job_position', 'is_default', 'profile_image']
-						  );
+						  $originalData = $profile->only(['title_job', 'job_position', 'is_default', 'profile_image']);
 						  $newData = $validator->validated();
 						  
-						  // Check if any data actually changed
-						  $changes = array_diff_assoc($newData, $originalData);
-						  
-						  if (empty($changes) && !$request->has('is_default')) {
-								 return responseJson(200, 'No changes detected', [
-									  'profile'   => $profile,
-									  'unchanged' => true
-								 ]);
+						  // Handle profile_image upload or removal
+						  if ($request->hasFile('profile_image')) {
+								 // Delete the old image if it exists
+								 if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
+										Storage::disk('public')->delete($profile->profile_image);
+								 }
+								 
+								 // Store the new image
+								 $newData['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
+						  } elseif (isset($newData['profile_image']) && $newData['profile_image'] === '') {
+								 // If the profile_image is empty, remove the existing image
+								 if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
+										Storage::disk('public')->delete($profile->profile_image);
+								 }
+								 // Set to null or a default image path
+								 $newData['profile_image'] = 'default_profile.jpg'; // Use a valid default image path
 						  }
-
-//						  // Handle profile_image upload or removal
-//						  if ($request->hasFile('profile_image')) {
-//								 if ($profile->profile_image
-//									  && Storage::disk('public')->exists(
-//											$profile->profile_image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $profile->profile_image
-//										);
-//								 }
-//								 $imagePath = $request->file('profile_image')->store(
-//									  'profiles', 'public'
-//								 );
-//								 $validator['profile_image'] = $imagePath;
-//						  } elseif (isset($validator['profile_image'])
-//								&& $validator['profile_image'] === ''
-//						  ) {
-//								 // If the profile_image is empty, remove the existing profile_image
-//								 if ($profile->profile_image
-//									  && Storage::disk('public')->exists(
-//											$profile->profile_image
-//									  )
-//								 ) {
-//										Storage::disk('public')->delete(
-//											 $profile->profile_image
-//										);
-//								 }
-//								 $validator['profile_image']
-//									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
-//						  }
 						  
 						  // If setting as default, remove default from other profiles
-						  if ($request->is_default) {
+						  if (isset($newData['is_default']) && $newData['is_default']) {
 								 $profile->user->profiles()
 									  ->where('id', '!=', $profile->id)
 									  ->update(['is_default' => false]);
 						  }
 						  
-						  // Update only changed fields
+						  // Check if any data actually changed
+						  $changes = array_diff_assoc($newData, $originalData);
+						  
+						  if (empty($changes)) {
+								 return responseJson(200, 'No changes detected', [
+									  'profile'   => $profile,
+									  'unchanged' => true
+								 ]);
+						  }
+						  
+						  // Update the profile
 						  $profile->update($newData);
 						  
 						  // Get the changed fields for a response message
 						  $changedFields = array_keys($changes);
 						  $changeMessage = !empty($changedFields)
-								? 'Profile updated. Changed: ' . implode(
-									 ', ', $changedFields
-								)
+								? 'Profile updated. Changed: ' . implode(', ', $changedFields)
 								: 'Default status updated';
 						  
 						  return responseJson(200, $changeMessage, [
@@ -269,24 +250,50 @@
 					}
 			 }
 			 
-			 public function deleteProfile(Request $request, $id
-			 ): JsonResponse {
+			 public function deleteProfile(Request $request, $id): JsonResponse
+			 {
 					try {
 						  // Find the profile or fail
 						  $profile = Profile::findOrFail($id);
 						  
 						  // Manual authorization check
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403,
-									  'Unauthorized - You cannot delete this profile'
-								 );
+								 return responseJson(403, 'Unauthorized - You cannot delete this profile');
 						  }
 						  
 						  // Delete all related records first to maintain data integrity
-						  $profile->educations()->delete();
-						  $profile->experiences()->delete();
-						  $profile->documents()->delete();
+						  // Also delete associated images
+						  if ($profile->educations) {
+								 foreach ($profile->educations as $education) {
+										if ($education->image && Storage::disk('public')->exists($education->image)) {
+											  Storage::disk('public')->delete($education->image);
+										}
+								 }
+								 $profile->educations()->delete();
+						  }
+						  
+						  if ($profile->experiences) {
+								 foreach ($profile->experiences as $experience) {
+										if ($experience->image && Storage::disk('public')->exists($experience->image)) {
+											  Storage::disk('public')->delete($experience->image);
+										}
+								 }
+								 $profile->experiences()->delete();
+						  }
+						  
+						  if ($profile->documents) {
+								 foreach ($profile->documents as $document) {
+										if ($document->file && Storage::disk('public')->exists($document->file)) {
+											  Storage::disk('public')->delete($document->file);
+										}
+								 }
+								 $profile->documents()->delete();
+						  }
+						  
+						  // Delete the profile image if it exists
+						  if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
+								 Storage::disk('public')->delete($profile->profile_image);
+						  }
 						  
 						  // Delete the profile
 						  $profile->delete();
@@ -295,7 +302,6 @@
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  return responseJson(404, 'Profile not found');
-						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to delete profile', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -435,7 +441,7 @@
 								'end_date'   => 'nullable|date|after:start_date',
 								'is_current' => 'sometimes|boolean',
 								'description' => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
-								'location'   => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'location'   => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
 								'image'      => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
@@ -478,7 +484,7 @@
 					}
 			 }
 			 
-			 public function updateEducation(Request $request, $profileId, $educationId): \Illuminate\Http\JsonResponse
+			 public function updateEducation(Request $request, $profileId, $educationId): JsonResponse
 			 {
 					try {
 						  // Find the profile and education
@@ -492,14 +498,14 @@
 						  
 						  // Validate request data
 						  $validator = Validator::make($request->all(), [
-								'college'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'college'        => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'degree'         => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'field_of_study' => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
 								'start_date'     => 'sometimes|date|before_or_equal:today',
 								'end_date'       => 'nullable|date|after:start_date',
 								'is_current'     => 'sometimes|boolean',
 								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
 								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
@@ -513,24 +519,23 @@
 						  $updateData = $validator->validated();
 						  
 						  // Handle the current education case
-						  if ($updateData['is_current'] ?? false) {
+						  if (isset($updateData['is_current']) && $updateData['is_current']) {
 								 $updateData['end_date'] = null;
 						  }
 						  
 						  // Handle image upload or removal
 						  if ($request->hasFile('image')) {
-								 // Delete the old image if it exists
+								 // Delete the old image if it exists and is not the default image
 								 if ($education->image && Storage::disk('public')->exists($education->image)) {
 										Storage::disk('public')->delete($education->image);
 								 }
+								 
 								 // Store the new image
 								 $updateData['image'] = $request->file('image')->store('educations', 'public');
 						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
-								 // If the image field is empty, remove the existing image
-								 if ($education->image && Storage::disk('public')->exists($education->image)) {
-										Storage::disk('public')->delete($education->image);
-								 }
-								 $updateData['image'] = 'https://jobizaa.com/still_images/education.jpg';
+								 // If the image field is empty, set a default image URL
+								 // Use a reliable default image URL or path
+								 $updateData['image'] = 'default_education.jpg'; // Example default image stored in storage
 						  }
 						  
 						  // Get original data before update
@@ -569,7 +574,7 @@
 						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Record not found');
+						  return responseJson(404, 'Education not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to update education', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -577,7 +582,7 @@
 					}
 			 }
 			 
-			 public function deleteEducation(Request $request, $profileId, $educationId): \Illuminate\Http\JsonResponse
+			 public function deleteEducation(Request $request, $profileId, $educationId): JsonResponse
 			 {
 					try {
 						  // Find the profile and education
@@ -590,8 +595,15 @@
 						  }
 						  
 						  // Delete the education image from storage if it exists
-						  if ($education->image && Storage::disk('public')->exists($education->image)) {
-								 Storage::disk('public')->delete($education->image);
+						  if ($education->image) {
+								 try {
+										if (Storage::disk('public')->exists($education->image)) {
+											  Storage::disk('public')->delete($education->image);
+										}
+								 } catch (\Exception $e) {
+										// Log the error but proceed with deleting the education record
+										Log::error('Failed to delete image: ' . $e->getMessage());
+								 }
 						  }
 						  
 						  // Delete the education record
@@ -607,7 +619,7 @@
 						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Record not found');
+						  return responseJson(404, 'Education not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to delete education', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -714,7 +726,7 @@
 					}
 			 }
 			 
-			 public function addExperience(Request $request, $profileId): \Illuminate\Http\JsonResponse
+			 public function addExperience(Request $request, $profileId): JsonResponse
 			 {
 					try {
 						  // Find the profile
@@ -733,7 +745,7 @@
 								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
 								'is_current'  => 'sometimes|boolean',
 								'description' => 'nullable|string|max:1000',
-								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
 								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
@@ -756,10 +768,11 @@
 						  // Handle image upload
 						  $imagePath = null;
 						  if ($request->hasFile('image')) {
+								 // Store the uploaded image
 								 $imagePath = $request->file('image')->store('experiences', 'public');
 						  } else {
-								 // Set default image URL
-								 $imagePath = 'https://jobizaa.com/still_images/experience.jpg';
+								 // Use a default image path (should be a path to a default image in your storage)
+								 $imagePath = 'default_experience.jpg'; // Ensure this image exists in your storage
 						  }
 						  
 						  // Prepare data
@@ -787,7 +800,7 @@
 					}
 			 }
 			 
-			 public function editExperience(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
+			 public function editExperience(Request $request, $profileId, $experienceId): JsonResponse
 			 {
 					try {
 						  // Find the profile and experience
@@ -807,7 +820,7 @@
 								'end_date'    => 'nullable|date|after:start_date',
 								'is_current'  => 'sometimes|boolean',
 								'description' => 'sometimes|string|max:1000',
-								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
 								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						  ]);
 						  
@@ -835,16 +848,27 @@
 						  if ($request->hasFile('image')) {
 								 // Delete the old image if it exists
 								 if ($experience->image && Storage::disk('public')->exists($experience->image)) {
-										Storage::disk('public')->delete($experience->image);
+										try {
+											  Storage::disk('public')->delete($experience->image);
+										} catch (\Exception $e) {
+											  // Log the error but proceed with updating other fields
+											  Log::error('Failed to delete old image: ' . $e->getMessage());
+										}
 								 }
+								 
 								 // Store the new image
 								 $updateData['image'] = $request->file('image')->store('experiences', 'public');
 						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
 								 // If the image field is empty, remove the existing image
 								 if ($experience->image && Storage::disk('public')->exists($experience->image)) {
-										Storage::disk('public')->delete($experience->image);
+										try {
+											  Storage::disk('public')->delete($experience->image);
+										} catch (\Exception $e) {
+											  Log::error('Failed to delete image: ' . $e->getMessage());
+										}
 								 }
-								 $updateData['image'] = 'https://jobizaa.com/still_images/experience.jpg';
+								 // Set image to null or a default value if needed
+								 $updateData['image'] = null;
 						  }
 						  
 						  // Check for actual changes
@@ -876,7 +900,7 @@
 						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Record not found');
+						  return responseJson(404, 'Experience not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to update experience', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -884,7 +908,7 @@
 					}
 			 }
 			 
-			 public function deleteExperience(Request $request, $profileId, $experienceId): \Illuminate\Http\JsonResponse
+			 public function deleteExperience(Request $request, $profileId, $experienceId): JsonResponse
 			 {
 					try {
 						  // Find the profile and experience
@@ -897,8 +921,15 @@
 						  }
 						  
 						  // Delete the experience image from storage if it exists
-						  if ($experience->image && Storage::disk('public')->exists($experience->image)) {
-								 Storage::disk('public')->delete($experience->image);
+						  if ($experience->image) {
+								 try {
+										if (Storage::disk('public')->exists($experience->image)) {
+											  Storage::disk('public')->delete($experience->image);
+										}
+								 } catch (\Exception $e) {
+										// Log the error but proceed with deleting the experience record
+										Log::error('Failed to delete image: ' . $e->getMessage());
+								 }
 						  }
 						  
 						  // Delete the experience record
@@ -914,7 +945,7 @@
 						  ]);
 						  
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Record not found');
+						  return responseJson(404, 'Experience not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Failed to delete experience', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -923,25 +954,24 @@
 			 }
 			 
 			 // Document Logic
-			 public function uploadCV(Request $request, $profileId
-			 ): JsonResponse {
+			 public function uploadCV(Request $request, $profileId): JsonResponse
+			 {
 					try {
+						  // Find the profile or fail
 						  $profile = Profile::findOrFail($profileId);
 						  
-						  // Authorization
+						  // Authorization check
 						  if ($request->user()->id !== $profile->user_id) {
 								 return responseJson(403, 'Unauthorized action');
 						  }
 						  
 						  // Check maximum CV limit
-						  $currentCVCount = $profile->documents()->where('type', 'cv')
-								->count();
+						  $currentCVCount = $profile->documents()->where('type', 'cv')->count();
 						  if ($currentCVCount >= 3) {
-								 return responseJson(
-									  400, 'Maximum 3 CVs allowed per profile'
-								 );
+								 return responseJson(400, 'Maximum 3 CVs allowed per profile');
 						  }
 						  
+						  // Validate request data
 						  $validator = Validator::make($request->all(), [
 								'name' => 'sometimes|string|max:255',
 								'file' => 'required|file|mimes:pdf,doc,docx|max:5120'
@@ -953,8 +983,10 @@
 								 ]);
 						  }
 						  
+						  // Store the file
 						  $path = $request->file('file')->store('cvs', 'public');
 						  
+						  // Create a new document record
 						  $cv = $profile->documents()->create([
 								'name'   => $request->name,
 								'type'   => 'cv',
@@ -969,6 +1001,8 @@
 								]
 						  );
 						  
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Profile not found');
 					} catch (\Exception $e) {
 						  return responseJson(500, 'CV upload failed', [
 								'error' => config('app.debug') ? $e->getMessage() : null

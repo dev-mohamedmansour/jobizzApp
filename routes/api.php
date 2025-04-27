@@ -95,7 +95,7 @@
 									  'updateStatus']
 								);
 								Route::delete(
-									 '/{application}',
+									 '/{applicationId}',
 									 [ApplicationController::class,
 									  'destroy']
 								);

@@ -29,7 +29,7 @@
 				  = [
 						'type' => DocumentType::class,
 						'created_at'        => DateCast::class,
-						'updated_at'        => 'datetime',
+						'updated_at'        => DateCast::class,
 				  ];
 			 
 			 public static function cvCount($profileId)
