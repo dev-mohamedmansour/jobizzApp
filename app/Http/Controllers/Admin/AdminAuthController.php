@@ -300,7 +300,7 @@
 			 public function approve(Admin $pendingAdmin): JsonResponse
 			 {
 					try {
-						  if (!auth()->user()->hasRole('super-admin')) {
+						  if (!auth('admin')->user()->hasRole('super-admin')) {
 								 return responseJson(
 									  403, 'Unauthorized: Only super-admins can approve'
 								 );

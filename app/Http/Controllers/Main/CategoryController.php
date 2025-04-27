@@ -15,7 +15,7 @@
 			 {
 					try {
 						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth()->check() && !auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -27,8 +27,8 @@
 						  
 						  return responseJson(
 								200, 'Categories retrieved successfully', [
-								'categories' => $categories,
-						  ]
+									 'categories' => $categories,
+								]
 						  );
 						  
 					} catch (\Exception $e) {
@@ -39,27 +39,28 @@
 					}
 			 }
 			 
-			 public function show(Category $categoryId
-			 ): JsonResponse {
+			 public function show($categoryId): JsonResponse
+			 {
 					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  // Check authentication for both admin and regular users
+						  if (!auth()->check() && !auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
+						  // Find the category
+						  $category = Category::find($categoryId);
+						  
 						  // Check if the category exists
-						  if (!$categoryId) {
+						  if (!$category) {
 								 return responseJson(404, 'Category not found');
 						  }
 						  
-						  return responseJson(200, 'Category details retrieved', [
-								'category' => $categoryId,
-						  ]);
+						  return responseJson(200, 'Category details retrieved', $category);
 						  
 					} catch (\Exception $e) {
+						  // Handle exceptions
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
@@ -68,7 +69,7 @@
 			 {
 					try {
 						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -106,11 +107,11 @@
 					}
 			 }
 			 
-			 public function update(Request $request, Category $category
-			 ): JsonResponse {
+			 public function update(Request $request, $categoryId): JsonResponse
+			 {
 					try {
 						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -120,6 +121,9 @@
 						  if (!$admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
+						  
+						  // Find the category
+						  $category = Category::find($categoryId);
 						  
 						  // Check if the category exists
 						  if (!$category) {
@@ -128,17 +132,33 @@
 						  
 						  // Validate request data
 						  $validated = $request->validate([
-								'name' => 'sometimes|string|max:255|unique:categories,name,'
-									 . $category->id,
+								'name' => 'sometimes|string|max:255',
 						  ]);
 						  
+						  // Get original data before update
+						  $originalData = $category->only(['name', 'slug']);
+						  
+						  // Check if any data actually changed
+						  $changes = [];
+						  foreach ($validated as $key => $value) {
+								 if ($originalData[$key] !== $value) {
+										$changes[$key] = [
+											 'from' => $originalData[$key],
+											 'to'   => $value
+										];
+								 }
+						  }
+						  
+						  if (empty($changes)) {
+								 return responseJson(200, 'No changes detected', [
+									  'category' => $category,
+									  'unchanged' => true
+								 ]);
+						  }
+						  
 						  // Update slug if name changes
-						  if (isset($validated['name'])
-								&& $validated['name'] !== $category->name
-						  ) {
-								 $validated['slug'] = Str::slug(
-									  $validated['name'], '-'
-								 );
+						  if (isset($validated['name']) && $validated['name'] !== $category->name) {
+								 $validated['slug'] = Str::slug($validated['name'], '-');
 						  }
 						  
 						  // Update category
@@ -146,25 +166,24 @@
 						  
 						  return responseJson(200, 'Category updated successfully', [
 								'category' => $category,
+								'changes' => $changes,
+								'unchanged' => false
 						  ]);
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422, 'Validation error', $e->validator->errors()->all()
-						  );
+						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
 			 
-			 public function destroy(Category $category
-			 ): JsonResponse {
+			 public function destroy($categoryId): JsonResponse
+			 {
 					try {
 						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -174,6 +193,9 @@
 						  if (!$admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Unauthorized');
 						  }
+						  
+						  // Find the category
+						  $category = Category::find($categoryId);
 						  
 						  // Check if the category exists
 						  if (!$category) {
@@ -186,9 +208,9 @@
 						  return responseJson(200, 'Category deleted successfully');
 						  
 					} catch (\Exception $e) {
+						  // Handle exceptions
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }

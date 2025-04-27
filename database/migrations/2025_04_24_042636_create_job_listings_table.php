@@ -21,7 +21,8 @@ return new class extends Migration
 				  $table->text('requirement');
 				  $table->enum('job_status', ['open', 'closed'])->default('open');
 				  $table->string('location');
-				  $table->json('benefits')->nullable();
+				  $table->string('position');
+				  $table->text('benefits')->nullable();
 				  $table->timestamps();
 			});
     }

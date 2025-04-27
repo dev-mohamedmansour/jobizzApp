@@ -412,9 +412,9 @@
 						  }
 						  
 						  $validator = Validator::make($request->all(), [
-								'college'    => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s]+$/',
+								'college'    => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
+								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
+								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
 								'start_date'     => [
 									 'required',
 									 'date',

@@ -63,82 +63,81 @@
 								Route::delete(
 									 '/{id}', [CompanyController::class, 'destroy']
 								);
-								
 						 });
+						 
 						 // Job routes
 						 Route::prefix('jobs')->group(function () {
-								Route::post('/add-job', [JobController::class, 'store']
+								Route::post(
+									 '/add-job', [JobController::class, 'store']
 								);
-								Route::get('/{job}', [JobController::class, 'show']
+								Route::get('/{jobId}', [JobController::class, 'show']
 								);
 								Route::get('/', [JobController::class, 'index']
 								);
 								Route::put(
-									 '/{job}', [JobController::class, 'update']
+									 '/{jobId}', [JobController::class, 'update']
 								);
 								Route::delete(
-									 '/{job}', [JobController::class, 'destroy']
+									 '/{jobId}', [JobController::class, 'destroy']
 								);
 								
 						 });
 						 
-						 Route::prefix('applications')->middleware('auth:admin')
-							  ->group(
-									function () {
-										  Route::get(
-												'/',
-												[ApplicationController::class,
-												 'index']
-										  );
-										  Route::put(
-												'/{application}/status',
-												[ApplicationController::class,
-												 'updateStatus']
-										  );
-										  Route::delete(
-												'/{application}',
-												[ApplicationController::class, 'destroy']
-										  );
-									}
-							  );
-						 
-						 // Admin management
-						 Route::post(
-							  '/approve/{pendingAdmin}',
-							  [AdminAuthController::class, 'approve']
-						 );
-						 Route::post(
-							  '/sub-admin',
-							  [AdminAuthController::class, 'createSubAdmin']
-						 );
-						 
-						 //categories route
-						 Route::prefix('categories')->group(
-							  function () {
-									 Route::get('/', [CategoryController::class, 'index']
-									 );
-									 Route::get(
-										  '/{category}',
-										  [CategoryController::class, 'show']
-									 );
-									 Route::post(
-										  '/add-category',
-										  [CategoryController::class, 'store']
-									 );
-									 Route::put(
-										  '/{category}',
-										  [CategoryController::class, 'update']
-									 );
-									 Route::delete(
-										  '/{category}',
-										  [CategoryController::class, 'destroy']
-									 );
-							  }
-						 );
+						 Route::prefix('applications')->group(function () {
+								Route::get(
+									 '/',
+									 [ApplicationController::class,
+									  'index']
+								);
+								Route::put(
+									 '/{application}/status',
+									 [ApplicationController::class,
+									  'updateStatus']
+								);
+								Route::delete(
+									 '/{application}',
+									 [ApplicationController::class,
+									  'destroy']
+								);
+						 });
 				  });
+			 
+			 // Admin management
+			 Route::post(
+				  '/approve/{pendingAdmin}',
+				  [AdminAuthController::class, 'approve']
+			 );
+			 Route::post(
+				  '/sub-admin',
+				  [AdminAuthController::class, 'createSubAdmin']
+			 );
+			 
+			 //categories route
+			 Route::prefix('categories')->middleware('auth:admin')
+				  ->group(
+						function () {
+							  Route::get('/', [CategoryController::class, 'index']
+							  );
+							  Route::get(
+									'/{categoryId}',
+									[CategoryController::class, 'show']
+							  );
+							  Route::post(
+									'/add-category',
+									[CategoryController::class, 'store']
+							  );
+							  Route::put(
+									'/{categoryId}',
+									[CategoryController::class, 'update']
+							  );
+							  Route::delete(
+									'/{categoryId}',
+									[CategoryController::class, 'destroy']
+							  );
+						}
+				  );
+			 
 	  });
-	  
-	  
 	  Route::prefix('auth')->group(function () {
 			 // Regular auth
 			 Route::post('/register', [AuthController::class, 'register']);
@@ -275,7 +274,10 @@
 								'/{portfolioId}',
 								[ProfileController::class, 'deletePortfolio']
 						  );
-						  Route::delete('/image/{imageId}',[ProfileController::class,'deletePortfolioImage']);
+						  Route::delete(
+								'/image/{imageId}',
+								[ProfileController::class, 'deletePortfolioImage']
+						  );
 					});
 			 });
 			 
