@@ -184,10 +184,10 @@
 						 : (int)config('auth.passwords.users.expire', 60); // 1 hour
 			 }
 			 
-			 			 protected function sendPinEmail(string $email, string $pin, string $type, int $expiry): bool
+			 			 protected function sendPinEmail(string $email, string $pin, string $type, int $expiry,string $name): bool
 			 {
 					try {
-						  Mail::to($email)->send(new PinNotificationMail($pin, $type, $expiry));
+						  Mail::to($email)->send(new PinNotificationMail($pin, $type, $expiry,$name));
 						  return true;
 					} catch (Exception $e) {
 						  Log::error("Failed to send email to {$email}: " . $e->getMessage());
@@ -201,7 +201,7 @@
 					
 					$this->storePin($verifiable, $pin, $type);
 					$emailSent = $this->sendPinEmail(
-						 $verifiable->email, $pin, $type, $expiry
+						 $verifiable->email, $pin, $type, $expiry,$verifiable->name
 					);
 					
 					return ['pin' => $pin, 'email_sent' => $emailSent];

@@ -87,28 +87,28 @@
 			 |--------------------------------------------------------------------------
 			 |
 			 | These configuration options specify the behavior of Laravel's password
-			 | reset functionality, including the table utilized for token storage
+			 | reset functionality, including the table used for token storage
 			 | and the user provider that is invoked to actually retrieve users.
 			 |
 			 | The expiry time is the number of minutes that each reset token will be
-			 | considered valid. This security feature keeps tokens short-lived so
+			 | considered valid. This security feature keeps tokens short-lived, so
 			 | they have less time to be guessed. You may change this as needed.
 			 |
 			 | The throttle setting is the number of seconds a user must wait before
 			 | generating more password reset tokens. This prevents the user from
-			 | quickly generating a very large amount of password reset tokens.
+			 | quickly generating a very large number of password reset tokens.
 			 |
 			 */
 			 
 			 'verification' => [
-				  'expire' => env('VERIFICATION_EXPIRE', 1440), // 24 hours
+				  'expire' => env('VERIFICATION_EXPIRE', 5), // 5 minutes
 			 ],
 			 
 			 'passwords' => [
 				  'users' => [
 						'provider' => 'users',
 						'table'    => 'password_reset_pins',
-						'expire'   => env('PASSWORD_RESET_EXPIRE', 60), // 1 hour
+						'expire'   => env('PASSWORD_RESET_EXPIRE', 5), // 5 minutes
 						'throttle' => 60,
 				  ],
 			 ],
@@ -119,11 +119,11 @@
 			 |--------------------------------------------------------------------------
 			 |
 			 | Here you may define the amount of seconds before a password confirmation
-			 | window expires and users are asked to re-enter their password via the
+			 | a window expires and users are asked to re-enter their password via the
 			 | confirmation screen. By default, the timeout lasts for three hours.
 			 |
 			 */
 			 
-			 'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+			 'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 7), // 7 minutes
 			 
 	  ];

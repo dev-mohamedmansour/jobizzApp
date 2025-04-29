@@ -3,17 +3,17 @@ function responseJson($status, $message, $data = null): \Illuminate\Http\JsonRes
 {
 	  if ($data === null) {
 			 $response = [
-				  'status' => $status,
+				  'status' => (string)$status,
 				  'message' => $message,
 			 ];
 	  }else{
 			 $response = [
-				  'status' => $status,
-				  'message' => $message,
+				  'status' => (string)$status,
+				  'message' => (string)$message,
 				  'data' => $data
 			 ];
 	  }
-	  return response()->json($response);
+	  return response()->json([$response], $status);
 	  
 }
 

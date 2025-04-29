@@ -297,7 +297,7 @@
 					}
 			 }
 			 
-			 public function approve(Admin $pendingAdmin): JsonResponse
+			 public function approve($pendingAdmin): JsonResponse
 			 {
 					try {
 						  if (!auth('admin')->user()->hasRole('super-admin')) {
@@ -305,39 +305,43 @@
 									  403, 'Unauthorized: Only super-admins can approve'
 								 );
 						  }
-						  
-						  if ($pendingAdmin->is_approved) {
+						  $admin = Admin::find($pendingAdmin);
+						  if(!$admin)
+						  {
+								 return responseJson(404, 'Admin not found');
+						  }
+						  if ($admin->is_approved) {
 								 return responseJson(
 									  403,
 									  'This account is already approved '
 								 );
 						  }
 						  
-						  DB::transaction(function () use ($pendingAdmin) {
+						  DB::transaction(function () use ($admin) {
 								 // Remove pending status
-								 $pendingAdmin->update([
+								 $admin->update([
 									  'is_approved' => true,
 									  'approved_by' => auth()->id(),
 								 ]);
 								 
 								 // Remove temporary role/permissions
-								 $pendingAdmin->removeRole('pending');
-								 $pendingAdmin->revokePermissionTo('access-pending');
+								 $admin->removeRole('pending');
+								 $admin->revokePermissionTo('access-pending');
 								 
 								 // Assign a default admin role with permissions
-								 $pendingAdmin->assignRole('admin');
-								 $pendingAdmin->givePermissionTo(
+								 $admin->assignRole('admin');
+								 $admin->givePermissionTo(
 									  ['manage-own-company', 'manage-company-jobs',
 										'manage-company-admins']
 								 );
 								 
 								 // Send approval notification
-								 $pendingAdmin->notify(new AdminApprovedNotification());
+								 $admin->notify(new AdminApprovedNotification());
 						  });
 						  
 						  return responseJson(200, 'Admin approved successfully', [
-								'admin_id'   => $pendingAdmin->id,
-								'admin_name' => $pendingAdmin->name,
+								'admin_id'   => $admin->id,
+								'admin_name' => $admin->name,
 								'new_role'   => 'admin'
 						  ]);
 						  

@@ -118,7 +118,7 @@
 					
 					// Check if validation fails
 					if ($validator->fails()) {
-						  return responseJson(422, $validator->errors()->first());
+						  return responseJson(422, "validation error",$validator->errors()->all());
 					}
 					
 					// Check if profile with the same title_job already exists for this user

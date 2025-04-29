@@ -10,24 +10,26 @@
 	  {
 			 use Queueable, SerializesModels;
 			 
-			 public $pin;
-			 public $type; // 'verification' or 'reset'
-			 public $expiryMinutes;
+			 public string $pin;
+			 public string $type; // 'verification' or 'reset'
+			 public string $expiryMinutes;
+			 public string $name;
 			 
-			 public function __construct($pin, $type, $expiryMinutes)
+			 public function __construct($pin, $type, $expiryMinutes,$name)
 			 {
 					$this->pin = $pin;
 					$this->type = $type;
 					$this->expiryMinutes = $expiryMinutes;
+					$this->name = $name;
 			 }
 			 
-			 public function build()
+			 public function build(): PinNotificationMail
 			 {
 					return $this->subject($this->getSubject())
-						 ->markdown('emails.auth.pin_notification');
+						 ->view('emails.auth.pin_notification');
 			 }
 			 
-			 protected function getSubject()
+			 protected function getSubject(): string
 			 {
 					return $this->type === 'verification'
 						 ? 'Verify Your Email Address'

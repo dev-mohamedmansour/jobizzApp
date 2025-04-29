@@ -37,7 +37,7 @@ class AdminRegistrationPending extends Notification
 				  ->line("Name: {$this->admin->name}")
 				  ->line("Email: {$this->admin->email}")
 				  ->action('Review Request', url("/admin/approvals/{$this->admin->id}"))
-				  ->line('This request will expire in 72 hours.');
+				  ->line('This request will expire in 1 hours.');
 	  }
     /**
      * Get the array representation of the notification.

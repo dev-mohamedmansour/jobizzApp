@@ -24,7 +24,7 @@ return [
     |
     | The algorithm you are using, will determine whether your tokens are
     | signed with a random string (defined in `JWT_SECRET`) or using the
-    | following public & private keys.
+    | following public and private keys.
     |
     | Symmetric Algorithms:
     | HS256, HS384 & HS512 will use `JWT_SECRET`.
@@ -89,7 +89,7 @@ return [
     |
     */
 	 
-	 'ttl' => env('JWT_TTL', 60 * 24 * 5), // 5 days in minutes
+	 'ttl' => env('JWT_TTL', 6), // 6 minutes
     /*
     |--------------------------------------------------------------------------
     | Refresh time to live
@@ -107,7 +107,7 @@ return [
     |
     */
 	 
-	 'refresh_ttl' => env('JWT_REFRESH_TTL', 60 * 24 * 30) ,   // 30-day max refresh
+	 'refresh_ttl' => env('JWT_REFRESH_TTL', 1440) ,   // 1440 minutes
     /*
     |--------------------------------------------------------------------------
     | JWT hashing algorithm
@@ -136,7 +136,7 @@ return [
     'required_claims' => [
         'iss',
         'iat',
-        'exp',
+        'exp',//
         'nbf',
         'sub',
         'jti',
@@ -149,9 +149,9 @@ return [
     |
     | Specify the claim keys to be persisted when refreshing a token.
     | `sub` and `iat` will automatically be persisted, in
-    | addition to the these claims.
+    | addition to these claims.
     |
-    | Note: If a claim does not exist then it will be ignored.
+    | Note: If a claim does not exist, then it will be ignored.
     |
     */
 
@@ -186,7 +186,7 @@ return [
     |
     | This property gives the jwt timestamp claims some "leeway".
     | Meaning that if you have any unavoidable slight clock skew on
-    | any of your servers then this will afford you some level of cushioning.
+    | any of your servers, then this will afford you some level of cushioning.
     |
     | This applies to the claims `iat`, `nbf` and `exp`.
     |
