@@ -184,7 +184,7 @@
 						 : (int)config('auth.passwords.users.expire', 60); // 1 hour
 			 }
 			 
-			 			 protected function sendPinEmail(string $email, string $pin, string $type, int $expiry,string $name): bool
+			 protected function sendPinEmail(string $email, string $pin, string $type, int $expiry,string $name): bool
 			 {
 					try {
 						  Mail::to($email)->send(new PinNotificationMail($pin, $type, $expiry,$name));

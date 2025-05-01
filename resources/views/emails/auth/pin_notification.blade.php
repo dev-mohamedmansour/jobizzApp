@@ -1,6 +1,4 @@
-{{-- resources/views/emails/auth/pin_notification.blade.php --}}
-{{--@component('mail::message')--}}
-        <!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
     <title>    @if($type === 'verification')
@@ -25,25 +23,7 @@
         Use this code to complete your password reset.
     @endif</p>
 <p>This code will expire in {{ $expiryMinutes}} minutes</p>
-{{-- <P> --}}
-{{--     @component('mail::button', [ --}}
-{{--           'url' => config('app.url'), --}}
-{{--           'color' => 'primary' --}}
-{{--           ])Visit {{ config('app.name') }} --}}
-{{--     @endcomponent --}}
-{{-- </P> --}}
 Thanks,
 {{ config('app.name') }}
 </body>
 </html>
-
-{{--    @component('mail::button', [--}}
-{{--        'url' => config('app.url'),--}}
-{{--        'color' => 'primary'--}}
-{{--    ])--}}
-{{--        Visit {{ config('app.name') }}--}}
-{{--    @endcomponent--}}
-
-{{--     If you didn't request this, please ignore this email. --}}
-
-{{--@endcomponent--}}
