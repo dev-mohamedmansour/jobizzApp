@@ -30,7 +30,7 @@ class UserController extends Controller
 						  // Deny access if the user is authenticated with an unknown guard
 						  return responseJson(
 								403,
-								'Forbidden: You do not have permission to view this company'
+								'Forbidden: You do not have permission to view this users'
 						  );
 					}
 					

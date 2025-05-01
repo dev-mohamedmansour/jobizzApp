@@ -52,7 +52,7 @@
 			  */
 			 
 			 protected $casts = [
-				  'pin_created_at' => 'datetime',
+				  'pin_created_at' => DateCast::class,
 				  'created_at'        => DateCast::class,
 				  'updated_at'        => DateCast::class,
 			 ];
