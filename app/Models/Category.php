@@ -17,8 +17,8 @@ class Category extends Model
 				 'updated_at'        => DateCast::class,
 			];
 	  
-	  public function jobs(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+	  public function jobs(): \Illuminate\Database\Eloquent\Relations\HasMany
 	  {
-			 return $this->belongsToMany(JobListing::class);
+			 return $this->hasMany(JobListing::class, 'category_name', 'name');
 	  }
 }

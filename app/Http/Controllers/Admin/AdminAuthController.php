@@ -22,7 +22,6 @@
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  use Spatie\Permission\Exceptions\PermissionAlreadyExists;
 	  use Spatie\Permission\Exceptions\RoleAlreadyExists;
-	  
 	  class AdminAuthController extends Controller
 	  {
 			 protected $pinService;
@@ -192,30 +191,30 @@
 								'phone'       => $validated['phone'],
 								'photo'       => $validated['photo'],
 								'password'    => Hash::make($validated['password']),
-								'is_approved' => false, // Default unapproved
+								'is_approved' => true, // Default unapproved
 								'company_id'  => null,
 						  ]);
 						  
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$admin, 'verification'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 $admin->delete();
-								 return responseJson(
-									  500, 'Registration failed - email not sent'
-								 );
-						  }
+//						  $pinResult = $this->pinService->generateAndSendPin(
+//								$admin, 'verification'
+//						  );
+//
+//						  if (!$pinResult['email_sent']) {
+//								 $admin->delete();
+//								 return responseJson(
+//									  500, 'Registration failed - email not sent'
+//								 );
+//						  }
 						  
 						  // Assign a pending role and basic permissions
-						  $admin->assignRole('pending');
-						  $admin->givePermissionTo('access-pending');
+						  $admin->assignRole('admin');
+//						  $admin->givePermissionTo('access-pending');
 						  
 						  // Notify all super-admins
-						  $superAdmins = Admin::role('super-admin')->get();
-						  Notification::send(
-								$superAdmins, new AdminRegistrationPending($admin)
-						  );
+//						  $superAdmins = Admin::role('super-admin')->get();
+//						  Notification::send(
+//								$superAdmins, new AdminRegistrationPending($admin)
+//						  );
 						  
 						  return responseJson(
 								201,

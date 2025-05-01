@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Models\JobListing;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
 	  use App\Services\PinService;
@@ -706,6 +707,51 @@
 								? "Server error: " . $e->getMessage()
 								: "An unexpected error occurred. Please try again later.";
 						  return responseJson(500, $message);
+					}
+			 }
+			 
+			 public function home(Request $request): JsonResponse
+			 {
+					try {
+						  // Check authentication
+						  if (!auth('api')->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  $user = auth('api')->user();
+						  
+						  // Check if the user has a profile
+						  if (!$user->profile) {
+								 return responseJson(404, 'Profile not found');
+						  }
+						  
+						  $profileJobTitle = $user->profile->job_title;
+						  
+						  // Retrieve 10 random jobs with similar titles
+						  $popularJobs = JobListing::where('title', 'like', '%' . $profileJobTitle . '%')
+								->inRandomOrder()
+								->take(10)
+								->get();
+						  
+						  if ($popularJobs->isEmpty()) {
+								 return responseJson(404, 'No similar jobs found');
+						  }
+						  
+						  // Structure the response
+						  $response = [
+								'status' => 200,
+								'message' => 'Popular jobs retrieved successfully',
+								'data' => [
+									 'popular' => $popularJobs
+								]
+						  ];
+						  
+						  return response()->json($response);
+						  
+					} catch (\Exception $e) {
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500, $errorMessage);
 					}
 			 }
 			 

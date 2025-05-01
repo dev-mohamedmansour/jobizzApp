@@ -157,7 +157,7 @@
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::post('/logout', [AuthController::class, 'logout']);
 			 });
-			 
+			 Route::get('/home',[AuthController::class, 'home'])->middleware('auth:api');
 			 // Social auth
 //			 Route::get(
 //				  '/{provider}', [AuthController::class, 'redirectToProvider']

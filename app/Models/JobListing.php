@@ -19,9 +19,9 @@ class JobListing extends Model
 			'updated_at' => 'date:Y-m-d',
 	  ];
 	  
-	  public function category()
+	  public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 	  {
-			 return $this->belongsTo(Category::class);
+			 return $this->belongsTo(Category::class, 'category_name', 'name');
 	  }
 	  
 	  public function applications()

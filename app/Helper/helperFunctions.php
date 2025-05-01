@@ -16,7 +16,6 @@ function responseJson($status, $message, $data = null): \Illuminate\Http\JsonRes
 	  return response()->json([$response], $status);
 	  
 }
-
 function notifyByFirebase($title, $body, $tokens, $data = [], $is_notification = true): bool|string
 {
     // API access key from Google FCM App Console

@@ -156,13 +156,13 @@
 										return responseJson(403, 'Unauthorized');
 								 }
 								 
-								 // Check if admin already has a company
-//								 if ($admin->company) {
-//										return responseJson(
-//											 403,
-//											 'You already have a company and cannot create another one'
-//										);
-//								 }
+//								  Check if admin already has a company
+								 if ($admin->company) {
+										return responseJson(
+											 403,
+											 'You already have a company and cannot create another one'
+										);
+								 }
 								 
 								 $validationRules = [
 									  'name'         => 'required|string|max:255|unique:companies',

@@ -20,16 +20,24 @@
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
-						  $categories = Category::all();
+//						  $categories = Category::with('jobs')->paginate(10);
+						  
+						  // Retrieve categories with their associated jobs, ordered by priority
+						  $categories = Category::with('jobs')->paginate(10);
 						  
 						  if ($categories->isEmpty()) {
 								 return responseJson(404, 'No categories found');
 						  }
-						  
+						  $responseData = [];
+						  foreach ($categories as $category) {
+								 $responseData[$category->name] = [
+									  'name' => $category->name,
+									  'image' => $category->image,
+									  'jobs' => $category->jobs
+								 ];
+						  }
 						  return responseJson(
-								200, 'Categories retrieved successfully', [
-									 'categories' => $categories,
-								]
+								200, 'Categories retrieved successfully',$responseData
 						  );
 						  
 					} catch (\Exception $e) {
@@ -56,12 +64,15 @@
 								 return responseJson(404, 'Category not found');
 						  }
 						  
-						  return responseJson(200, 'Category details retrieved', $category);
+						  return responseJson(
+								200, 'Category details retrieved', $category
+						  );
 						  
 					} catch (\Exception $e) {
 						  // Handle exceptions
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage()
+								: 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
@@ -83,8 +94,9 @@
 						  
 						  // Validate request data including image
 						  $validated = $request->validate([
-								'name' => 'required|string|max:255|unique:categories,name',
-								'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Updated validation
+								'name'  => 'required|string|max:255|unique:categories,name',
+								'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								// Updated validation
 						  ]);
 						  
 						  // Generate slug
@@ -93,8 +105,12 @@
 						  // Store the image
 						  if ($request->hasFile('image')) {
 								 $image = $request->file('image');
-								 $imageName = time() . '_' . Str::slug($validated['name']) . '.' . $image->getClientOriginalExtension();
-								 $imagePath = $image->storeAs('category_images', $imageName, 'public');
+								 $imageName = time() . '_' . Str::slug(
+											$validated['name']
+									  ) . '.' . $image->getClientOriginalExtension();
+								 $imagePath = $image->storeAs(
+									  'category_images', $imageName, 'public'
+								 );
 								 
 								 $validated['image'] = $imagePath;
 						  }
@@ -112,7 +128,8 @@
 						  );
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage()
+								: 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
@@ -142,12 +159,14 @@
 						  
 						  // Validate request data including image
 						  $validated = $request->validate([
-								'name' => 'sometimes|string|max:255',
-								'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Updated validation
+								'name'  => 'sometimes|string|max:255',
+								'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+								// Updated validation
 						  ]);
 						  
 						  // Get original data before update
-						  $originalData = $category->only(['name', 'slug', 'image']); // Include image in original data
+						  $originalData = $category->only(['name', 'slug', 'image']
+						  ); // Include image in original data
 						  
 						  // Check if any data actually changed
 						  $changes = [];
@@ -162,14 +181,18 @@
 						  
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
-									  'category' => $category,
+									  'category'  => $category,
 									  'unchanged' => true
 								 ]);
 						  }
 						  
 						  // Update slug if name changes
-						  if (isset($validated['name']) && $validated['name'] !== $category->name) {
-								 $validated['slug'] = Str::slug($validated['name'], '-');
+						  if (isset($validated['name'])
+								&& $validated['name'] !== $category->name
+						  ) {
+								 $validated['slug'] = Str::slug(
+									  $validated['name'], '-'
+								 );
 						  }
 						  
 						  // Handle image upload and deletion
@@ -180,8 +203,12 @@
 								 }
 								 
 								 $image = $request->file('image');
-								 $imageName = time() . '_' . Str::slug($validated['name'] ?? $category->name) . '.' . $image->getClientOriginalExtension();
-								 $imagePath = $image->storeAs('category_images', $imageName, 'public');
+								 $imageName = time() . '_' . Str::slug(
+											$validated['name'] ?? $category->name
+									  ) . '.' . $image->getClientOriginalExtension();
+								 $imagePath = $image->storeAs(
+									  'category_images', $imageName, 'public'
+								 );
 								 
 								 $validated['image'] = $imagePath;
 						  } elseif (isset($validated['image'])) {
@@ -193,8 +220,8 @@
 						  $category->update($validated);
 						  
 						  return responseJson(200, 'Category updated successfully', [
-								'category' => $category,
-								'changes' => $changes,
+								'category'  => $category,
+								'changes'   => $changes,
 								'unchanged' => false
 						  ]);
 						  
@@ -204,7 +231,8 @@
 						  );
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage()
+								: 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
@@ -245,7 +273,8 @@
 					} catch (\Exception $e) {
 						  // Handle exceptions
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage()
+								: 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, $errorMessage);
 					}
 			 }
