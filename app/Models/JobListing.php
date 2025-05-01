@@ -11,7 +11,7 @@ class JobListing extends Model
 			'requirement', 'location',
 			'job_status',
 			'benefits', 'salary',
-			'job_type','category_id','company_id','position'
+			'job_type','category_name','company_id','position'
 	  ];
 	  
 	  protected $casts = [

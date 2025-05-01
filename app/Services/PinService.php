@@ -163,6 +163,7 @@
 	  use App\Models\Admin;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
+	  use Carbon\Carbon;
 	  use Exception;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Mail;
@@ -269,26 +270,43 @@
 			 
 			 protected function verifyEmailPin($verifiable, string $pin): bool
 			 {
+					// Log the entered PIN and stored PIN for debugging
+					Log::info("Entered PIN: " . $pin);
+					Log::info("Stored PIN: " . $verifiable->pin_code);
+					
 					if (!$verifiable->pin_code || $verifiable->pin_code !== $pin) {
+						  Log::info("PIN does not match.");
 						  return false;
 					}
 					
-					$expiry = $verifiable instanceof Admin
-						 ? (int)config('auth.verification.expire', 1440)
-						 : (int)config('auth.passwords.users.expire', 60);
+					$expiry = 10; // 10 minutes expiration
 					
-					if ($verifiable->pin_created_at->addMinutes($expiry)->isPast()) {
+					$pinCreatedAt = $verifiable->pin_created_at;
+					Log::info("PIN Created At: " . $pinCreatedAt);
+					
+					if (!$pinCreatedAt instanceof Carbon) {
+						  Log::error("PIN created_at is not a valid Carbon instance.");
 						  return false;
 					}
 					
+					$expiryTime = $pinCreatedAt->copy()->addMinutes($expiry);
+					Log::info("PIN Expiry Time: " . $expiryTime);
+					
+					if (now()->gt($expiryTime)) {
+						  Log::info("PIN has expired.");
+						  return false;
+					}
+					
+					// If the PIN is valid and not expired, update the user's status
 					$verifiable->update([
 						 'pin_code'          => null,
 						 'pin_created_at'    => null,
 						 'confirmed_email'   => true,
 						 'email_verified_at' => now(),
-						 'updated_at' => now()
+						 'updated_at'        => now()
 					]);
 					
+					Log::info("PIN verified successfully.");
 					return true;
 			 }
 			 

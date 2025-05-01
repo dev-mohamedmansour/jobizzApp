@@ -38,7 +38,7 @@
 					
 					$roles = [
 						 'super-admin' => ['manage-all-companies', 'manage-all-jobs', 'manage-roles', 'manage-company-admins', 'manage-applications', 'view-applicant-profiles', 'send-messages'],
-						 'admin' => ['manage-own-company', 'manage-company-jobs', 'manage-company-admins'],
+						 'admin' => ['manage-applications', 'send-messages','manage-own-company','view-applicant-profiles', 'manage-company-jobs', 'manage-company-admins'],
 						 'hr' => ['manage-company-jobs', 'view-applicant-profiles'],
 						 'coo' => ['manage-applications', 'send-messages'],
 						 'pending' => ['access-pending'],

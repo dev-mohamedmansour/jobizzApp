@@ -54,6 +54,8 @@
 						 Route::prefix('users')->group(function () {
 								Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index']
 								);
+								Route::delete('/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy']
+								);
 						 });
 						 
 						 // Company routes
@@ -76,6 +78,8 @@
 									 '/add-job', [JobController::class, 'store']
 								);
 								Route::get('/{jobId}', [JobController::class, 'show']
+								);
+								Route::get('/company/{id}', [JobController::class, 'getAllJobsForCompany']
 								);
 								Route::get('/', [JobController::class, 'index']
 								);
@@ -147,6 +151,7 @@
 			 // Regular auth
 			 Route::post('/register', [AuthController::class, 'register']);
 			 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+			 Route::post('/resend-email', [AuthController::class, 'resendVerificationEmail']);
 			 Route::post('/login', [AuthController::class, 'login']);
 			 
 			 Route::middleware(['auth:api'])->group(function () {

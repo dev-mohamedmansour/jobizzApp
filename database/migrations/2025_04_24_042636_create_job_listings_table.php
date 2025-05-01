@@ -23,6 +23,7 @@ return new class extends Migration
 				  $table->string('location');
 				  $table->string('position');
 				  $table->text('benefits')->nullable();
+				  $table->string('category_name');
 				  $table->timestamps();
 			});
     }

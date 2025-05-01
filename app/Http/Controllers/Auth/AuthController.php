@@ -152,10 +152,10 @@
 								$user, $validated['pinCode'], 'verification'
 						  )
 						  ) {
-								 // Mark email as verified for MustVerifyEmail
-								 if (!$user->hasVerifiedEmail()) {
-										$user->markEmailAsVerified();
-								 }
+//								 // Mark email as verified for MustVerifyEmail
+//								 if (!$user->hasVerifiedEmail()) {
+//										$user->markEmailAsVerified();
+//								 }
 
 								 return responseJson(
 									  200, 'Email verified successfully',
@@ -167,6 +167,83 @@
 								 );
 						  }
 						  return responseJson(400, 'Invalid PIN code');
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  $errors = $e->validator->errors()->all();
+						  $errorMessage = 'Validation error: ';
+						  $errorMessage .= implode(
+								'', array_map(
+									 fn($error, $index) => "$error",
+									 $errors,
+									 array_keys($errors)
+								)
+						  );
+						  return responseJson(
+								422,
+								$errorMessage
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function resendVerificationEmail(Request $request): JsonResponse
+			 {
+					try {
+						  $validated = $request->validate([
+								'email'   => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'exists:users,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+						  ], [
+								'email.required'   => 'The email field is required.',
+								'email.regex'      => 'Invalid email format. Please use English characters only.',
+								'email.ascii'      => 'Email must contain only English characters.',
+								'email.exists'      => 'Account not found',
+						  ]);
+						  // Find user without failing immediately
+						  $user = User::where('email', $request['email'])->first();
+						  if (!$user) {
+								 return responseJson(
+									  404,
+									  'User not found. Please check your email or register first.'
+								 );
+						  }
+						  
+						  if ($user->pin_code == null && $user->confirmed_email =1 && $user->pin_created_at == null
+									 && $user->email_verified_at != null) {
+								 return responseJson(
+									  400, 'Your account is already verified'
+								 );
+						  }
+						  // Generate a new PIN code
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$user, 'verification'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 // Optionally delete the user if email failed
+								 $user->pin_code->delete();
+								 
+								 return responseJson(
+									  500,
+									  'Failed to send verification email...Try again later'
+								 );
+						  }
+						  
+						  return responseJson(200, 'Verification email sent successfully');
+						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  $errors = $e->validator->errors()->all();
 						  $errorMessage = 'Validation error: ';

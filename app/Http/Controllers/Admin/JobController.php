@@ -14,7 +14,7 @@
 			 {
 					try {
 						  // Check if the user is authenticated
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -68,7 +68,50 @@
 					}
 					return false;
 			 }
-			 
+			 public function getAllJobsForCompany(Request $request,$id): JsonResponse
+			 {
+					try {
+						  // Check if the user is authenticated
+						  if (!auth('admin')->check()) {
+								 return responseJson(401, 'Unauthenticated');
+						  }
+						  
+						  // Determine which guard the user is authenticated with
+						  if (auth()->guard('admin')->check()) {
+								 $user = auth('admin')->user();
+								 if (!$user->hasRole('admin')) {
+										return responseJson(
+											 403,
+											 'Forbidden: You do not have permission to view this jobs'
+										);
+								 }
+						  }
+						  // Get active jobs count using a subquery
+						  $jobs = Job::with('company')
+								->withCount(
+									 ['applications as active_applications' => function ($query
+									 ) {
+											$query->where('status', 'submitted');
+									 }]
+								)->whereHas('company', function ($query) use ($id) {
+									  $query->where('id', $id);
+								})
+								->paginate(10);
+						  
+						  if ($jobs->isEmpty()) {
+								 return responseJson(404, 'No Jobs found');
+						  }
+						  
+						  return responseJson(200, 'Jobs retrieved successfully', [
+								'jobs' => $jobs,
+						  ]);
+						  
+					} catch (\Exception $e) {
+						  return responseJson(500, 'Server error', [
+								'error' => config('app.debug') ? $e->getMessage() : null
+						  ]);
+					}
+			 }
 			 public function show($jobId): JsonResponse
 			 {
 					try {
@@ -163,7 +206,7 @@
 						  
 						  // Define validation rules
 						  $validationRules = [
-								'category_id' => 'required|integer|exists:categories,id',
+								'category_name' => 'required|string|exists:categories,name',
 								'title'       => 'required|string|max:255|regex:/^[a-zA-Z\s,.+\-\'\/]+$/',
 								'job_type'    => 'required|string|in:Full-time,Part-time,Internship,Contract',
 								'salary'      => 'required|numeric|min:1000|max:100000000',
@@ -177,7 +220,7 @@
 						  
 						  // Add custom validation messages
 						  $validationCustomMessages = [
-								'category_id.required' => 'The category field is required.',
+								'category_name.required' => 'The category name field is required.',
 								'category.exists'      => 'The selected category does not exist.',
 								'title.required'       => 'The job title field is required.',
 								'job_type.required'    => 'The job type field is required.',

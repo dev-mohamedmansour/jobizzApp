@@ -9,11 +9,14 @@
 	  {
 			 public function get($model, $key, $value, $attributes)
 			 {
-					return Carbon::parse($value)->toDateString();
+					// Parse the date string into a Carbon instance
+					return $value ? Carbon::parse($value) : null;
 			 }
 			 
 			 public function set($model, $key, $value, $attributes)
 			 {
-					return $value;
+					// Ensure that the date is stored in the database as a string in the correct format
+					return $value instanceof Carbon ? $value->toDateTimeString() : $value;
 			 }
+	  
 	  }
