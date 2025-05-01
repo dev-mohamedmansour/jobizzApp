@@ -30,7 +30,7 @@
 						  }
 						  $responseData = [];
 						  foreach ($categories as $category) {
-								 $responseData[$category->name] = [
+								 $responseData[] = [
 									  'name' => $category->name,
 									  'image' => $category->image,
 									  'jobs' => $category->jobs

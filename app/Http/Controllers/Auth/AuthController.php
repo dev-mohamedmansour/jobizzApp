@@ -719,14 +719,13 @@
 						  }
 						  
 						  $user = auth('api')->user();
-						  
 						  // Check if the user has a profile
-						  if (!$user->profile) {
+						  if (!$user->defaultProfile) {
 								 return responseJson(404, 'Profile not found');
 						  }
 						  
-						  $profileJobTitle = $user->profile->job_title;
-						  
+						  $profileJobTitle = $user->defaultProfile->title_job;
+//						  dd($user->defaultProfile->title_job);
 						  // Retrieve 10 random jobs with similar titles
 						  $popularJobs = JobListing::where('title', 'like', '%' . $profileJobTitle . '%')
 								->inRandomOrder()
