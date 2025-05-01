@@ -51,6 +51,11 @@
 						 // Auth routes
 						 Route::post('/logout', [AdminAuthController::class, 'logout']
 						 );
+						 Route::prefix('users')->group(function () {
+								Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index']
+								);
+						 });
+						 
 						 // Company routes
 						 Route::prefix('companies')->group(function () {
 								Route::post(
@@ -281,7 +286,9 @@
 					});
 			 });
 			 
-			 Route::prefix('/profile/{profileId}/applications')->middleware('auth:api')->group(
+			 Route::prefix('/profile/{profileId}/applications')->middleware(
+				  'auth:api'
+			 )->group(
 				  function () {
 						 Route::get(
 							  '/',
