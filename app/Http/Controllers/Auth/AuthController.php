@@ -126,8 +126,8 @@
 								],
 								'pinCode' => [
 									 'required',
-									 'digits:6',
-									 'numeric',
+									 'max_digits::6',
+									 'string',
 									 'not_in:0000,1111,1234,4321',
 									 // Block common weak PINs
 								]
@@ -137,7 +137,7 @@
 								'email.ascii'      => 'Email must contain only English characters.',
 								'pinCode.required' => 'PIN code is required',
 								'pinCode.digits'   => 'PIN must be exactly 6 digits',
-								'pinCode.numeric'  => 'PIN must contain only numbers',
+								'pinCode.string'  => 'PIN must contain only numbers',
 								'pinCode.not_in'   => 'This PIN is too common and insecure',
 						  ]);
 						  // Find user without failing immediately

@@ -23,26 +23,21 @@
 						  if (!auth('api')->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
-						  
 						  // Validate request data
 						  $validated = $request->validate([
 								'cover_letter' => 'sometimes|string|max:1000',
 								'cv_id' => 'required|integer|exists:documents,id',
 						  ]);
-						  
 						  // Find the profile
 						  $profile = Profile::with('documents')->findOrFail($profileId);
-						  
 						  // Authorization check: Ensure the current user owns this profile
 						  if ($request->user()->id !== $profile->user_id) {
 								 return responseJson(403, 'Unauthorized action. This profile does not belong to you.');
 						  }
-						  
 						  // Verify that the CV belongs to this profile
 						  $cv = $profile->documents()->where('type', 'cv')
 								->where('id', $validated['cv_id'])
 								->first();
-						  
 						  if (!$cv) {
 								 return responseJson(404, 'CV not found or does not belong to this profile');
 						  }
@@ -50,30 +45,24 @@
 						  {
 								 $validated['cover_letter']='no thing';
 						  }
-						  
 						  $job=Job::find($jobId);
-						  
 						  if (!$job) {
 								 return responseJson(404, 'Job not found');
 						  }
 						  // Create application
-//						  dd($job->applications()->);
 						  $application = $job->applications()->create([
 								'profile_id' => $profile->id,
 								'cover_letter' => $validated['cover_letter']? :'No thing',
 								'resume_path' => $cv->path,
 								'status' => 'pending', // Initial status
 						  ]);
-						  
 						  // Record initial status history
 						  $application->statuses()->create([
 								'status' => 'pending',
 						  ]);
-						  
 						  return responseJson(201, 'Application submitted successfully', [
 								'application' => $application,
 						  ]);
-						  
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
 					} catch (ModelNotFoundException $e) {

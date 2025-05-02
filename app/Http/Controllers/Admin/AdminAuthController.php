@@ -195,30 +195,30 @@
 								'company_id'  => null,
 						  ]);
 						  
-//						  $pinResult = $this->pinService->generateAndSendPin(
-//								$admin, 'verification'
-//						  );
-//
-//						  if (!$pinResult['email_sent']) {
-//								 $admin->delete();
-//								 return responseJson(
-//									  500, 'Registration failed - email not sent'
-//								 );
-//						  }
-						  
-						  // Assign a pending role and basic permissions
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$admin, 'verification'
+						  );
+						  if (!$pinResult['email_sent']) {
+								 $admin->delete();
+								 return responseJson(
+									  500, 'Registration failed - email not sent'
+								 );
+						  }
+						  $admin->update([
+								'approved_by' => 1,
+						  ]);
 						  $admin->assignRole('admin');
+//						   Assign a pending role and basic permissions
 //						  $admin->givePermissionTo('access-pending');
-						  
-						  // Notify all super-admins
+//						  "And  Your account requires super-admin approval"
+//						   Notify all super-admins
 //						  $superAdmins = Admin::role('super-admin')->get();
 //						  Notification::send(
 //								$superAdmins, new AdminRegistrationPending($admin)
 //						  );
-						  
 						  return responseJson(
 								201,
-								'Admin created. Verify email to activate. And  Your account requires super-admin approval'
+								'Admin created. Verify email to activate'
 								, [
 									 'id'       => $admin->id,
 									 'fullName' => $admin->name,
@@ -250,13 +250,28 @@
 			 {
 					try {
 						  $validated = $request->validate([
-								'email'    => 'required|email',
-								'pin_code' => 'required|digits:6'
+								'email'   => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'exists:admins,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+								'pin_code' => [
+									 'required',
+									 'max_digits::6',
+									 'string',
+									 'not_in:0000,1111,1234,4321',
+									 // Block common weak PINs
+								]
 						  ], [
-								'email.required'    => 'Email is required',
-								'email.email'       => 'Invalid email format',
-								'pin_code.required' => 'PIN code is required',
-								'pin_code.digits'   => 'PIN must be 6 digits'
+								'email.required'   => 'The email field is required.',
+								'email.regex'      => 'Invalid email format. Please use English characters only.',
+								'email.ascii'      => 'Email must contain only English characters.',
+								'pinCode.required' => 'PIN code is required',
+								'pinCode.digits'   => 'PIN must be exactly 6 digits',
+								'pinCode.string'  => 'PIN must contain only numbers',
+								'pinCode.not_in'   => 'This PIN is too common and insecure',
 						  ]);
 						  
 						  // Find user without failing immediately
@@ -557,122 +572,119 @@
 					return responseJson(200, 'Successfully logged out');
 			 }
 			 
-			 public function forgotAdminPassword(Request $request
-			 ): \Illuminate\Http\JsonResponse {
-					try {
-						  $validated = $request->validate([
-								'email' => 'required|email|exists:admins,email'
-						  ], [
-								'email.required' => 'The email field is required.',
-								'email.email'    => 'Please enter a valid email address.',
-								'email.exists'   => 'No account found with this email address.'
-						  ]);
-						  $admin = Admin::where('email', $request->email)->first();
-						  
-						  // Delete existing pins
-						  PasswordResetPin::where('email', $validated['email'])
-								->delete();
-						  
-						  // Attempt to generate and send PIN
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$admin, 'reset'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 throw new \Exception(
-									  'Failed to send password reset email'
-								 );
-						  }
-						  
-						  return responseJson(200, "Reset PIN sent to email");
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(422, 'Validation failed', [
-								'errors'  => $e->errors(),
-								'message' => 'Please check your email address'
-						  ]);
-						  
-					} catch (\Exception $e) {
-						  return responseJson(500, 'Password reset request failed', [
-								'error'   => config('app.debug') ? $e->getMessage()
-									 : null,
-								'message' => 'Please try again later'
-						  ]);
-					}
-					
-			 }
-			 
-			 public function resetAdminPassword(Request $request
-			 ): \Illuminate\Http\JsonResponse {
-					try {
-						  $validated = $request->validate([
-								'email'    => 'required|email|exists:admins,email',
-								'pin'      => 'required|digits:4',
-								'password' => 'required|string|min:8|confirmed'
-						  ], [
-								'email.required'    => 'Admin email is required',
-								'email.exists'      => 'No admin account found with this email',
-								'pin.required'      => 'Verification PIN is required',
-								'pin.digits'        => 'PIN must be a 4-digit number',
-								'password.required' => 'New password is required'
-						  ]);
-						  
-						  $admin = Admin::where('email', $validated['email'])->first(
-						  );
-						  
-						  // Verify PIN through PinService
-						  if (!$this->pinService->verifyPin(
-								$admin, $validated['pin'], 'reset'
-						  )
-						  ) {
-								 return responseJson(401, 'Invalid or expired PIN', [
-									  'suggestion' => 'Request a new PIN'
-								 ]);
-						  }
-//						  if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $request->password)) {
-//								 $e->add(
-//									  'password',
-//									  'Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character'
+//			 public function forgotAdminPassword(Request $request
+//			 ): \Illuminate\Http\JsonResponse {
+//					try {
+//						  $validated = $request->validate([
+//								'email' => 'required|email|exists:admins,email'
+//						  ], [
+//								'email.required' => 'The email field is required.',
+//								'email.email'    => 'Please enter a valid email address.',
+//								'email.exists'   => 'No account found with this email address.'
+//						  ]);
+//						  $admin = Admin::where('email', $request->email)->first();
+//
+//						  // Delete existing pins
+//						  PasswordResetPin::where('email', $validated['email'])
+//								->delete();
+//
+//						  // Attempt to generate and send PIN
+//						  $pinResult = $this->pinService->generateAndSendPin(
+//								$admin, 'reset'
+//						  );
+//
+//						  if (!$pinResult['email_sent']) {
+//								 throw new \Exception(
+//									  'Failed to send password reset email'
 //								 );
 //						  }
-						  
-						  // Update password
-						  $admin->update([
-								'password' => Hash::make($validated['password'])
-						  ]);
-						  
-						  // Clear reset PIN record
-						  PasswordResetPin::where('email', $admin->email)
-								->where('type', 'admin')
-								->delete();
-						  
-						  return responseJson(200, 'Password reset successfully', [
-								'email' => $admin->email
-						  ]);
-						  
-					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation failed', $e->errors());
-					} catch (\Exception $e) {
-						  return responseJson(500, 'Password reset failed', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
-					}
-			 }
-			 
-			 protected function respondWithToken($token, $data
-			 ): \Illuminate\Http\JsonResponse {
-					return responseJson(
-						 200, 'Authenticated',
-						 [
-							  'token' => ' type: bearer  ' . $token,
-							  'admin' => $data
-						 ]
-					);
-					
-			 }
-			 
-			 
-			 
+//
+//						  return responseJson(200, "Reset PIN sent to email");
+//
+//					} catch (\Illuminate\Validation\ValidationException $e) {
+//						  return responseJson(422, 'Validation failed', [
+//								'errors'  => $e->errors(),
+//								'message' => 'Please check your email address'
+//						  ]);
+//
+//					} catch (\Exception $e) {
+//						  return responseJson(500, 'Password reset request failed', [
+//								'error'   => config('app.debug') ? $e->getMessage()
+//									 : null,
+//								'message' => 'Please try again later'
+//						  ]);
+//					}
+//
+//			 }
+//
+//			 public function resetAdminPassword(Request $request
+//			 ): \Illuminate\Http\JsonResponse {
+//					try {
+//						  $validated = $request->validate([
+//								'email'    => 'required|email|exists:admins,email',
+//								'pin'      => 'required|digits:4',
+//								'password' => 'required|string|min:8|confirmed'
+//						  ], [
+//								'email.required'    => 'Admin email is required',
+//								'email.exists'      => 'No admin account found with this email',
+//								'pin.required'      => 'Verification PIN is required',
+//								'pin.digits'        => 'PIN must be a 4-digit number',
+//								'password.required' => 'New password is required'
+//						  ]);
+//
+//						  $admin = Admin::where('email', $validated['email'])->first(
+//						  );
+//
+//						  // Verify PIN through PinService
+//						  if (!$this->pinService->verifyPin(
+//								$admin, $validated['pin'], 'reset'
+//						  )
+//						  ) {
+//								 return responseJson(401, 'Invalid or expired PIN', [
+//									  'suggestion' => 'Request a new PIN'
+//								 ]);
+//						  }
+////						  if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $request->password)) {
+////								 $e->add(
+////									  'password',
+////									  'Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character'
+////								 );
+////						  }
+//
+//						  // Update password
+//						  $admin->update([
+//								'password' => Hash::make($validated['password'])
+//						  ]);
+//
+//						  // Clear reset PIN record
+//						  PasswordResetPin::where('email', $admin->email)
+//								->where('type', 'admin')
+//								->delete();
+//
+//						  return responseJson(200, 'Password reset successfully', [
+//								'email' => $admin->email
+//						  ]);
+//
+//					} catch (ValidationException $e) {
+//						  return responseJson(422, 'Validation failed', $e->errors());
+//					} catch (\Exception $e) {
+//						  return responseJson(500, 'Password reset failed', [
+//								'error' => config('app.debug') ? $e->getMessage() : null
+//						  ]);
+//					}
+//			 }
+//
+//			 protected function respondWithToken($token, $data
+//			 ): \Illuminate\Http\JsonResponse {
+//					return responseJson(
+//						 200, 'Authenticated',
+//						 [
+//							  'token' => ' type: bearer  ' . $token,
+//							  'admin' => $data
+//						 ]
+//					);
+//
+//			 }
 			 public function requestPasswordReset(Request $request): JsonResponse
 			 {
 					try {
