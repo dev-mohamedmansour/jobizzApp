@@ -155,8 +155,6 @@
 								 if (!$admin->hasPermissionTo('manage-own-company')) {
 										return responseJson(403, 'Unauthorized');
 								 }
-								 
-//								  Check if admin already has a company
 								 if ($admin->company) {
 										return responseJson(
 											 403,
@@ -171,7 +169,6 @@
 									  'location'     => 'required|string|max:255',
 									  'website'      => 'sometimes|url',
 									  'size'         => 'sometimes|string|max:255',
-									  // Make size required
 									  'hired_people' => 'required|numeric|min:5',
 								 ];
 						  }
@@ -203,7 +200,7 @@
 						  } else {
 								 // Set default image URL
 								 $validated['logo']
-									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
+									  = 'https://jobizaa.com/still_images/company.png';
 						  }
 						  
 						  // Create company
@@ -339,7 +336,7 @@
 										Storage::disk('public')->delete($company->logo);
 								 }
 								 $validated['logo']
-									  = 'https://jobizaa.com/still_images/companyLogoDefault.jpeg';
+									  = 'https://jobizaa.com/still_images/company.png';
 						  }
 						  
 						  // Get original data before update
@@ -398,9 +395,11 @@
 						  ]);
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(422, 'Validation error', [
-								'errors' => $e->validator->errors()->all()
-						  ]);
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage

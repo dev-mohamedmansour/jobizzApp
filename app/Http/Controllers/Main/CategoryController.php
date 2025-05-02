@@ -20,8 +20,6 @@
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
-//						  $categories = Category::with('jobs')->paginate(10);
-						  
 						  // Retrieve categories with their associated jobs, ordered by priority
 						  $categories = Category::with('jobs')->paginate(10);
 						  
@@ -113,6 +111,10 @@
 								 );
 								 
 								 $validated['image'] = $imagePath;
+						  } else {
+								 // Set default image URL
+								 $validated['logo']
+									  = 'https://jobizaa.com/still_images/category.png';
 						  }
 						  
 						  // Create category

@@ -286,9 +286,11 @@
 						  return responseJson(400, 'Invalid PIN code');
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(422, 'Validation error', [
-								'errors' => $e->errors()
-						  ]);
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Server error', [
 								'error' => $e->getMessage()
@@ -711,12 +713,11 @@
 						  return responseJson(200, "Reset PIN sent successfully to email");
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = "Please check your email address, "
-								. implode(" ", $errors);
-						  
-						  return responseJson(422, $errorMessage);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  $errorMessage
 								= 'Password reset request failed. Please try again later.';
@@ -784,9 +785,11 @@
 						  );
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errorMessage = "Validation failed: " . implode(" ", $e->validator->errors()->all());
-						  return responseJson(422, $errorMessage);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  $message = config('app.debug')
 								? "Check failed: " . $e->getMessage()
@@ -831,9 +834,11 @@
 						  session()->flush();
 						  return responseJson(200, 'Your Password updated successfully');
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = implode(" ", $e->validator->errors()->all());
-						  return responseJson(422, "Validation failed: " . $errors);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (TokenExpiredException $e) {
 						  return responseJson(401, "Token expired Your session has expired");
 						  

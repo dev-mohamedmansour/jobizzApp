@@ -169,18 +169,10 @@
 						  }
 						  return responseJson(400, 'Invalid PIN code');
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = 'Validation error: ';
-						  $errorMessage .= implode(
-								'', array_map(
-									 fn($error, $index) => "$error",
-									 $errors,
-									 array_keys($errors)
-								)
-						  );
 						  return responseJson(
 								422,
-								$errorMessage
+								" validation error",
+								$e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
 						  // Handle other exceptions
@@ -246,18 +238,10 @@
 						  return responseJson(200, 'Verification email sent successfully');
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = 'Validation error: ';
-						  $errorMessage .= implode(
-								'', array_map(
-									 fn($error, $index) => "$error",
-									 $errors,
-									 array_keys($errors)
-								)
-						  );
 						  return responseJson(
 								422,
-								$errorMessage
+								" validation error",
+								$e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
 						  // Handle other exceptions
@@ -326,18 +310,10 @@
 								]
 						  );
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = 'Validation error: ';
-						  $errorMessage .= implode(
-								'', array_map(
-									 fn($error, $index) => "$error",
-									 $errors,
-									 array_keys($errors)
-								)
-						  );
 						  return responseJson(
 								422,
-								$errorMessage
+								" validation error",
+									 $e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
 						  // Handle other exceptions
@@ -575,12 +551,11 @@
 						  return responseJson(200, "Reset PIN sent successfully to email");
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = $e->validator->errors()->all();
-						  $errorMessage = "Please check your email address, "
-								. implode(" ", $errors);
-						  
-						  return responseJson(422, $errorMessage);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  $errorMessage
 								= 'Password reset request failed. Please try again later.';
@@ -590,6 +565,69 @@
 						  }
 						  
 						  Log::error('Password Reset Error: ' . $e->getMessage());
+						  return responseJson(500, $errorMessage);
+					}
+			 }
+			 
+			 public function resendRestEmail(Request $request): JsonResponse
+			 {
+					try {
+						  $validated = $request->validate([
+								'email'   => [
+									 'required',
+									 'string',
+									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+									 'exists:users,email',
+									 'ascii' // Ensures only ASCII characters
+								],
+						  ], [
+								'email.required'   => 'The email field is required.',
+								'email.regex'      => 'Invalid email format. Please use English characters only.',
+								'email.ascii'      => 'Email must contain only English characters.',
+								'email.exists'      => 'Account not found',
+						  ]);
+						  // Find user without failing immediately
+						  $user = User::where('email', $validated['email'])->first();
+						  if (!$user) {
+								 return responseJson(
+									  404,
+									  'User not found. Please check your email or register first.'
+								 );
+						  }
+						  
+						  // Delete existing pins
+						  PasswordResetPin::where('email', $validated['email'])
+								->delete();
+						  
+						  // Attempt to generate and send PIN
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$user, 'reset'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 throw new \Exception(
+									  'Failed to send password reset email'
+								 );
+						  }
+						  
+						  return responseJson(200, "Reset PIN sent successfully to email");
+						  
+					} catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+									 $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  // Handle other exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  // For production: Generic error message
+						  $errorMessage
+								= "Server error: Something went wrong. Please try again later.";
+						  // For development: Detailed error message
+						  if (config('app.debug')) {
+								 $errorMessage = "Server error: " . $e->getMessage();
+						  }
 						  return responseJson(500, $errorMessage);
 					}
 			 }
@@ -648,9 +686,11 @@
 						  );
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errorMessage = "Validation failed: " . implode(" ", $e->validator->errors()->all());
-						  return responseJson(422, $errorMessage);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
 						  $message = config('app.debug')
 								? "Check failed: " . $e->getMessage()
@@ -695,9 +735,11 @@
 						  session()->flush();
 						  return responseJson(200, 'Your Password updated successfully');
 					} catch (\Illuminate\Validation\ValidationException $e) {
-						  $errors = implode(" ", $e->validator->errors()->all());
-						  return responseJson(422, "Validation failed: " . $errors);
-						  
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
 					} catch (TokenExpiredException $e) {
 						  return responseJson(401, "Token expired Your session has expired");
 						  
@@ -725,7 +767,6 @@
 						  }
 						  
 						  $profileJobTitle = $user->defaultProfile->title_job;
-//						  dd($user->defaultProfile->title_job);
 						  // Retrieve 10 random jobs with similar titles
 						  $popularJobs = JobListing::where('title', 'like', '%' . $profileJobTitle . '%')
 								->inRandomOrder()

@@ -173,10 +173,12 @@
 	  {
 			 /**
 			  * Generate and send a PIN for the given model (User/Admin)
+			  *
+			  * @throws RandomException
 			  */
 			 protected function generatePin(): string
 			 {
-					return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+					return str_pad(random_int(0, 999999), 6, '', STR_PAD_LEFT);
 			 }
 			 protected function getExpiryMinutes(string $type): int
 			 {

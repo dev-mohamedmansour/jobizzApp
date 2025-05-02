@@ -12,6 +12,7 @@
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\DB;
+	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Facades\Validator;
 	  
@@ -121,7 +122,7 @@
 						  return responseJson(422, "validation error",$validator->errors()->all());
 					}
 					
-					// Check if profile with the same title_job already exists for this user
+					// Check if the profile with the same title_job already exists for this user
 					$existingProfile = $user->profiles()
 						 ->where('title_job', $request->title_job)
 						 ->first();
@@ -183,9 +184,9 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Get original data before update
@@ -207,7 +208,7 @@
 										Storage::disk('public')->delete($profile->profile_image);
 								 }
 								 // Set to null or a default image path
-								 $newData['profile_image'] = 'default_profile.jpg'; // Use a valid default image path
+								 $newData['profile_image'] = 'https://jobizaa.com/still_images/userDefault.jpg'; // Use a valid default image path
 						  }
 						  
 						  // If setting as default, remove default from other profiles
@@ -447,9 +448,9 @@
 						  
 						  // Check if validation fails
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Prepare data
@@ -510,9 +511,9 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Prepare update data
@@ -535,7 +536,7 @@
 						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
 								 // If the image field is empty, set a default image URL
 								 // Use a reliable default image URL or path
-								 $updateData['image'] = 'default_education.jpg'; // Example default image stored in storage
+								 $updateData['image'] ='https://jobizaa.com/still_images/education.jpg';
 						  }
 						  
 						  // Get original data before update
@@ -750,9 +751,9 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Check for duplicate experience
@@ -772,7 +773,7 @@
 								 $imagePath = $request->file('image')->store('experiences', 'public');
 						  } else {
 								 // Use a default image path (should be a path to a default image in your storage)
-								 $imagePath = 'default_experience.jpg'; // Ensure this image exists in your storage
+								 $imagePath = 'https://jobizaa.com/still_images/experience.png';
 						  }
 						  
 						  // Prepare data
@@ -825,9 +826,9 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Get original data before update
@@ -867,8 +868,7 @@
 											  Log::error('Failed to delete image: ' . $e->getMessage());
 										}
 								 }
-								 // Set image to null or a default value if needed
-								 $updateData['image'] = null;
+								 $updateData['image'] = 'https://jobizaa.com/still_images/experience.png';
 						  }
 						  
 						  // Check for actual changes
@@ -978,9 +978,9 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  // Store the file
@@ -1037,9 +1037,8 @@
 						  ]);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(
-									  422,
-									  $validator->errors()
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
 								 );
 						  }
 						  
@@ -1138,9 +1137,8 @@
 					]);
 					
 					if ($validator->fails()) {
-						  return responseJson(
-								422,
-								$validator->errors()
+						  return responseJson(422, 'Validation failed',
+								$validator->errors()->all()
 						  );
 					}
 					
@@ -1546,9 +1544,9 @@
 						  $validator = Validator::make($request->all(), $validationRules, $validationMessages);
 						  
 						  if ($validator->fails()) {
-								 return responseJson(422, 'Validation failed', [
-									  'errors' => $validator->errors()
-								 ]);
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
+								 );
 						  }
 						  
 						  DB::beginTransaction();
@@ -1698,9 +1696,8 @@
 						  );
 						  
 						  if ($validator->fails()) {
-								 return responseJson(
-									  422,
-									  $validator->errors()
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
 								 );
 						  }
 						  
@@ -1805,9 +1802,8 @@
 						  );
 						  
 						  if ($validator->fails()) {
-								 return responseJson(
-									  422,
-									  $validator->errors()
+								 return responseJson(422, 'Validation failed',
+									  $validator->errors()->all()
 								 );
 						  }
 						  

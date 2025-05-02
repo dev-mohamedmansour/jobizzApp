@@ -15,7 +15,7 @@ return new class extends Migration
 				  $table->id();
 				  $table->string('name')->unique();
 				  $table->foreignId('admin_id')->constrained();
-				  $table->string('logo')->default('https://jobizaa.com/still_images/companyLogoDefault.jpeg');
+				  $table->string('logo')->default('https://jobizaa.com/still_images/company.png');
 				  $table->text('description')->nullable();
 				  $table->string('location')->nullable();
 				  $table->string('website')->nullable();
