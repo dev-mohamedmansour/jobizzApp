@@ -89,7 +89,7 @@ return [
     |
     */
 	 
-	 'ttl' => env('JWT_TTL', null), // 6 minutes
+	 'ttl' => env('JWT_TTL', 15), // 15 minutes
     /*
     |--------------------------------------------------------------------------
     | Refresh time to live
@@ -107,7 +107,7 @@ return [
     |
     */
 	 
-	 'refresh_ttl' => env('JWT_REFRESH_TTL', 1440) ,   // 1440 minutes
+	 'refresh_ttl' => env('JWT_REFRESH_TTL', 10080) ,   // 7 days (10,080 minutes)
     /*
     |--------------------------------------------------------------------------
     | JWT hashing algorithm
@@ -136,7 +136,7 @@ return [
     'required_claims' => [
         'iss',
         'iat',
-//        'exp',//
+        'exp',
         'nbf',
         'sub',
         'jti',

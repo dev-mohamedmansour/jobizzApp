@@ -101,14 +101,14 @@
 			 */
 			 
 			 'verification' => [
-				  'expire' => env('VERIFICATION_EXPIRE', 5), // 5 minutes
+				  'expire' => env('VERIFICATION_EXPIRE', 15), // 15 minutes
 			 ],
 			 
 			 'passwords' => [
 				  'users' => [
 						'provider' => 'users',
 						'table'    => 'password_reset_pins',
-						'expire'   => env('PASSWORD_RESET_EXPIRE', 5), // 5 minutes
+						'expire'   => env('PASSWORD_RESET_EXPIRE', 15), // 15 minutes
 						'throttle' => 60,
 				  ],
 			 ],

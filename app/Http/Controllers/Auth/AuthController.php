@@ -67,22 +67,26 @@
 								'name'            => $validated['fullName'],
 								'email'           => $validated['email'],
 								'password'        => Hash::make($validated['password']),
-								'confirmed_email' => false,
+								'confirmed_email' => true,
+								'email_verified_at'=>now()
 						  ]);
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$user, 'verification'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 // Optionally delete the user if email failed
-								 $user->delete();
-								 
-								 return responseJson(
-									  500,
-									  'Registration Not complete because failed to send verification email'
-								 );
+//						  $pinResult = $this->pinService->generateAndSendPin(
+//								$user, 'verification'
+//						  );
+//
+//						  if (!$pinResult['email_sent']) {
+//								 // Optionally delete the user if email failed
+//								 $user->delete();
+//
+//								 return responseJson(
+//									  500,
+//									  'Registration Not complete because failed to send verification email'
+//								 );
+//						  }
+						  // Mark email as verified for MustVerifyEmail
+						  if (!$user->hasVerifiedEmail()) {
+								 $user->markEmailAsVerified();
 						  }
-						  
 						  return responseJson(
 								201,
 								'Registration successful. Please check your email for verification PIN.',
@@ -153,10 +157,10 @@
 								$user, $validated['pinCode'], 'verification'
 						  )
 						  ) {
-//								 // Mark email as verified for MustVerifyEmail
-//								 if (!$user->hasVerifiedEmail()) {
-//										$user->markEmailAsVerified();
-//								 }
+								 // Mark email as verified for MustVerifyEmail
+								 if (!$user->hasVerifiedEmail()) {
+										$user->markEmailAsVerified();
+								 }
 
 								 return responseJson(
 									  200, 'Email verified successfully',
