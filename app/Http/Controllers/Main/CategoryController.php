@@ -55,7 +55,7 @@
 						  }
 						  
 						  // Find the category
-						  $category = Category::find($categoryId);
+						  $category = Category::with('jobs')->find($categoryId);
 						  
 						  // Check if the category exists
 						  if (!$category) {
@@ -109,8 +109,9 @@
 								 $imagePath = $image->storeAs(
 									  'category_images', $imageName, 'public'
 								 );
+								 $urlPath =Storage::disk('public')->url($imagePath);
 								 
-								 $validated['image'] = $imagePath;
+								 $validated['image'] = $urlPath;
 						  } else {
 								 // Set default image URL
 								 $validated['logo']
@@ -211,8 +212,8 @@
 								 $imagePath = $image->storeAs(
 									  'category_images', $imageName, 'public'
 								 );
-								 
-								 $validated['image'] = $imagePath;
+								 $urlPath =Storage::disk('public')->url($imagePath);
+								 $validated['image'] = $urlPath;
 						  } elseif (isset($validated['image'])) {
 								 // If the image field is present but no file is uploaded, remove the image entry
 								 $validated['image'] = null;

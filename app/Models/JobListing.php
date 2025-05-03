@@ -1,7 +1,8 @@
 <?php
 
 namespace App\Models;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class JobListing extends Model
@@ -19,19 +20,23 @@ class JobListing extends Model
 			'updated_at' => 'date:Y-m-d',
 	  ];
 	  
-	  public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+	  public function category(): BelongsTo
 	  {
 			 return $this->belongsTo(Category::class, 'category_name', 'name');
 	  }
 	  
-	  public function applications()
+	  public function applications(): HasMany
 	  {
 			 return $this->hasMany(Application::class);
 	  }
 	  
-	  public function company()
+	  public function company(): BelongsTo
 	  {
 			 return $this->belongsTo(Company::class);
+	  }
+	  public function companyLogo(): BelongsTo
+	  {
+			 return $this->belongsTo(Company::class)->logo;
 	  }
 	  
 	  public function scopeActiveJobs($query)

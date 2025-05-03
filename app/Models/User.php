@@ -52,9 +52,9 @@
 			  */
 			 
 			 protected $casts = [
-				  'pin_created_at' => DateCast::class,
-				  'created_at'        => DateCast::class,
-				  'updated_at'        => DateCast::class,
+				  'pin_created_at' => 'date:Y-m-d',
+				  'created_at'        => 'date:Y-m-d',
+				  'updated_at'        => 'date:Y-m-d',
 			 ];
 			 protected $hidden
 				  = [
@@ -72,7 +72,7 @@
 			 {
 					return [
 						 'confirmed_email'   => 'boolean',
-						 'email_verified_at' => 'datetime',
+						 'email_verified_at' => 'date:Y-m-d',
 						 'password'          => 'hashed'
 					];
 			 }

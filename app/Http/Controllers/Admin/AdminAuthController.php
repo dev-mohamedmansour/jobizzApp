@@ -16,6 +16,7 @@
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Mail;
 	  use Illuminate\Support\Facades\Notification;
+	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
@@ -177,7 +178,8 @@
 								 $photoPath = $request->file('photo')->store(
 									  'admin_images', 'public'
 								 );
-								 $validated['photo'] = $photoPath;
+								 $urlPath =Storage::disk('public')->url($photoPath);
+								 $validated['photo'] = $urlPath;
 						  } else {
 								 // Set default image URL
 								 $validated['photo']

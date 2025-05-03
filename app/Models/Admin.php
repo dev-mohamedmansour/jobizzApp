@@ -29,9 +29,9 @@
 				  = [
 						'confirmed_email'   => 'boolean',
 						'pin_created_at'    => 'datetime',
-						'email_verified_at' => 'datetime',
-						'created_at'        => DateCast::class,
-						'updated_at'        => DateCast::class,
+						'email_verified_at' => 'date:Y-m-d',
+						'created_at'        => 'date:Y-m-d',
+						'updated_at'        => 'date:Y-m-d',
 				  ];
 			 protected $hidden
 				  = [
@@ -41,8 +41,8 @@
 			 
 			 protected $dates
 				  = [
-						'email_verified_at' => DateCast::class,
-						'pin_created_at'    => DateCast::class,
+						'email_verified_at' => 'date:Y-m-d',
+						'pin_created_at'    => 'date:Y-m-d',
 				  ];
 			 protected $guard_name = 'admin';
 			 

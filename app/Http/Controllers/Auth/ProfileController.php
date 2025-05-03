@@ -139,13 +139,14 @@
 					
 					// Handle image upload
 					if ($request->hasFile('profile_image')) {
-						  $validatedData['profile_image'] = $request->file('profile_image')
+						  $image = $request->file('profile_image')
 								->store('profiles', 'public');
+						  $validatedData['profile_image'] = Storage::disk('public')->url($image);
 					} else {
 						  // Set default image path (use a local default image)
 						  $validatedData['profile_image'] = 'https://jobizaa.com/still_images/userDefault.jpg'; // Ensure this image exists in your storage
 					}
-					
+
 					// If setting as default, remove default from other profiles
 					if ($request->is_default) {
 						  $user->profiles()->update(['is_default' => false]);
@@ -196,19 +197,21 @@
 						  // Handle profile_image upload or removal
 						  if ($request->hasFile('profile_image')) {
 								 // Delete the old image if it exists
-								 if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
-										Storage::disk('public')->delete($profile->profile_image);
+								 if ($profile->profile_image
+									  && Storage::disk('public')->exists(
+											$profile->profile_image
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $profile->profile_image
+										);
 								 }
 								 
 								 // Store the new image
-								 $newData['profile_image'] = $request->file('profile_image')->store('profiles', 'public');
-						  } elseif (isset($newData['profile_image']) && $newData['profile_image'] === '') {
-								 // If the profile_image is empty, remove the existing image
-								 if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
-										Storage::disk('public')->delete($profile->profile_image);
-								 }
-								 // Set to null or a default image path
-								 $newData['profile_image'] = 'https://jobizaa.com/still_images/userDefault.jpg'; // Use a valid default image path
+									  $new= $request->file(
+									  'profile_image'
+								 )->store('profiles', 'public');
+								 $newData['profile_image'] =Storage::disk('public')->url($new);
 						  }
 						  
 						  // If setting as default, remove default from other profiles
@@ -250,7 +253,6 @@
 						  ]);
 					}
 			 }
-			 
 			 public function deleteProfile(Request $request, $id): JsonResponse
 			 {
 					try {
@@ -309,7 +311,6 @@
 						  ]);
 					}
 			 }
-			 
 			 // Education Logic
 			 public function getAllEducations(Request $request, $profileId
 			 ): JsonResponse {
@@ -459,7 +460,7 @@
 						  // Handle image upload
 						  if ($request->hasFile('image')) {
 								 $imagePath = $request->file('image')->store('educations', 'public');
-								 $educationData['image'] = $imagePath;
+								 $educationData['image'] = Storage::disk('public')->url($imagePath);
 						  } else {
 								 // Set default image URL
 								 $educationData['image'] = 'https://jobizaa.com/still_images/education.jpg';
@@ -530,13 +531,9 @@
 								 if ($education->image && Storage::disk('public')->exists($education->image)) {
 										Storage::disk('public')->delete($education->image);
 								 }
-								 
 								 // Store the new image
-								 $updateData['image'] = $request->file('image')->store('educations', 'public');
-						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
-								 // If the image field is empty, set a default image URL
-								 // Use a reliable default image URL or path
-								 $updateData['image'] ='https://jobizaa.com/still_images/education.jpg';
+									 $new = $request->file('image')->store('educations', 'public');
+								 $updateData['image']=Storage::disk('public')->url($new);
 						  }
 						  
 						  // Get original data before update
@@ -771,14 +768,14 @@
 						  if ($request->hasFile('image')) {
 								 // Store the uploaded image
 								 $imagePath = $request->file('image')->store('experiences', 'public');
+								 $experienceData['image']= Storage::disk('public')->url($imagePath);
 						  } else {
 								 // Use a default image path (should be a path to a default image in your storage)
-								 $imagePath = 'https://jobizaa.com/still_images/experience.png';
+								 $experienceData['image'] = 'https://jobizaa.com/still_images/experience.png';
 						  }
 						  
 						  // Prepare data
 						  $experienceData = $validator->validated();
-						  $experienceData['image'] = $imagePath;
 						  
 						  // Handle the current job case
 						  if ($experienceData['is_current'] ?? false) {
@@ -858,17 +855,8 @@
 								 }
 								 
 								 // Store the new image
-								 $updateData['image'] = $request->file('image')->store('experiences', 'public');
-						  } elseif (isset($updateData['image']) && $updateData['image'] === '') {
-								 // If the image field is empty, remove the existing image
-								 if ($experience->image && Storage::disk('public')->exists($experience->image)) {
-										try {
-											  Storage::disk('public')->delete($experience->image);
-										} catch (\Exception $e) {
-											  Log::error('Failed to delete image: ' . $e->getMessage());
-										}
-								 }
-								 $updateData['image'] = 'https://jobizaa.com/still_images/experience.png';
+									  $new =$request->file('image')->store('experiences', 'public');
+								 $updateData['image'] =Storage::disk('public')->url($new);
 						  }
 						  
 						  // Check for actual changes
@@ -907,7 +895,6 @@
 						  ]);
 					}
 			 }
-			 
 			 public function deleteExperience(Request $request, $profileId, $experienceId): JsonResponse
 			 {
 					try {
@@ -952,7 +939,6 @@
 						  ]);
 					}
 			 }
-			 
 			 // Document Logic
 			 public function uploadCV(Request $request, $profileId): JsonResponse
 			 {
@@ -985,13 +971,13 @@
 						  
 						  // Store the file
 						  $path = $request->file('file')->store('cvs', 'public');
-						  
+						  $urlPath =Storage::disk('public')->url($path);
 						  // Create a new document record
 						  $cv = $profile->documents()->create([
 								'name'   => $request->name,
 								'type'   => 'cv',
 								'format' => 'cv',
-								'path'   => $path
+								'path'   => $urlPath
 						  ]);
 						  
 						  return responseJson(
@@ -1009,11 +995,10 @@
 						  ]);
 					}
 			 }
-			 
 			 // Edit CV
 			 public
 			 function editCV(Request $request, $profileId, $cvId
-			 ) {
+			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
 						  // Authorization
@@ -1049,7 +1034,9 @@
 								 $newPath = $request->file('file')->store(
 									  'cvs', 'public'
 								 );
-								 $cv->path = $newPath;
+								 $urlPath =Storage::disk('public')->url($newPath);
+								 
+								 $cv->path = $urlPath;
 								 $changes[] = 'CV file updated';
 						  }
 						  
@@ -1083,10 +1070,8 @@
 						  ]);
 					}
 			 }
-			 
 			 // Delete CV
-			 
-			 public function deleteCV(Request $request, $profileId, $cvId): \Illuminate\Http\JsonResponse
+			 public function deleteCV(Request $request, $profileId, $cvId): JsonResponse
 			 {
 					try {
 						  // Find the profile
@@ -1123,8 +1108,6 @@
 						  ]);
 					}
 			 }
-			 
-			 
 			 // Upload Portfolio
 			 public function addPortfolioTypeImages(Request $request, $profileId
 			 ): JsonResponse {
@@ -1245,8 +1228,9 @@
 					
 					foreach ($newImages as $image) {
 						  $path = $image->store('portfolios/images', 'public');
+						  $urlPath =Storage::disk('public')->url($path);
 						  $portfolio->images()->create([
-								'path'      => $path,
+								'path'      => $urlPath,
 								'mime_type' => $image->getMimeType()
 						  ]);
 					}
@@ -1285,19 +1269,19 @@
 					
 					foreach ($images as $image) {
 						  $path = $image->store('portfolios/images', 'public');
+						  $urlPath =Storage::disk('public')->url($path);
 						  $portfolio->images()->create([
-								'path'      => $path,
+								'path'      => $urlPath,
 								'mime_type' => $image->getMimeType()
 						  ]);
 					}
 			 }
-			 
 			 protected function handlePdfUpload($file, Document $portfolio): void
 			 {
 					$path = $file->store('portfolios/pdfs', 'public');
-					$portfolio->update(['path' => $path]);
+					$urlPath =Storage::disk('public')->url($path);
+					$portfolio->update(['path' => $urlPath]);
 			 }
-			 
 			 public function deletePortfolioImage(Request $request, $profileId,
 				  $imageId
 			 ): JsonResponse {
@@ -1358,7 +1342,6 @@
 						  ]);
 					}
 			 }
-			 
 			 public function addPortfolioTypePdf(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
@@ -1430,7 +1413,6 @@
 						  );
 					}
 			 }
-			 
 			 public function addPortfolioTypeLink(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
@@ -1564,8 +1546,9 @@
 								 foreach ($request->file('images') as $image) {
 										// Store the image
 										$path = $image->store('portfolios/images', 'public');
+										$urlPath =Storage::disk('public')->url($path);
 										$portfolio->images()->create([
-											 'path' => $path,
+											 'path' => $urlPath,
 											 'mime_type' => $image->getMimeType(),
 										]);
 								 }
@@ -1629,8 +1612,9 @@
 						  
 						  foreach ($newImages as $image) {
 								 $path = $image->store($path, 'public');
+								 $urlPath =Storage::disk('public')->url($path);
 								 $portfolio->images()->create([
-									  'path'      => $path,
+									  'path'      => $urlPath,
 									  'mime_type' => $image->getMimeType()
 								 ]);
 						  }
@@ -1745,7 +1729,6 @@
 						  );
 					}
 			 }
-			 
 			 protected function handlePdfUpdate(Request $request,
 				  Document $portfolio
 			 ): bool {
@@ -1762,10 +1745,10 @@
 					$path = $request->file('pdf')->store(
 						 'portfolios/pdfs', 'public'
 					);
-					$portfolio->path = $path;
+					$urlPath =Storage::disk('public')->url($path);
+					$portfolio->path = $urlPath;
 					return true;
 			 }
-			 
 			 public function editPortfolioUrl(Request $request, $profileId,
 				  $portfolioId
 			 ): JsonResponse {
@@ -1850,14 +1833,12 @@
 						  );
 					}
 			 }
-			 
 			 protected function handleUrlUpdate(Request $request,
 				  Document $portfolio
 			 ): bool {
 					if (!$request->has('url')) {
 						  return false;
 					}
-					
 					if ($portfolio->url !== $request->url) {
 						  $portfolio->url = $request->url;
 						  return true;
@@ -1865,7 +1846,6 @@
 					
 					return false;
 			 }
-			 
 			 public function deletePortfolio(Request $request, $profileId,
 				  $portfolioId
 			 ): JsonResponse {

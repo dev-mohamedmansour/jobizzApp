@@ -71,7 +71,7 @@
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
-						  $company = Company::find($id);
+						  $company = Company::with('jobs')->find($id);
 						  
 						  if (!$company) {
 								 return responseJson(404, 'Company not found');
@@ -196,7 +196,9 @@
 								 $logoPath = $request->file('logo')->store(
 									  'company_logos', 'public'
 								 );
-								 $validated['logo'] = $logoPath;
+								 $urlPath =Storage::disk('public')->url($logoPath);
+								 
+								 $validated['logo'] = $urlPath;
 						  } else {
 								 // Set default image URL
 								 $validated['logo']
@@ -252,7 +254,7 @@
 			 }
 			 
 			 public function update(Request $request, $id
-			 ): \Illuminate\Http\JsonResponse {
+			 ): JsonResponse {
 					try {
 						  $admin = auth('admin')->user();
 						  $company = Company::find($id);
@@ -324,21 +326,9 @@
 								 $logoPath = $request->file('logo')->store(
 									  'company_logos', 'public'
 								 );
-								 $validated['logo'] = $logoPath;
-						  } elseif (isset($validated['logo'])
-								&& $validated['logo'] === ''
-						  ) {
-								 if ($company->logo
-									  && Storage::disk('public')->exists(
-											$company->logo
-									  )
-								 ) {
-										Storage::disk('public')->delete($company->logo);
-								 }
-								 $validated['logo']
-									  = 'https://jobizaa.com/still_images/company.png';
+								 $urlPath =Storage::disk('public')->url($logoPath);
+								 $validated['logo'] = $urlPath;
 						  }
-						  
 						  // Get original data before update
 						  $originalData = $company->only(
 								['logo', 'description', 'location', 'website', 'size',

@@ -13,8 +13,8 @@ class Category extends Model
 	  
 	  protected $casts
 			= [
-				 'created_at'        => DateCast::class,
-				 'updated_at'        => DateCast::class,
+				 'created_at'        => 'date:Y-m-d',
+				 'updated_at'        => 'date:Y-m-d',
 			];
 	  
 	  public function jobs(): \Illuminate\Database\Eloquent\Relations\HasMany

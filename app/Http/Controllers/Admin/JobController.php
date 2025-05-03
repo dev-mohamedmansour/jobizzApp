@@ -147,7 +147,7 @@
 						  
 						  return responseJson(200, 'Job details retrieved', [
 								'job'  => $job->company->jobs->find($jobId),
-								'logo' => $job->company->logo
+								'logo' => url($job->company->logo)
 						  ]);
 						  
 					} catch (\Exception $e) {
