@@ -197,6 +197,9 @@
 			 Route::post(
 				  '/password/reset', [AuthController::class, 'newPassword']
 			 )->middleware(['auth:api', 'check.reset.token']);
+			 Route::post(
+				  '/password/change-password', [AuthController::class, 'changePassword']
+			 )->middleware(['auth:api']);
 			 
 			 
 			 Route::prefix('profiles')->middleware('auth:api')->group(function () {

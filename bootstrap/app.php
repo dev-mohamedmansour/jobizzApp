@@ -24,6 +24,7 @@
 						'check.reset.token' => \App\Http\Middleware\CheckPasswordResetToken::class,
 				  ]);
 				  $middleware->appendToGroup('admin', [
+						\Illuminate\Http\Middleware\HandleCors::class,
 						'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
 						 \App\Http\Middleware\EnsureAdminEmailIsVerified::class,
 						'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

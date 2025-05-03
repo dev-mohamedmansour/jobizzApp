@@ -14,7 +14,7 @@
 			 {
 					try {
 						  // Check if the user is authenticated
-						  if (!auth('admin')->check()) {
+						  if (!auth()->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
@@ -27,32 +27,61 @@
 											 'Forbidden: You do not have permission to view this jobs'
 										);
 								 }
-						  } elseif (!auth()->guard('api')->check()) {
+								 // Get active jobs count using a subquery
+								 $jobs = Job::with('company')
+									  ->withCount(
+											['applications as active_applications' => function ($query
+											) {
+												  $query->where('status', 'submitted');
+											}]
+									  )
+									  ->paginate(10);
+								 
+								 if ($jobs->isEmpty()) {
+										return responseJson(404, 'No Jobs found');
+								 }
+								 
+								 return responseJson(200, 'Jobs retrieved successfully', [
+									  'jobs' => $jobs,
+								 ]);
+								 
+						  } elseif (auth()->guard('api')->check()) {
 								 // Deny access if the user is authenticated with an unknown guard
+//								 return responseJson(
+//									  403,
+//									  'Forbidden: You do not have permission to view this jobs'
+//								 );
+								 $user = auth('api')->user();
+								 $profileJobTitle = $user->defaultProfile->title_job;
+								 $jobsNum = Job::count();
+								 $number = $jobsNum / 3;
+								 // Get active jobs count using a subquery
+								 $jobsTrending = Job::with('company')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 $jobsPopular = Job::with('company')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 $jobsRecommended = Job::with('company')->where(
+									  'title', 'like', '%' . $profileJobTitle . '%'
+								 )
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 if ($jobsNum == 0) {
+										return responseJson(404, 'No Jobs found');
+								 }
+								 
 								 return responseJson(
-									  403,
-									  'Forbidden: You do not have permission to view this jobs'
+									  200, 'Jobs retrieved successfully', [
+									  'Trending' => $jobsTrending,
+									  'Popular' => $jobsPopular,
+									  'Recommended' => $jobsRecommended,
+								 ]
 								 );
 						  }
-						  
-						  // Get active jobs count using a subquery
-						  $jobs = Job::with('company')
-								->withCount(
-									 ['applications as active_applications' => function ($query
-									 ) {
-											$query->where('status', 'submitted');
-									 }]
-								)
-								->paginate(10);
-						  
-						  if ($jobs->isEmpty()) {
-								 return responseJson(404, 'No Jobs found');
-						  }
-						  
-						  return responseJson(200, 'Jobs retrieved successfully', [
-								'jobs' => $jobs,
-						  ]);
-						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Server error', [
 								'error' => config('app.debug') ? $e->getMessage() : null

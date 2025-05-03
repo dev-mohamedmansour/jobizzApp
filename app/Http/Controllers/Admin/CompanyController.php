@@ -29,24 +29,39 @@
 											 'Forbidden: You do not have permission to view this company'
 										);
 								 }
-						  } elseif (!auth()->guard('api')->check()) {
-								 // Deny access if the user is authenticated with an unknown guard
+								 $companies = Company::withCount('jobs')->paginate(10);
+								 
+								 if ($companies->isEmpty()) {
+										return responseJson(404, 'No companies found');
+								 }
+								 
 								 return responseJson(
-									  403,
-									  'Forbidden: You do not have permission to view this company'
+									  200, 'Companies retrieved successfully', $companies
+								 );
+						  } elseif (auth()->guard('api')->check()) {
+								 
+								 $companyNum = Company::count();
+								 $number = $companyNum / 2;
+								 // Get active jobs count using a subquery
+								 $companyTrending = Company::with('jobs')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 $companyPopular = Company::with('jobs')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 if ($companyNum == 0) {
+										return responseJson(404, 'No Jobs found');
+								 }
+								 
+								 return responseJson(
+									  200, 'Companies retrieved successfully', [
+											'Trending' => $companyTrending,
+											'Popular'  => $companyPopular,
+									  ]
 								 );
 						  }
-						  
-						  $companies = Company::withCount('jobs')->paginate(10);
-						  
-						  if ($companies->isEmpty()) {
-								 return responseJson(404, 'No companies found');
-						  }
-						  
-						  return responseJson(
-								200, 'Companies retrieved successfully', $companies
-						  );
-						  
 					} catch (\Exception $e) {
 						  return responseJson(500, 'Server error', [
 								'error' => config('app.debug') ? $e->getMessage() : null
@@ -196,7 +211,7 @@
 								 $logoPath = $request->file('logo')->store(
 									  'company_logos', 'public'
 								 );
-								 $urlPath =Storage::disk('public')->url($logoPath);
+								 $urlPath = Storage::disk('public')->url($logoPath);
 								 
 								 $validated['logo'] = $urlPath;
 						  } else {
@@ -326,7 +341,7 @@
 								 $logoPath = $request->file('logo')->store(
 									  'company_logos', 'public'
 								 );
-								 $urlPath =Storage::disk('public')->url($logoPath);
+								 $urlPath = Storage::disk('public')->url($logoPath);
 								 $validated['logo'] = $urlPath;
 						  }
 						  // Get original data before update
@@ -433,8 +448,8 @@
 						  
 						  // Delete associated resources if needed (e.g., jobs)
 						  $company->jobs()->delete();
-
-    						// Delete sub-admins associated with the company (excluding the current admin)
+						  
+						  // Delete sub-admins associated with the company (excluding the current admin)
 						  $subAdmins = Admin::where('company_id', $company->id)
 								->where('id', '!=', $admin->id)
 								->get();

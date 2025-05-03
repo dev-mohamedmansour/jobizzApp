@@ -17,15 +17,14 @@
 			 |
 			 */
 			 
-			 'paths'                    => ['api/*'],
-			 'allowed_methods'          => ['GET', 'POST', 'PUT', 'DELETE',
-													  'OPTIONS'],
-			 'allowed_origins'          => ['https://jobizaa.com'],
-			 'allowed_origins_patterns' => [],
-			 'allowed_headers'          => ['Origin', 'Content-Type',
-													  'X-Auth-Token', 'Cookie'],
-			 'exposed_headers'          => [],
-			 'max_age'                  => 0,
-			 'supports_credentials'     => true,
+
+	 'paths' => ['api/*', 'login', 'logout', 'refresh'], // Include JWT routes
+	 'allowed_methods' => ['*'],
+	 'allowed_origins' => ['*'], // Set specific domains in production
+	 'allowed_origins_patterns' => [],
+	 'allowed_headers' => ['*'], // Important for JWT: allows Authorization header
+	 'exposed_headers' => ['Authorization'], // Expose Authorization header to client
+	 'max_age' => 0,
+	 'supports_credentials' => false,
 	  
 	  ];

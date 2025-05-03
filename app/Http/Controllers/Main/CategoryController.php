@@ -15,28 +15,53 @@
 			 public function index(Request $request): JsonResponse
 			 {
 					try {
-						  // Check authentication
-						  if (!auth()->check() && !auth('admin')->check()) {
+						  // Check if the user is authenticated
+						  if (!auth()->check()) {
 								 return responseJson(401, 'Unauthenticated');
 						  }
 						  
-						  // Retrieve categories with their associated jobs, ordered by priority
-						  $categories = Category::with('jobs')->paginate(10);
-						  
-						  if ($categories->isEmpty()) {
-								 return responseJson(404, 'No categories found');
+						  // Determine which guard the user is authenticated with
+						  if (auth()->guard('admin')->check()) {
+								 $user = auth('admin')->user();
+								 if (!$user->hasRole('super-admin')) {
+										return responseJson(
+											 403,
+											 'Forbidden: You do not have permission to view this categories'
+										);
+								 }
+								 $categories = Category::withCount('jobs')->paginate(10);
+								 
+								 if ($categories->isEmpty()) {
+										return responseJson(404, 'No companies found');
+								 }
+								 
+								 return responseJson(
+									  200, 'Companies retrieved successfully', $categories
+								 );
+						  } elseif (auth()->guard('api')->check()) {
+								 
+								 $categoryNum = Category::count();
+								 $number = $categoryNum / 2;
+								 // Get active jobs count using a subquery
+								 $categoryTrending = Category::with('jobs')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 $categoryPopular = Category::with('jobs')
+									  ->inRandomOrder()
+									  ->take($number)
+									  ->get();
+								 if ($categoryNum == 0) {
+										return responseJson(404, 'No Categories found');
+								 }
+								 
+								 return responseJson(
+									  200, 'Categories retrieved successfully', [
+											'Trending' => $categoryTrending,
+											'Popular'  => $categoryPopular,
+									  ]
+								 );
 						  }
-						  $responseData = [];
-						  foreach ($categories as $category) {
-								 $responseData[] = [
-									  'name' => $category->name,
-									  'image' => $category->image,
-									  'jobs' => $category->jobs
-								 ];
-						  }
-						  return responseJson(
-								200, 'Categories retrieved successfully',$responseData
-						  );
 						  
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());

@@ -4,6 +4,7 @@
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\JobListing;
+	  use App\Models\JobListing as Job;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
 	  use App\Services\PinService;
@@ -13,6 +14,7 @@
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
+	  use Illuminate\Validation\Validator;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
@@ -758,6 +760,53 @@
 					}
 			 }
 			 
+			 public function changePassword(Request $request): JsonResponse
+			 {
+					try {
+						  if (!auth('api')->check()) {
+								 return responseJson(
+									  401, 'No authenticated user found'
+									  );
+						  }
+					// Validate input
+					$validated = $request->validate([
+						 'oldPassword' => 'required',
+						 'newPassword' => 'required|string|min:8|confirmed|different:oldPassword|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+					], [
+						 'oldPassword.required' => 'Old password is required.',
+						 'newPassword.required'  => 'New password is required.',
+						 'newPassword.confirmed' => 'Password confirmation does not match.',
+						 'newPassword.min'       => 'Password must be at least 8 characters.',
+						 'newPassword.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+					]);
+					
+					// Get authenticated user
+					$user = auth('api')->user();
+					
+					// Verify old password
+					if (!Hash::check($request->oldPassword, $user->password)) {
+						  return response()->json([
+								'status' => 'error',
+								'message' => 'Old password does not match'
+						  ], 401);
+					}
+					
+					// Update password
+					
+						  $user->password = Hash::make($request->newPassword);
+						  $user->save();
+						  
+						  return responseJson(200, 'Password changed successfully');
+					}catch (\Illuminate\Validation\ValidationException $e) {
+						  return responseJson(
+								422,
+								" validation error",
+								$e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  return responseJson(500, "server error", $e->getMessage());
+					}
+			 }
 			 public function home(Request $request): JsonResponse
 			 {
 					try {
@@ -774,27 +823,47 @@
 						  
 						  $profileJobTitle = $user->defaultProfile->title_job;
 						  // Retrieve 10 random jobs with similar titles
-						  $popularJobs = JobListing::where(
+//						  $recommendedJobs = JobListing::where(
+//								'title', 'like', '%' . $profileJobTitle . '%'
+//						  )
+//								->inRandomOrder()
+//								->take(4)
+//								->get();
+//						  $popularJobs = JobListing::where(
+//								'title', 'like', '%' . $profileJobTitle . '%'
+//						  )
+//								->inRandomOrder()
+//								->take(4)
+//								->get();
+						  $jobsNum = Job::count();
+						  $number = $jobsNum / 3;
+						  // Get active jobs count using a subquery
+						  $jobsTrending = Job::
+								inRandomOrder()
+								->take($number)
+								->get();
+						  $jobsPopular = Job::
+								inRandomOrder()
+								->take($number)
+								->get();
+						  $jobsRecommended = Job::where(
 								'title', 'like', '%' . $profileJobTitle . '%'
 						  )
 								->inRandomOrder()
-								->take(4)
+								->take($number)
 								->get();
-						  
-						  if ($popularJobs->isEmpty()) {
+						  if ($jobsNum == 0) {
 								 return responseJson(404, 'No similar jobs found');
 						  }
 						  
 						  // Structure the response
-						  $response = [
-								'status'  => 200,
-								'message' => 'Popular jobs retrieved successfully',
-								'data'    => [
-									 'popular' => $popularJobs
+						  return responseJson(
+								200, 'Jobs retrieved successfully', [
+									 'Trending' => $jobsTrending,
+									 'Popular' => $jobsPopular,
+									 'Recommended' => $jobsRecommended,
 								]
-						  ];
-						  
-						  return response()->json($response);
+						  );
 						  
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
