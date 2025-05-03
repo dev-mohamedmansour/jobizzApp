@@ -9,7 +9,7 @@
         "ext-curl": "*",
         "ext-openssl": "*",
         "doctrine/dbal": "^4.2",
-        "google/apiclient": "^2.18",
+        "google/apiclient": "*",
         "laravel/framework": "^11.0",
         "laravel/socialite": "^5.19",
         "laravel/tinker": "^2.9",
