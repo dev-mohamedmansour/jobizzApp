@@ -21,15 +21,6 @@
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
 			 );
 			 Route::post('/login', [AdminAuthController::class, 'login']);
-
-//			 Route::post(
-//				  '/password/forgot',
-//				  [AdminAuthController::class, 'forgotAdminPassword']
-//			 );
-//			 Route::post(
-//				  '/password/reset',
-//				  [AdminAuthController::class, 'resetAdminPassword']
-//			 );
 			 
 			 //password Logic
 			 Route::post(

@@ -5,7 +5,6 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
         "ext-curl": "*",
         "ext-openssl": "*",
         "doctrine/dbal": "^4.2",

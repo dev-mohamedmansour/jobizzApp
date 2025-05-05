@@ -784,16 +784,13 @@
 					$user = auth('api')->user();
 					
 					// Verify old password
-					if (!Hash::check($request->oldPassword, $user->password)) {
-						  return response()->json([
-								'status' => 'error',
-								'message' => 'Old password does not match'
-						  ], 401);
+					if (!Hash::check($validated['oldPassword'], $user->password)) {
+						  return responseJson(401, 'Old password does not match' );
 					}
 					
 					// Update password
 					
-						  $user->password = Hash::make($request->newPassword);
+						  $user->password = Hash::make($validated['newPassword']);
 						  $user->save();
 						  
 						  return responseJson(200, 'Password changed successfully');
