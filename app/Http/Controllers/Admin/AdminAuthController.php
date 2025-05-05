@@ -207,7 +207,7 @@
 								 );
 						  }
 						  $admin->update([
-								'approved_by' => 1,
+								'approved_by' => $admin->id,
 						  ]);
 						  $admin->assignRole('admin');
 //						   Assign a pending role and basic permissions
