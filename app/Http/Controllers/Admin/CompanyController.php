@@ -17,7 +17,7 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -26,13 +26,13 @@
 								 if (!$this->isAdminAuthorized($user)) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this company'
+											 'Forbidden',' You do not have permission to view this company'
 										);
 								 }
 								 $companies = Company::withCount('jobs')->paginate(10);
 								 
 								 if ($companies->isEmpty()) {
-										return responseJson(404, 'No companies found');
+										return responseJson(404, 'Error','No companies found');
 								 }
 								 
 								 return responseJson(
@@ -52,7 +52,7 @@
 									  ->take($number)
 									  ->get();
 								 if ($companyNum == 0) {
-										return responseJson(404, 'No Jobs found');
+										return responseJson(404, 'Error','No Jobs found');
 								 }
 								 
 								 return responseJson(
@@ -63,9 +63,9 @@
 								 );
 						  }
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  return responseJson(500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
@@ -83,13 +83,13 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $company = Company::with('jobs')->find($id);
 						  
 						  if (!$company) {
-								 return responseJson(404, 'Company not found');
+								 return responseJson(404, 'Error','Company not found');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -98,14 +98,14 @@
 								 if (!$this->isAdminAuthorizedToShow($user, $company)) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this company'
+											 'Forbidden','You do not have permission to view this company'
 										);
 								 }
 						  } elseif (!auth()->guard('api')->check()) {
 								 // Deny access if the user is authenticated with an unknown guard
 								 return responseJson(
 									  403,
-									  'Forbidden: You do not have permission to view this company'
+									  'Forbidden','You do not have permission to view this company'
 								 );
 						  }
 						  
@@ -123,9 +123,9 @@
 						  ]);
 						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  return responseJson(500, 'Server error',
+								 config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
@@ -168,11 +168,11 @@
 								 ];
 						  } else {
 								 if (!$admin->hasPermissionTo('manage-own-company')) {
-										return responseJson(403, 'Unauthorized');
+										return responseJson(403, 'Forbidden','Unauthorized');
 								 }
 								 if ($admin->company) {
 										return responseJson(
-											 403,
+											 403,'Forbidden',
 											 'You already have a company and cannot create another one'
 										);
 								 }
@@ -228,7 +228,7 @@
 								 );
 								 if ($targetAdmin && $targetAdmin->company) {
 										return responseJson(
-											 400,
+											 400,'Error',
 											 'The specified admin already has a company'
 										);
 								 }
@@ -264,7 +264,7 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -293,13 +293,13 @@
 								 ];
 						  } else {
 								 if (!$admin->hasPermissionTo('manage-own-company')) {
-										return responseJson(403, 'Unauthorized');
+										return responseJson(403,'Forbidden', 'Unauthorized');
 								 }
 								 
 								 if ($admin->id !== $company->admin_id) {
 										return responseJson(
 											 403,
-											 'Forbidden: You can only update your own company'
+											 'Forbidden','You can only update your own company'
 										);
 								 }
 								 
@@ -371,19 +371,19 @@
 										);
 										if (!$targetAdmin) {
 											  return responseJson(
-													404, 'This admin not found'
+													404, 'Error','This admin not found'
 											  );
 										} elseif ($targetAdmin->company
 											 && $targetAdmin->company->id !== $company->id
 										) {
 											  return responseJson(
-													400,
+													400,'Error',
 													'The specified admin already has a company'
 											  );
 										}
 										$company->update($validated);
 								 } else {
-										return responseJson(404, 'This admin not found');
+										return responseJson(404,'Error', 'This admin not found');
 								 }
 						  } else {
 								 // Remove 'admin_id' from validated data if present
@@ -412,7 +412,7 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Error',$errorMessage);
 					}
 			 }
 			 
@@ -421,7 +421,7 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
@@ -429,7 +429,7 @@
 						  
 						  // Check if the company exists
 						  if (!$company) {
-								 return responseJson(404, 'Company not found');
+								 return responseJson(404, 'Error','Company not found');
 						  }
 						  
 						  // Determine authorization
@@ -442,7 +442,7 @@
 						  } else {
 								 return responseJson(
 									  403,
-									  'Forbidden: You do not have permission to delete this company'
+									  'Forbidden','You do not have permission to delete this company'
 								 );
 						  }
 						  
@@ -495,7 +495,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
 	  }

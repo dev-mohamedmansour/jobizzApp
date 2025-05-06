@@ -311,7 +311,7 @@
 						  return responseJson(200, 'Login successful', [
 								'token' => $token,
 								'id'    => $user->id,
-								'name'  => $user->name,
+								'fullName'  => $user->name,
 								'email' => $user->email
 						  ]);
 						  
@@ -678,7 +678,8 @@
 						  if ($payload->get('purpose') !== 'password_reset') {
 								 return responseJson(
 									  401,
-									  "This token has expire"
+									  "This token has expire",
+									  ["This token has expire"]
 								 );
 						  }
 						  // Validate new password
@@ -765,7 +766,7 @@
 					try {
 						  if (!auth('api')->check()) {
 								 return responseJson(
-									  401, 'No authenticated user found'
+									  401, 'No authenticated user found',["No authenticated user found"]
 									  );
 						  }
 					// Validate input
@@ -785,7 +786,7 @@
 					
 					// Verify old password
 					if (!Hash::check($validated['oldPassword'], $user->password)) {
-						  return responseJson(401, 'Old password does not match' );
+						  return responseJson(401, 'Old password does not match' ,["Old password does not match"]);
 					}
 					
 					// Update password

@@ -21,7 +21,7 @@
 					try {
 						  // Check authentication
 						  if (!auth('api')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  // Validate request data
 						  $validated = $request->validate([
@@ -32,14 +32,14 @@
 						  $profile = Profile::with('documents')->findOrFail($profileId);
 						  // Authorization check: Ensure the current user owns this profile
 						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Unauthorized action. This profile does not belong to you.');
+								 return responseJson(403, 'Forbidden', 'This profile does not belong to you.');
 						  }
 						  // Verify that the CV belongs to this profile
 						  $cv = $profile->documents()->where('type', 'cv')
 								->where('id', $validated['cv_id'])
 								->first();
 						  if (!$cv) {
-								 return responseJson(404, 'CV not found or does not belong to this profile');
+								 return responseJson(404,'Error', 'CV not found or does not belong to this profile');
 						  }
 						  if (!isset($validated['cover_letter']))
 						  {
@@ -47,7 +47,7 @@
 						  }
 						  $job=Job::find($jobId);
 						  if (!$job) {
-								 return responseJson(404, 'Job not found');
+								 return responseJson(404,'Error', 'Job not found');
 						  }
 						  // Create application
 						  $application = $job->applications()->create([
@@ -66,11 +66,11 @@
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
 					} catch (ModelNotFoundException $e) {
-						  return responseJson(404, 'Profile or CV not found');
+						  return responseJson(404, 'Error','Profile or CV not found');
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error', $errorMessage);
 					}
 			 }
 			 
@@ -79,7 +79,7 @@
 					try {
 						  // Check authentication
 						  if (!auth('api')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $user = auth('api')->user();
@@ -90,7 +90,7 @@
 								->first();
 						  
 						  if (!$profile) {
-								 return responseJson(404, 'Profile not found or does not belong to you');
+								 return responseJson(404, 'Error','Profile not found or does not belong to you');
 						  }
 						  
 						  // Get applications with relationships
@@ -115,7 +115,7 @@
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error', $errorMessage);
 					}
 			 }
 			 
@@ -126,12 +126,12 @@
 						  
 						  // Check authentication and permissions
 						  if (!$admin->hasPermissionTo('manage-applications')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403, 'Forbidden','Not authorized to access this resource');
 						  }
 						  
 						  // Verify admin has a company association
 						  if (!$admin->company_id) {
-								 return responseJson(403, 'No company associated with this account');
+								 return responseJson(403, 'Forbidden','No company associated with this account');
 						  }
 						  
 						  // Get applications for the admin's company
@@ -154,7 +154,7 @@
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -163,14 +163,14 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403, 'Forbidden','Unauthorized');
 						  }
 						  
 						  // Validate request data
@@ -201,7 +201,7 @@
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -210,7 +210,7 @@
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $user = auth()->user();
@@ -228,11 +228,11 @@
 						  ]);
 						  
 					} catch (ModelNotFoundException $e) {
-						  return responseJson(404, 'Application not found');
+						  return responseJson(404, 'Error','Application not found');
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -241,19 +241,19 @@
 					try {
 						  // Check authentication
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403, 'Forbidden','Unauthorized');
 						  }
 						  $application =Application::find($applicationId);
 						  if(!$application)
 						  {
-								 return responseJson(404, 'Application not found');
+								 return responseJson(404,'error', 'Application not found');
 						  }
 						  // Delete the application
 						  $application->delete();
@@ -263,7 +263,7 @@
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 	  }

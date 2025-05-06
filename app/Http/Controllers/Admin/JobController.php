@@ -15,42 +15,59 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
 						  if (auth()->guard('admin')->check()) {
-								 $user = auth('admin')->user();
-								 if (!$this->isAdminAuthorized($user)) {
+								 $admin = auth('admin')->user();
+								 if (!$admin->hasRole('admin') || !$admin->hasRole('super-admin')) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this jobs'
+											 'Forbidden','You do not have permission to view this jobs'
 										);
 								 }
-								 // Get active jobs count using a subquery
-								 $jobs = Job::with('company')
-									  ->withCount(
-											['applications as active_applications' => function ($query
-											) {
-												  $query->where('status', 'submitted');
-											}]
-									  )
-									  ->paginate(10);
-								 
-								 if ($jobs->isEmpty()) {
-										return responseJson(404, 'No Jobs found');
+								 if ($admin->hasRole('super-admin')) {
+										// Get active jobs count using a subquery
+										$jobs = Job::with('company')
+											 ->withCount(
+												  ['applications as active_applications' => function ($query
+												  ) {
+														 $query->where('status', 'submitted');
+												  }]
+											 )
+											 ->paginate(10);
+										
+										if ($jobs->isEmpty()) {
+											  return responseJson(404,'Error','No Jobs found');
+										}
+										
+										return responseJson(
+											 200, 'Jobs retrieved successfully', [
+											 'jobs' => $jobs,
+										]
+										);
+								 }elseif ($admin->hasRole('admin')) {
+										$jobs = Job::with('company')
+											 ->withCount(
+												  ['applications as active_applications' => function ($query
+												  ) {
+														 $query->where('status', 'submitted');
+												  }]
+											 )->where('company_id', $admin->company_id)
+											 ->paginate(10);
+										
+										if ($jobs->isEmpty()) {
+											  return responseJson(404, 'Error','No Jobs found');
+										}
+										
+										return responseJson(
+											 200, 'Jobs retrieved successfully', [
+												  'jobs' => $jobs,
+											 ]
+										);
 								 }
-								 
-								 return responseJson(200, 'Jobs retrieved successfully', [
-									  'jobs' => $jobs,
-								 ]);
-								 
 						  } elseif (auth()->guard('api')->check()) {
-								 // Deny access if the user is authenticated with an unknown guard
-//								 return responseJson(
-//									  403,
-//									  'Forbidden: You do not have permission to view this jobs'
-//								 );
 								 $user = auth('api')->user();
 								 $profileJobTitle = $user->defaultProfile->title_job;
 								 $jobsNum = Job::count();
@@ -71,7 +88,7 @@
 									  ->take($number)
 									  ->get();
 								 if ($jobsNum == 0) {
-										return responseJson(404, 'No Jobs found');
+										return responseJson(404,'Error','No Jobs found');
 								 }
 								 
 								 return responseJson(
@@ -83,19 +100,10 @@
 								 );
 						  }
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  return responseJson(500, 'Server error',
+								 config('app.debug') ? $e->getMessage() : null
+						  );
 					}
-			 }
-			 
-			 private function isAdminAuthorized($admin): bool
-			 {
-					// Check if the user is a super-admin
-					if ($admin->hasRole('super-admin')) {
-						  return true;
-					}
-					return false;
 			 }
 			 
 			 public function getAllJobsForCompany(Request $request, $id
@@ -103,7 +111,7 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -112,7 +120,7 @@
 								 if (!$user->hasRole('admin')) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this jobs'
+											 'Forbidden','You do not have permission to view this jobs'
 										);
 								 }
 						  }
@@ -129,7 +137,7 @@
 								->paginate(10);
 						  
 						  if ($jobs->isEmpty()) {
-								 return responseJson(404, 'No Jobs found');
+								 return responseJson(404,'Error','No Jobs found');
 						  }
 						  
 						  return responseJson(200, 'Jobs retrieved successfully', [
@@ -137,9 +145,9 @@
 						  ]);
 						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  return responseJson(500, 'Server error',
+							config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
@@ -148,13 +156,13 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth()->check() && auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $job = Job::find($jobId);
 						  // Check if the job exists
 						  if (!$job) {
-								 return responseJson(404, 'Job not found');
+								 return responseJson(404,'Error','Job not found');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -163,14 +171,14 @@
 								 if (!$this->isAdminAuthorizedToShow($user, $job)) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this job'
+											 'Forbidden','You do not have permission to view this job'
 										);
 								 }
 						  } elseif (!auth()->guard('api')->check()) {
 								 // Deny access if the user is authenticated with an unknown guard
 								 return responseJson(
 									  403,
-									  'Forbidden: You do not have permission to view this job'
+									  'Forbidden','You do not have permission to view this job'
 								 );
 						  }
 						  
@@ -180,9 +188,9 @@
 						  ]);
 						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => config('app.debug') ? $e->getMessage() : null
-						  ]);
+						  return responseJson(500, 'Server error',
+							config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
@@ -212,26 +220,26 @@
 						  
 						  // Check if the user is authenticated
 						  if (!$admin) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Check if the admin is a super-admin (they should not create jobs directly)
 						  if ($admin->hasRole('super-admin')) {
 								 return responseJson(
-									  403, 'Super-admins cannot create jobs directly'
+									  403, 'Forbidden','Super-admins cannot create jobs directly'
 								 );
 						  }
 						  
 						  // Check if the admin has the permission to manage company jobs
 						  if (!$admin->hasPermissionTo('manage-company-jobs')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403,'Forbidden', 'Unauthorized');
 						  }
 						  
 						  // Check if the admin has a company associated
 						  if (!$admin->company_id) {
 								 return responseJson(
 									  403,
-									  'Forbidden: You can only add jobs to your own company'
+									  'Forbidden','You can only add jobs to your own company'
 								 );
 						  }
 						  
@@ -274,7 +282,7 @@
 								->first();
 						  
 						  if ($existingJob) {
-								 return responseJson(409, 'Job already exists');
+								 return responseJson(409, 'Error','Job already exists');
 						  }
 						  // Create the job with the admin's company_id
 						  $jobData = $validated;
@@ -299,7 +307,7 @@
 						  // Return a generic error message in production
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -311,38 +319,38 @@
 						  
 						  // Check if the user is authenticated
 						  if (!$admin) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Check if the admin is a super-admin (they should not create jobs directly)
 						  if ($admin->hasRole('super-admin')) {
 								 return responseJson(
-									  403, 'Super-admins cannot update jobs directly'
+									  403, 'Forbidden','Super-admins cannot update jobs directly'
 								 );
 						  }
 						  
 						  // Check if the admin has the permission to manage company jobs
 						  if (!$admin->hasPermissionTo('manage-company-jobs')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403,'Forbidden','Unauthorized');
 						  }
 						  
 						  // Check if the admin has a company associated
 						  if (!$admin->company_id) {
 								 return responseJson(
 									  403,
-									  'Forbidden: You can only add jobs to your own company'
+									  'Forbidden','You can only add jobs to your own company'
 								 );
 						  }
 						  $job = Job::find($jobId);
 						  // Check if the job exists
 						  if (!$job) {
-								 return responseJson(404, 'Job not found');
+								 return responseJson(404,'Error','Job not found');
 						  }
 						  
 						  if ($admin->company_id !== $job->company_id) {
 								 return responseJson(
 									  403,
-									  'Forbidden: You can only update jobs from your own company'
+									  'Forbidden','You can only update jobs from your own company'
 								 );
 						  }
 						  
@@ -398,7 +406,7 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -407,7 +415,7 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
@@ -415,14 +423,14 @@
 						  $job = Job::find($jobId);
 						  // Check if the job exists
 						  if (!$job) {
-								 return responseJson(404, 'Job not found');
+								 return responseJson(404,'Error','Job not found');
 						  }
 						  
 						  // Check authorization
 						  if (!$this->isAuthorizedToDelete($admin, $job)) {
 								 return responseJson(
 									  403,
-									  'Forbidden: You do not have permission to delete this job'
+									  'Forbidden','You do not have permission to delete this job'
 								 );
 						  }
 						  
@@ -436,7 +444,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
 			 

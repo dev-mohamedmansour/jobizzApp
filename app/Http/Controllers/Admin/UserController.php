@@ -19,7 +19,7 @@ class UserController extends Controller
 			 try {
 					// Check if the user is authenticated
 					if (!auth('admin')->check()) {
-						  return responseJson(401, 'Unauthenticated');
+						  return responseJson(401, 'Unauthenticated','Unauthenticated');
 					}
 					
 					// Determine which guard the user is authenticated with
@@ -28,21 +28,21 @@ class UserController extends Controller
 						  if (!$this->isAdminAuthorized($user)) {
 								 return responseJson(
 									  403,
-									  'Forbidden: You do not have permission to view this company'
+									  'Forbidden','You do not have permission to view this company'
 								 );
 						  }
 					} elseif (auth()->guard('api')->check()) {
 						  // Deny access if the user is authenticated with an unknown guard
 						  return responseJson(
 								403,
-								'Forbidden: You do not have permission to view this users'
+								'Forbidden','You do not have permission to view this users'
 						  );
 					}
 					
 					$users = User::paginate(10);
 					
 					if ($users->isEmpty()) {
-						  return responseJson(404, 'No users found');
+						  return responseJson(404,'Error','No users found');
 					}
 					
 					return responseJson(
@@ -50,9 +50,9 @@ class UserController extends Controller
 					);
 					
 			 } catch (\Exception $e) {
-					return responseJson(500, 'Server error', [
-						 'error' => config('app.debug') ? $e->getMessage() : null
-					]);
+					return responseJson(500, 'Server error',
+						 config('app.debug') ? $e->getMessage() : null
+					);
 			 }
 	  }
 	  private function isAdminAuthorized($admin): bool
@@ -69,7 +69,7 @@ class UserController extends Controller
 			 try {
 					// Check if the user is authenticated
 					if (!auth('admin')->check()) {
-						  return responseJson(401, 'Unauthenticated');
+						  return responseJson(401, 'Unauthenticated','Unauthenticated');
 					}
 					
 					$admin = auth('admin')->user();
@@ -77,14 +77,14 @@ class UserController extends Controller
 					
 					// Check if the user exists
 					if (!$user) {
-						  return responseJson(404, 'User not found');
+						  return responseJson(404,'Error','User not found');
 					}
 					
 					// Determine authorization
 					if (!$admin->hasPermissionTo('manage-all-companies')) {
 						  return responseJson(
 								403,
-								'Forbidden: You do not have permission to delete this user'
+								'Forbidden','You do not have permission to delete this user'
 						  );
 					}
 					
@@ -142,7 +142,7 @@ class UserController extends Controller
 					// Handle exceptions
 					Log::error('Server Error: ' . $e->getMessage());
 					$errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
-					return responseJson(500, $errorMessage);
+					return responseJson(500,'Error',$errorMessage);
 			 }
 	  }
 }

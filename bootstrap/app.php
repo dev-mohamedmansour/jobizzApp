@@ -31,10 +31,6 @@
 						 \App\Http\Middleware\ApprovedAdminMiddleware::class,
 						'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
 				  ]);
-				  $middleware->use([
-						 // ... other middleware
-						 RefreshJwtToken::class,
-				  ]);
 			})
 			->withExceptions(function (Exceptions $exceptions) {
 				  //

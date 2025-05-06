@@ -19,7 +19,9 @@
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
+	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
+	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  use Spatie\Permission\Exceptions\PermissionAlreadyExists;
 	  use Spatie\Permission\Exceptions\RoleAlreadyExists;
@@ -98,7 +100,7 @@
 						  if (!$pinResult['email_sent']) {
 								 $admin->delete();
 								 return responseJson(
-									  500, 'Registration failed - email not sent'
+									  500, 'Registration failed ','Registration failed - email not sent'
 								 );
 						  }
 						  $admin->update([
@@ -133,7 +135,7 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
 			 
@@ -203,7 +205,7 @@
 						  if (!$pinResult['email_sent']) {
 								 $admin->delete();
 								 return responseJson(
-									  500, 'Registration failed - email not sent'
+									  500, 'Registration failed ','email not sent'
 								 );
 						  }
 						  $admin->update([
@@ -244,7 +246,7 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
 			 
@@ -282,7 +284,7 @@
 						  if (!$admin) {
 								 return responseJson(
 									  404,
-									  'Admin not found. Please check your email or register first.'
+									  'Admin not found','Please check your email or register first'
 								 );
 						  }
 						  
@@ -300,7 +302,7 @@
 								 );
 						  }
 						  
-						  return responseJson(400, 'Invalid PIN code');
+						  return responseJson(400, 'Error','Invalid PIN code');
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
 						  return responseJson(
@@ -309,9 +311,9 @@
 								$e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error', [
-								'error' => $e->getMessage()
-						  ]);
+						  return responseJson(500, 'Server error',
+								$e->getMessage()
+						  );
 					}
 			 }
 			 
@@ -320,17 +322,18 @@
 					try {
 						  if (!auth('admin')->user()->hasRole('super-admin')) {
 								 return responseJson(
-									  403, 'Unauthorized: Only super-admins can approve'
+									  403, 'Unauthorized','Only super-admins can approve'
 								 );
 						  }
 						  $admin = Admin::find($pendingAdmin);
 						  if(!$admin)
 						  {
-								 return responseJson(404, 'Admin not found');
+								 return responseJson(404, 'Error','Admin not found');
 						  }
 						  if ($admin->is_approved) {
 								 return responseJson(
 									  403,
+									  'Error',
 									  'This account is already approved '
 								 );
 						  }
@@ -364,14 +367,14 @@
 						  ]);
 						  
 					} catch (RoleAlreadyExists $e) {
-						  return responseJson(500, 'Error: Role already exists.');
+						  return responseJson(500, 'Error','Role already exists.');
 					} catch (PermissionAlreadyExists $e) {
 						  return responseJson(
-								500, 'Error: Permission already exists.'
+								500, 'Error','Permission already exists.'
 						  );
 					} catch (\Exception $e) {
 						  return responseJson(
-								500, 'Server error: ' . $e->getMessage()
+								500, 'Server error', $e->getMessage()
 						  );
 					}
 					
@@ -411,7 +414,7 @@
 								)
 						  ) {
 								 return responseJson(
-									  403, 'Unauthorized For Add Sub Admin'
+									  403, 'Unauthorized','Not Allow For Add Sub Admin'
 								 );
 						  }
 						  
@@ -419,6 +422,7 @@
 						  if (empty($admin->company_id)) {
 								 return responseJson(
 									  403,
+									  'Forbidden',
 									  'You must create a company before adding sub-admins'
 								 );
 						  }
@@ -432,7 +436,7 @@
 						  
 						  if ($subAdminCount >= 8) {
 								 return responseJson(
-									  403, 'You can only create up to 8 sub-admins'
+									  403,'Forbidden', 'You can only create up to 8 sub-admins'
 								 );
 						  }
 						  
@@ -486,7 +490,7 @@
 					} catch (\Exception $e) {
 						  Log::error('Server error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'Server error: ' . $e->getMessage()
+								500, 'Server error', $e->getMessage()
 						  );
 					}
 			 }
@@ -516,7 +520,7 @@
 								'password.regex'    => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
 						  ]);
 						  if (!$token = auth('admin')->attempt($validated)) {
-								 return responseJson(401, 'Email Or Password Invalid');
+								 return responseJson(401,'Unauthorized', 'Email Or Password Invalid');
 						  }
 						  $admin = auth('admin')->user();
 						  
@@ -524,7 +528,7 @@
 						  if (!$admin->hasVerifiedEmail()) {
 								 auth('admin')->logout();
 								 return responseJson(
-									  403,
+									  403,'Forbidden',
 									  'Please verify your email address before logging in'
 								 );
 						  }
@@ -532,7 +536,7 @@
 						  if (!$admin->is_approved) {
 								 auth('admin')->logout();
 								 return responseJson(
-									  403,
+									  403,'Forbidden',
 									  'Account pending approval, Please contact the administrator'
 								 );
 						  }
@@ -564,14 +568,45 @@
 						  if (config('app.debug')) {
 								 $errorMessage = "Server error: " . $e->getMessage();
 						  }
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
+			 
 			 public function logout(): \Illuminate\Http\JsonResponse
 			 {
-					auth('admin')->logout();
-					return responseJson(200, 'Successfully logged out');
+					try {
+						  $admin = auth('admin')->user();
+						  
+						  if (!$admin) {
+								 return responseJson(
+									  401, 'Unauthorized','No authenticated user found'
+								 );
+						  }
+						  
+						  auth()->logout();
+						  
+						  // Optional: Add token invalidation if using JWT
+						  JWTAuth::invalidate(JWTAuth::getToken());
+						  
+						  // Optional: Clear session data
+						  session()->flush();
+						  
+						  return responseJson(200, 'Successfully logged out');
+						  
+					} catch (TokenInvalidException $e) {
+						  return responseJson(401, 'Unauthorized','Invalid authentication token');
+						  
+					} catch (JWTException $e) {
+						  return responseJson(500, 'Server Error','Could not invalidate token');
+						  
+					} catch (\Exception $e) {
+						  Log::error('Logout Error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server Error','Logout failed due to server error'
+						  );
+					}
+
 			 }
 			 
 //			 public function forgotAdminPassword(Request $request
@@ -741,7 +776,7 @@
 						  }
 						  
 						  Log::error('Password Reset Error: ' . $e->getMessage());
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
 			 
@@ -780,7 +815,7 @@
 						  )
 						  ) {
 								 return responseJson(
-									  401, 'Expired PIN, Request a new PIN'
+									  401, 'Unauthorized','Expired PIN, Request a new PIN'
 								 );
 						  }
 						  $token = JWTAuth::claims([
@@ -809,7 +844,7 @@
 								? "Check failed: " . $e->getMessage()
 								: "Check failed. Please try again later";
 						  
-						  return responseJson(500, $message);
+						  return responseJson(500, 'Server Error',$message);
 					}
 			 }
 			 
@@ -822,6 +857,7 @@
 						  if ($payload->get('purpose') !== 'password_reset') {
 								 return responseJson(
 									  401,
+									  'Unauthorized',
 									  "This token has expire"
 								 );
 						  }
@@ -854,14 +890,14 @@
 								$e->validator->errors()->all()
 						  );
 					} catch (TokenExpiredException $e) {
-						  return responseJson(401, "Token expired Your session has expired");
+						  return responseJson(401,'Unauthorized', "Token expired Your session has expired");
 						  
 					} catch (\Exception $e) {
 						  Log::error('Password Reset Error: ' . $e->getMessage());
 						  $message = config('app.debug')
 								? "Server error: " . $e->getMessage()
 								: "An unexpected error occurred. Please try again later.";
-						  return responseJson(500, $message);
+						  return responseJson(500, 'Server Error',$message);
 					}
 			 }
 	  }
