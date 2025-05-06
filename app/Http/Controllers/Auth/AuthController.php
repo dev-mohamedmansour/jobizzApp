@@ -3,7 +3,6 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
-	  use App\Models\JobListing;
 	  use App\Models\JobListing as Job;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\User;
@@ -14,13 +13,10 @@
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
-	  use Illuminate\Validation\Validator;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
-
-//	  use Illuminate\Auth\MustVerifyEmail;
 	  
 	  class AuthController extends Controller
 	  {
@@ -151,6 +147,7 @@
 						  if (!$user) {
 								 return responseJson(
 									  404,
+									  'Error',
 									  'User not found. Please check your email or register first.'
 								 );
 						  }
@@ -194,80 +191,6 @@
 					}
 			 }
 			 
-			 public function resendVerificationEmail(Request $request
-			 ): JsonResponse {
-					try {
-						  $validated = $request->validate([
-								'email' => [
-									 'required',
-									 'string',
-									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-									 'exists:users,email',
-									 'ascii' // Ensures only ASCII characters
-								],
-						  ], [
-								'email.required' => 'The email field is required.',
-								'email.regex'    => 'Invalid email format. Please use English characters only.',
-								'email.ascii'    => 'Email must contain only English characters.',
-								'email.exists'   => 'Account not found',
-						  ]);
-						  // Find user without failing immediately
-						  $user = User::where('email', $request['email'])->first();
-						  if (!$user) {
-								 return responseJson(
-									  404,
-									  'User not found. Please check your email or register first.'
-								 );
-						  }
-						  
-						  if ($user->pin_code == null
-								&& $user->confirmed_email = 1
-									 && $user->pin_created_at == null
-									 && $user->email_verified_at != null
-						  ) {
-								 return responseJson(
-									  400, 'Your account is already verified'
-								 );
-						  }
-						  // Generate a new PIN code
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$user, 'verification'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 // Optionally delete the user if email failed
-								 $user->pin_code->delete();
-								 
-								 return responseJson(
-									  500,
-									  'Failed to send verification email...Try again later'
-								 );
-						  }
-						  
-						  return responseJson(
-								200, 'Verification email sent successfully'
-						  );
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422,
-								" validation error",
-								$e->validator->errors()->all()
-						  );
-					} catch (\Exception $e) {
-						  // Handle other exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  // For production: Generic error message
-						  $errorMessage
-								= "Server error: Something went wrong. Please try again later.";
-						  // For development: Detailed error message
-						  if (config('app.debug')) {
-								 $errorMessage = "Server error: " . $e->getMessage();
-						  }
-						  return responseJson(500, "Server error", $errorMessage);
-					}
-			 }
-			 
 			 // Regular login
 			 
 			 public function socialLogin(Request $request): JsonResponse
@@ -289,7 +212,9 @@
 									 'GOOGLE_CLIENT_ID'
 								)
 						  ) {
-								 return responseJson(401, 'Invalid Google token');
+								 return responseJson(
+									  401, 'Unauthorized', 'Invalid Google token'
+								 );
 						  }
 						  
 						  // Find or create user
@@ -309,10 +234,10 @@
 						  $token = auth()->login($user);
 						  
 						  return responseJson(200, 'Login successful', [
-								'token' => $token,
-								'id'    => $user->id,
-								'fullName'  => $user->name,
-								'email' => $user->email
+								'token'    => $token,
+								'id'       => $user->id,
+								'fullName' => $user->name,
+								'email'    => $user->email
 						  ]);
 						  
 					} catch (\Illuminate\Validation\ValidationException $e) {
@@ -323,11 +248,8 @@
 						  );
 					} catch (\Exception $e) {
 						  return responseJson(
-								500, 'Authentication failed: ', [config('app.debug')
-																				 ? 'Authentication failed: '
-								. $e->getMessage()
-																				 : 'Authentication failed. Please try again'
-						  ]
+								500, 'Authentication failed: ',
+								config('app.debug') ? 'Authentication failed: ' . $e->getMessage() : 'Authentication failed. Please try again'
 						  );
 					}
 			 }
@@ -428,7 +350,7 @@
 						  // Attempt JWT authentication
 						  if (!$token = JWTAuth::attempt($validated)) {
 								 return responseJson(
-									  401,
+									  401,'Unauthorized',
 									  'Email Or Password Invalid',
 								 );
 						  }
@@ -439,7 +361,7 @@
 								&& !$user->hasVerifiedEmail()
 						  ) {
 								 return responseJson(
-									  403,
+									  403,'Forbidden',
 									  'Please verify your email address before logging in'
 								 );
 						  }
@@ -526,77 +448,10 @@
 								= 'Password reset request failed. Please try again later.';
 						  
 						  if (config('app.debug')) {
-								 $errorMessage .= "\n" . $e->getMessage();
+								 $errorMessage .= "Password Reset Error: ".$e->getMessage();
 						  }
 						  
 						  Log::error('Password Reset Error: ' . $e->getMessage());
-						  return responseJson(500, "Server error", $errorMessage);
-					}
-			 }
-			 
-			 //Password Logic
-			 
-			 public function resendRestEmail(Request $request): JsonResponse
-			 {
-					try {
-						  $validated = $request->validate([
-								'email' => [
-									 'required',
-									 'string',
-									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-									 'exists:users,email',
-									 'ascii' // Ensures only ASCII characters
-								],
-						  ], [
-								'email.required' => 'The email field is required.',
-								'email.regex'    => 'Invalid email format. Please use English characters only.',
-								'email.ascii'    => 'Email must contain only English characters.',
-								'email.exists'   => 'Account not found',
-						  ]);
-						  // Find user without failing immediately
-						  $user = User::where('email', $validated['email'])->first();
-						  if (!$user) {
-								 return responseJson(
-									  404,
-									  'User not found. Please check your email or register first.'
-								 );
-						  }
-						  
-						  // Delete existing pins
-						  PasswordResetPin::where('email', $validated['email'])
-								->delete();
-						  
-						  // Attempt to generate and send PIN
-						  $pinResult = $this->pinService->generateAndSendPin(
-								$user, 'reset'
-						  );
-						  
-						  if (!$pinResult['email_sent']) {
-								 throw new \Exception(
-									  'Failed to send password reset email'
-								 );
-						  }
-						  
-						  return responseJson(
-								200, "Reset PIN sent successfully to email"
-						  );
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422,
-								" validation error",
-								$e->validator->errors()->all()
-						  );
-					} catch (\Exception $e) {
-						  // Handle other exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  // For production: Generic error message
-						  $errorMessage
-								= "Server error: Something went wrong. Please try again later.";
-						  // For development: Detailed error message
-						  if (config('app.debug')) {
-								 $errorMessage = "Server error: " . $e->getMessage();
-						  }
 						  return responseJson(500, "Server error", $errorMessage);
 					}
 			 }
@@ -636,7 +491,7 @@
 						  )
 						  ) {
 								 return responseJson(
-									  401, 'Expired PIN, Request a new PIN'
+									  401,'Unauthorized', 'Expired PIN, Request a new PIN'
 								 );
 						  }
 						  $token = JWTAuth::claims([
@@ -665,7 +520,7 @@
 								? "Check failed: " . $e->getMessage()
 								: "Check failed. Please try again later";
 						  
-						  return responseJson(500, $message);
+						  return responseJson(500,'Server Error',$message);
 					}
 			 }
 			 
@@ -677,10 +532,8 @@
 						  
 						  if ($payload->get('purpose') !== 'password_reset') {
 								 return responseJson(
-									  401,
-									  "This token has expire",
-									  ["This token has expire"]
-								 );
+									  401,'Unauthorized',
+									  'This token has expire');
 						  }
 						  // Validate new password
 						  $validated = $request->validate([
@@ -714,7 +567,7 @@
 						  );
 					} catch (TokenExpiredException $e) {
 						  return responseJson(
-								401, "Token expired Your session has expired"
+								401, 'Unauthorized',"Token expired Your session has expired"
 						  );
 						  
 					} catch (\Exception $e) {
@@ -722,7 +575,7 @@
 						  $message = config('app.debug')
 								? "Server error: " . $e->getMessage()
 								: "An unexpected error occurred. Please try again later.";
-						  return responseJson(500, $message);
+						  return responseJson(500, 'Server Error',$message);
 					}
 			 }
 			 
@@ -733,7 +586,7 @@
 						  
 						  if (!$user) {
 								 return responseJson(
-									  401, 'No authenticated user found'
+									  401, 'Unauthorized','No authenticated user found'
 								 );
 						  }
 						  
@@ -748,15 +601,15 @@
 						  return responseJson(200, 'Successfully logged out');
 						  
 					} catch (TokenInvalidException $e) {
-						  return responseJson(401, 'Invalid authentication token');
+						  return responseJson(401, 'Unauthorized','Invalid authentication token');
 						  
 					} catch (JWTException $e) {
-						  return responseJson(500, 'Could not invalidate token');
+						  return responseJson(500, 'Server Error','Could not invalidate token');
 						  
 					} catch (\Exception $e) {
 						  Log::error('Logout Error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'Logout failed due to server error'
+								500,'Server Error', 'Logout failed due to server error'
 						  );
 					}
 			 }
@@ -766,36 +619,41 @@
 					try {
 						  if (!auth('api')->check()) {
 								 return responseJson(
-									  401, 'No authenticated user found',["No authenticated user found"]
-									  );
+									  401,'Unauthorized', 'No authenticated user found'
+								 );
 						  }
-					// Validate input
-					$validated = $request->validate([
-						 'oldPassword' => 'required',
-						 'newPassword' => 'required|string|min:8|confirmed|different:oldPassword|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
-					], [
-						 'oldPassword.required' => 'Old password is required.',
-						 'newPassword.required'  => 'New password is required.',
-						 'newPassword.confirmed' => 'Password confirmation does not match.',
-						 'newPassword.min'       => 'Password must be at least 8 characters.',
-						 'newPassword.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
-					]);
-					
-					// Get authenticated user
-					$user = auth('api')->user();
-					
-					// Verify old password
-					if (!Hash::check($validated['oldPassword'], $user->password)) {
-						  return responseJson(401, 'Old password does not match' ,["Old password does not match"]);
-					}
-					
-					// Update password
-					
+						  // Validate input
+						  $validated = $request->validate([
+								'oldPassword' => 'required',
+								'newPassword' => 'required|string|min:8|confirmed|different:oldPassword|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+						  ], [
+								'oldPassword.required'  => 'Old password is required.',
+								'newPassword.required'  => 'New password is required.',
+								'newPassword.confirmed' => 'Password confirmation does not match.',
+								'newPassword.min'       => 'Password must be at least 8 characters.',
+								'newPassword.regex'     => 'Password contains invalid characters. Use only English letters, numbers, and special symbols.',
+						  ]);
+						  
+						  // Get authenticated user
+						  $user = auth('api')->user();
+						  
+						  // Verify old password
+						  if (!Hash::check(
+								$validated['oldPassword'], $user->password
+						  )
+						  ) {
+								 return responseJson(
+									  401,'Unauthenticated','Old password does not match',
+								 );
+						  }
+						  
+						  // Update password
+						  
 						  $user->password = Hash::make($validated['newPassword']);
 						  $user->save();
 						  
 						  return responseJson(200, 'Password changed successfully');
-					}catch (\Illuminate\Validation\ValidationException $e) {
+					} catch (\Illuminate\Validation\ValidationException $e) {
 						  return responseJson(
 								422,
 								" validation error",
@@ -805,18 +663,19 @@
 						  return responseJson(500, "server error", $e->getMessage());
 					}
 			 }
+			 
 			 public function home(Request $request): JsonResponse
 			 {
 					try {
 						  // Check authentication
 						  if (!auth('api')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $user = auth('api')->user();
 						  // Check if the user has a profile
 						  if (!$user->defaultProfile) {
-								 return responseJson(404, 'Profile not found');
+								 return responseJson(404,'Error', 'Profile not found');
 						  }
 						  
 						  $profileJobTitle = $user->defaultProfile->title_job;
@@ -837,11 +696,11 @@
 						  $number = $jobsNum / 3;
 						  // Get active jobs count using a subquery
 						  $jobsTrending = Job::
-								inRandomOrder()
+						  inRandomOrder()
 								->take($number)
 								->get();
 						  $jobsPopular = Job::
-								inRandomOrder()
+						  inRandomOrder()
 								->take($number)
 								->get();
 						  $jobsRecommended = Job::where(
@@ -851,14 +710,14 @@
 								->take($number)
 								->get();
 						  if ($jobsNum == 0) {
-								 return responseJson(404, 'No similar jobs found');
+								 return responseJson(404,'Not found now', 'No similar jobs found');
 						  }
 						  
 						  // Structure the response
 						  return responseJson(
 								200, 'Jobs retrieved successfully', [
-									 'Trending' => $jobsTrending,
-									 'Popular' => $jobsPopular,
+									 'Trending'    => $jobsTrending,
+									 'Popular'     => $jobsPopular,
 									 'Recommended' => $jobsRecommended,
 								]
 						  );
