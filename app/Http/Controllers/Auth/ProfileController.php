@@ -16,8 +16,6 @@
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Facades\Validator;
 	  
-	  // Add this line
-	  
 	  class ProfileController extends Controller
 	  {
 			 public function getAllProfiles(Request $request): JsonResponse
@@ -77,7 +75,6 @@
 						  return responseJson(500, 'Server Error', $message);
 					}
 			 }
-			 
 			 public function getProfileById(Request $request, $id
 			 ): JsonResponse {
 					try {
@@ -105,7 +102,6 @@
 						  return responseJson(500, 'Server Error', $message);
 					}
 			 }
-			 
 			 public function addProfile(Request $request): JsonResponse
 			 {
 					$user = $request->user();
@@ -170,7 +166,6 @@
 						 ]
 					);
 			 }
-			 
 			 public function updateProfile(Request $request, $id): JsonResponse
 			 {
 					try {
@@ -272,7 +267,6 @@
 						  );
 					}
 			 }
-			 
 			 public function deleteProfile(Request $request, $id): JsonResponse
 			 {
 					try {
@@ -359,7 +353,6 @@
 						  );
 					}
 			 }
-			 
 			 // Education Logic
 			 public function getAllEducations(Request $request, $profileId
 			 ): JsonResponse {
@@ -412,7 +405,6 @@
 						  );
 					}
 			 }
-			 
 			 public function getEducationById(Request $request, $profileId,
 				  $educationId
 			 ): JsonResponse {
@@ -465,7 +457,6 @@
 						  );
 					}
 			 }
-			 
 			 public function addEducation(Request $request, $profileId
 			 ): JsonResponse {
 					try {
@@ -557,7 +548,6 @@
 						  );
 					}
 			 }
-			 
 			 public function updateEducation(Request $request, $profileId,
 				  $educationId
 			 ): JsonResponse {
@@ -673,7 +663,6 @@
 						  );
 					}
 			 }
-			 
 			 public function deleteEducation(Request $request, $profileId,
 				  $educationId
 			 ): JsonResponse {
@@ -727,9 +716,7 @@
 						  );
 					}
 			 }
-			 
 			 // Experience Logic
-			 
 			 public function getAllExperiences(Request $request, $profileId
 			 ): \Illuminate\Http\JsonResponse {
 					try {
@@ -780,7 +767,6 @@
 						  );
 					}
 			 }
-			 
 			 public function getExperienceById(Request $request, $profileId,
 				  $experienceId
 			 ): \Illuminate\Http\JsonResponse {
@@ -833,7 +819,6 @@
 						  );
 					}
 			 }
-			 
 			 public function addExperience(Request $request, $profileId
 			 ): JsonResponse {
 					try {
@@ -921,7 +906,6 @@
 						  );
 					}
 			 }
-			 
 			 public function editExperience(Request $request, $profileId,
 				  $experienceId
 			 ): JsonResponse {
@@ -1046,7 +1030,6 @@
 						  );
 					}
 			 }
-			 
 			 public function deleteExperience(Request $request, $profileId,
 				  $experienceId
 			 ): JsonResponse {
@@ -1100,7 +1083,6 @@
 						  );
 					}
 			 }
-			 
 			 // Document Logic
 			 public function uploadCV(Request $request, $profileId): JsonResponse
 			 {
@@ -1163,10 +1145,7 @@
 						  );
 					}
 			 }
-			 
-			 // Edit CV
-			 public
-			 function editCV(Request $request, $profileId, $cvId
+			 public function editCV(Request $request, $profileId, $cvId
 			 ): JsonResponse {
 					try {
 						  $profile = Profile::findOrFail($profileId);
@@ -1241,8 +1220,6 @@
 						  );
 					}
 			 }
-			 
-			 // Delete CV
 			 public function deleteCV(Request $request, $profileId, $cvId
 			 ): JsonResponse {
 					try {
@@ -1284,8 +1261,6 @@
 						  );
 					}
 			 }
-			 
-			 // Upload Portfolio
 			 public function addPortfolioTypeImages(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
@@ -1371,7 +1346,6 @@
 						  );
 					}
 			 }
-			 
 			 protected function determineFormat(Request $request): string
 			 {
 					if ($request->has('images')) {
@@ -1385,7 +1359,6 @@
 					}
 					throw new \Exception('No valid portfolio content provided');
 			 }
-			 
 			 protected function handleExistingImagePortfolio(Request $request,
 				  Document $portfolio
 			 ): JsonResponse {
@@ -1420,7 +1393,6 @@
 						 $portfolio->fresh(['images'])
 					);
 			 }
-			 
 			 protected function handleFiles(Request $request, Document $portfolio
 			 ): void {
 					switch ($portfolio->format) {
@@ -1437,7 +1409,6 @@
 								 break;
 					}
 			 }
-			 
 			 protected function handleImageUpload($images, Document $portfolio
 			 ): void {
 					$count = count($images);
@@ -1452,14 +1423,12 @@
 						  ]);
 					}
 			 }
-			 
 			 protected function handlePdfUpload($file, Document $portfolio): void
 			 {
 					$path = $file->store('portfolios/pdfs', 'public');
 					$urlPath = Storage::disk('public')->url($path);
 					$portfolio->update(['path' => $urlPath]);
 			 }
-			 
 			 public function deletePortfolioImage(Request $request, $profileId,
 				  $imageId
 			 ): JsonResponse {
@@ -1520,7 +1489,6 @@
 						  );
 					}
 			 }
-			 
 			 public function addPortfolioTypePdf(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
@@ -1589,7 +1557,6 @@
 						  );
 					}
 			 }
-			 
 			 public function addPortfolioTypeLink(Request $request, $profileId
 			 ): JsonResponse {
 					$validator = Validator::make($request->all(), [
@@ -1659,7 +1626,6 @@
 						  );
 					}
 			 }
-			 // Update Portfolio
 			 public function editPortfolioImages(Request $request, $profileId,
 				  $portfolioId
 			 ): \Illuminate\Http\JsonResponse {
@@ -1801,7 +1767,6 @@
 						  );
 					}
 			 }
-			 
 			 public function editPortfolioPdf(Request $request, $profileId,
 				  $portfolioId
 			 ): JsonResponse {
@@ -1883,7 +1848,6 @@
 						  );
 					}
 			 }
-			 
 			 protected function handlePdfUpdate(Request $request,
 				  Document $portfolio
 			 ): bool {
@@ -1904,7 +1868,6 @@
 					$portfolio->path = $urlPath;
 					return true;
 			 }
-			 
 			 public function editPortfolioUrl(Request $request, $profileId,
 				  $portfolioId
 			 ): JsonResponse {
@@ -1988,7 +1951,6 @@
 						  );
 					}
 			 }
-			 
 			 protected function handleUrlUpdate(Request $request,
 				  Document $portfolio
 			 ): bool {
@@ -2002,7 +1964,6 @@
 					
 					return false;
 			 }
-			 
 			 public function deletePortfolio(Request $request, $profileId,
 				  $portfolioId
 			 ): JsonResponse {
@@ -2065,7 +2026,6 @@
 						  );
 					}
 			 }
-			 
 //			 protected function handleImageUpdate(Request $request,
 //				  Document $portfolio
 //			 ): bool {
@@ -2108,5 +2068,4 @@
 //
 //					return $changes;
 //			 }
-			 
 	  }

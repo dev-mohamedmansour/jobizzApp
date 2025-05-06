@@ -26,7 +26,6 @@
 			 {
 					$this->pinService = $pinService;
 			 }
-			 
 			 // Regular registration
 			 public function register(Request $request): JsonResponse
 			 {
@@ -113,7 +112,6 @@
 						  return responseJson(500, "Server error", $errorMessage);
 					}
 			 }
-			 
 			 // Verify email with PIN
 			 public function verifyEmail(Request $request): JsonResponse
 			 {
@@ -190,9 +188,7 @@
 						  return responseJson(500, "Server error", $errorMessage);
 					}
 			 }
-			 
 			 // Regular login
-			 
 			 public function socialLogin(Request $request): JsonResponse
 			 {
 					try {
@@ -322,7 +318,6 @@
 //						  );
 //					}
 //			 }
-			 
 			 public function login(Request $request): JsonResponse
 			 {
 					try {
@@ -393,9 +388,6 @@
 						  return responseJson(500, "Server error", $errorMessage);
 					}
 			 }
-			 
-			 // Logout
-			 
 			 public function requestPasswordReset(Request $request): JsonResponse
 			 {
 					try {

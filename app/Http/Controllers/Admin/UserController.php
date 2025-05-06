@@ -63,7 +63,6 @@ class UserController extends Controller
 			 }
 			 return false;
 	  }
-	  
 	  public function destroy($id): JsonResponse
 	  {
 			 try {

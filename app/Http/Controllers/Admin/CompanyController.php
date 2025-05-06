@@ -68,7 +68,6 @@
 						  );
 					}
 			 }
-			 
 			 private function isAdminAuthorized($admin): bool
 			 {
 					// Check if the user is a super-admin
@@ -77,7 +76,6 @@
 					}
 					return false;
 			 }
-			 
 			 public function show($id): JsonResponse
 			 {
 					try {
@@ -128,7 +126,6 @@
 						  );
 					}
 			 }
-			 
 			 private function isAdminAuthorizedToShow($admin, $company): bool
 			 {
 					// Check if the user is a super-admin
@@ -147,7 +144,6 @@
 					}
 					return false;
 			 }
-			 
 			 public function store(Request $request): JsonResponse
 			 {
 					try {
@@ -267,7 +263,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function update(Request $request, $id
 			 ): JsonResponse {
 					try {
@@ -415,7 +410,6 @@
 						  return responseJson(500,'Error',$errorMessage);
 					}
 			 }
-			 
 			 public function destroy($id): JsonResponse
 			 {
 					try {

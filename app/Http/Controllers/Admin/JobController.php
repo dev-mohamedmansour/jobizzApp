@@ -105,7 +105,6 @@
 						  );
 					}
 			 }
-			 
 			 public function getAllJobsForCompany(Request $request, $id
 			 ): JsonResponse {
 					try {
@@ -150,7 +149,6 @@
 						  );
 					}
 			 }
-			 
 			 public function show($jobId): JsonResponse
 			 {
 					try {
@@ -193,7 +191,6 @@
 						  );
 					}
 			 }
-			 
 			 private function isAdminAuthorizedToShow($admin, $job): bool
 			 {
 					// Check if the user is a super-admin
@@ -212,7 +209,6 @@
 					}
 					return false;
 			 }
-			 
 			 public function store(Request $request): JsonResponse
 			 {
 					try {
@@ -310,7 +306,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function update(Request $request, $jobId): JsonResponse
 			 {
 					try {
@@ -409,7 +404,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function destroy($jobId): JsonResponse
 			 {
 					try {
@@ -447,7 +441,6 @@
 						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 private function isAuthorizedToDelete($admin, $job): bool
 			 {
 					return $admin->hasRole('super-admin')

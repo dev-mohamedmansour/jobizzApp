@@ -33,7 +33,6 @@
 			 {
 					$this->pinService = $pinService;
 			 }
-			 
 			 public function superAdminSignUp(Request $request): JsonResponse
 			 {
 					try {
@@ -138,7 +137,6 @@
 						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
-			 
 			 public function register(Request $request): JsonResponse
 			 {
 					try {
@@ -249,7 +247,6 @@
 						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
-			 
 			 public function verifyEmail(Request $request): JsonResponse
 			 {
 					try {
@@ -316,7 +313,6 @@
 						  );
 					}
 			 }
-			 
 			 public function approve($pendingAdmin): JsonResponse
 			 {
 					try {
@@ -379,7 +375,6 @@
 					}
 					
 			 }
-			 
 			 public function createSubAdmin(Request $request): JsonResponse
 			 {
 					try {
@@ -494,7 +489,6 @@
 						  );
 					}
 			 }
-			 
 			 public function login(Request $request): \Illuminate\Http\JsonResponse
 			 {
 					try {
@@ -571,8 +565,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
-			 
 			 public function logout(): \Illuminate\Http\JsonResponse
 			 {
 					try {
@@ -608,7 +600,6 @@
 					}
 
 			 }
-			 
 //			 public function forgotAdminPassword(Request $request
 //			 ): \Illuminate\Http\JsonResponse {
 //					try {
@@ -779,7 +770,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function checkResetPasswordPinCode(Request $request): JsonResponse
 			 {
 					try {
@@ -847,7 +837,6 @@
 						  return responseJson(500, 'Server Error',$message);
 					}
 			 }
-			 
 			 public function newPassword(Request $request): JsonResponse
 			 {
 					try {

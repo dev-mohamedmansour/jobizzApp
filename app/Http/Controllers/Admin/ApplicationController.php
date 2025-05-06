@@ -73,7 +73,6 @@
 						  return responseJson(500,'Server Error', $errorMessage);
 					}
 			 }
-			 
 			 public function getUserProfileApplications(Request $request, $profileId): JsonResponse
 			 {
 					try {
@@ -118,7 +117,6 @@
 						  return responseJson(500,'Server Error', $errorMessage);
 					}
 			 }
-			 
 			 public function index(): JsonResponse
 			 {
 					try {
@@ -157,7 +155,6 @@
 						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function updateStatus(Application $application, Request $request): JsonResponse
 			 {
 					try {
@@ -204,7 +201,6 @@
 						  return responseJson(500, 'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function getStatusHistoryForUser(Request $request, $applicationId): JsonResponse
 			 {
 					try {
@@ -235,7 +231,6 @@
 						  return responseJson(500,'Server Error',$errorMessage);
 					}
 			 }
-			 
 			 public function destroy($applicationId): JsonResponse
 			 {
 					try {
