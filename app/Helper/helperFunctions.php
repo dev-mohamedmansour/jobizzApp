@@ -7,14 +7,14 @@ function responseJson($status, $message, $data = null): \Illuminate\Http\JsonRes
 				  'message' => $message,
 			 ];
 	  }else{
+			 $dataArray = is_array($data) ? $data : (array) $data;
 			 $response = [
 				  'status' => (string)$status,
 				  'message' => (string)$message,
-				  'data' => $data
+				  'data' => $dataArray
 			 ];
 	  }
 	  return response()->json($response, $status);
-	  
 }
 function notifyByFirebase($title, $body, $tokens, $data = [], $is_notification = true): bool|string
 {
