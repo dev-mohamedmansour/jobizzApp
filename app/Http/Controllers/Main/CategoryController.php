@@ -17,7 +17,7 @@
 					try {
 						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -26,13 +26,13 @@
 								 if (!$user->hasRole('super-admin')) {
 										return responseJson(
 											 403,
-											 'Forbidden: You do not have permission to view this categories'
+											 'Forbidden','You do not have permission to view this categories'
 										);
 								 }
 								 $categories = Category::withCount('jobs')->paginate(10);
 								 
 								 if ($categories->isEmpty()) {
-										return responseJson(404, 'No companies found');
+										return responseJson(404,'Not found','No companies found');
 								 }
 								 
 								 return responseJson(
@@ -52,7 +52,7 @@
 									  ->take($number)
 									  ->get();
 								 if ($categoryNum == 0) {
-										return responseJson(404, 'No Categories found');
+										return responseJson(404,'Not found','No Categories found');
 								 }
 								 
 								 return responseJson(
@@ -67,7 +67,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server error',$errorMessage);
 					}
 			 }
 			 
@@ -76,7 +76,7 @@
 					try {
 						  // Check authentication for both admin and regular users
 						  if (!auth()->check() && !auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  // Find the category
@@ -84,7 +84,7 @@
 						  
 						  // Check if the category exists
 						  if (!$category) {
-								 return responseJson(404, 'Category not found');
+								 return responseJson(404,'Not found','Category not found');
 						  }
 						  
 						  return responseJson(
@@ -96,7 +96,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500,'Server error',$errorMessage);
 					}
 			 }
 			 
@@ -105,14 +105,14 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403,'Forbidden', 'Unauthorized');
 						  }
 						  
 						  // Validate request data including image
@@ -158,7 +158,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server error' ,$errorMessage);
 					}
 			 }
 			 
@@ -167,14 +167,14 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403,'Forbidden', 'Unauthorized');
 						  }
 						  
 						  // Find the category
@@ -182,9 +182,8 @@
 						  
 						  // Check if the category exists
 						  if (!$category) {
-								 return responseJson(404, 'Category not found');
+								 return responseJson(404, 'Not found','Category not found');
 						  }
-						  
 						  // Validate request data including image
 						  $validated = $request->validate([
 								'name'  => 'sometimes|string|max:255',
@@ -261,7 +260,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
 			 
@@ -270,14 +269,14 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated');
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
 						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403, 'Unauthorized');
+								 return responseJson(403, 'Forbidden','Unauthorized');
 						  }
 						  
 						  // Find the category
@@ -285,7 +284,7 @@
 						  
 						  // Check if the category exists
 						  if (!$category) {
-								 return responseJson(404, 'Category not found');
+								 return responseJson(404,'Not found', 'Category not found');
 						  }
 						  
 						  // Delete the associated image if it exists
@@ -303,7 +302,7 @@
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, $errorMessage);
+						  return responseJson(500, 'Server error',$errorMessage);
 					}
 			 }
 	  }
