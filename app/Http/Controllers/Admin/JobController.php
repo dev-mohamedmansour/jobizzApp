@@ -116,12 +116,6 @@
 						  // Determine which guard the user is authenticated with
 						  if (auth()->guard('admin')->check()) {
 								 $user = auth('admin')->user();
-								 if (!$user->hasRole('admin')) {
-										return responseJson(
-											 403,
-											 'Forbidden','You do not have permission to view this jobs'
-										);
-								 }
 						  }
 						  // Get active jobs count using a subquery
 						  $jobs = Job::with('company')

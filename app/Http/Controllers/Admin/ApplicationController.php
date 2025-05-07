@@ -123,7 +123,7 @@
 						  $admin = auth('admin')->user();
 						  
 						  // Check authentication and permissions
-						  if (!$admin->hasPermissionTo('manage-applications')) {
+						  if (!$admin->hasPermissionTo('manage-applications') && $admin->hasRole('super-admin')) {
 								 return responseJson(403, 'Forbidden','Not authorized to access this resource');
 						  }
 						  
@@ -139,6 +139,11 @@
 						  })
 								->with('profile', 'job', 'statuses')
 								->paginate(15);
+						  
+						  if ($applications->isEmpty())
+						  {
+								 return  responseJson(404,'No applications found', 'No applications found');
+						  }
 						  
 						  return responseJson(200, 'Applications retrieved', [
 								'applications' => $applications->items(),
