@@ -10,7 +10,7 @@
 	  
 	  class JobController extends Controller
 	  {
-			 public function index(Request $request): JsonResponse
+			 public function index(): JsonResponse
 			 {
 					try {
 						  // Check if the user is authenticated
@@ -29,17 +29,17 @@
 								 }
 								 if ($admin->hasRole('super-admin')) {
 										// Get active jobs count using a subquery
-										$jobs = Job::with('company')
+										$jobs = Job::with('company')->where('job_status','!=','cancelled')
 											 ->withCount(
 												  ['applications as active_applications' => function ($query
 												  ) {
-														 $query->where('status', 'submitted');
+														 $query->where('status','!=','rejected')->where('status','!=','pending');
 												  }]
 											 )
-											 ->paginate(10);
+											 ->get();
 										
 										if ($jobs->isEmpty()) {
-											  return responseJson(404,'Error','No Jobs found');
+											  return responseJson(404,'No Jobs found','No Jobs found');
 										}
 										
 										return responseJson(
@@ -47,48 +47,31 @@
 											 'jobs' => $jobs,
 										]
 										);
-								 }elseif ($admin->hasRole('admin')) {
-										$jobs = Job::with('company')
-											 ->withCount(
-												  ['applications as active_applications' => function ($query
-												  ) {
-														 $query->where('status', 'submitted');
-												  }]
-											 )->where('company_id', $admin->company_id)
-											 ->paginate(10);
-										
-										if ($jobs->isEmpty()) {
-											  return responseJson(404, 'Error','No Jobs found');
-										}
-										
-										return responseJson(
-											 200, 'Jobs retrieved successfully', [
-												  'jobs' => $jobs,
-											 ]
-										);
+								 }else{
+										return responseJson(403,'Forbidden','You do not have permission to view this jobs');
 								 }
 						  } elseif (auth()->guard('api')->check()) {
 								 $user = auth('api')->user();
 								 $profileJobTitle = $user->defaultProfile->title_job;
-								 $jobsNum = Job::count();
+								 $jobsNum = Job::Where('job_status','=','open')->count();
 								 $number = $jobsNum / 3;
 								 // Get active jobs count using a subquery
-								 $jobsTrending = Job::with('company')
+								 $jobsTrending = Job::with('company')->where('job_status','=','open')
 									  ->inRandomOrder()
 									  ->take($number)
 									  ->get();
-								 $jobsPopular = Job::with('company')
+								 $jobsPopular = Job::with('company')->where('job_status','=','open')
 									  ->inRandomOrder()
 									  ->take($number)
 									  ->get();
 								 $jobsRecommended = Job::with('company')->where(
 									  'title', 'like', '%' . $profileJobTitle . '%'
-								 )
+								 )->where('job_status','=','open')
 									  ->inRandomOrder()
 									  ->take($number)
 									  ->get();
 								 if ($jobsNum == 0) {
-										return responseJson(404,'Error','No Jobs found');
+										return responseJson(404,'No Jobs found','No Jobs found');
 								 }
 								 
 								 return responseJson(
@@ -122,12 +105,12 @@
 								->withCount(
 									 ['applications as active_applications' => function ($query
 									 ) {
-											$query->where('status', 'submitted');
+											$query->where('status','!=','rejected')->where('status','!=','pending');
 									 }]
 								)->whereHas('company', function ($query) use ($id) {
 									  $query->where('id', $id);
 								})
-								->paginate(10);
+								->where('job_status','!=','cancelled')->get();
 						  
 						  if ($jobs->isEmpty()) {
 								 return responseJson(404,'Error','No Jobs found');
@@ -151,10 +134,10 @@
 								 return responseJson(401, 'Unauthenticated','Unauthenticated');
 						  }
 						  
-						  $job = Job::find($jobId);
+						  $job = Job::find($jobId)->where('job_status','!=','cancelled');
 						  // Check if the job exists
 						  if (!$job) {
-								 return responseJson(404,'Error','Job not found');
+								 return responseJson(404,'Job not found','Job not found');
 						  }
 						  
 						  // Determine which guard the user is authenticated with
@@ -272,7 +255,7 @@
 								->first();
 						  
 						  if ($existingJob) {
-								 return responseJson(409, 'Error','Job already exists');
+								 return responseJson(409, 'Job already exists','Job already exists');
 						  }
 						  // Create the job with the admin's company_id
 						  $jobData = $validated;
@@ -314,13 +297,13 @@
 						  // Check if the admin is a super-admin (they should not create jobs directly)
 						  if ($admin->hasRole('super-admin')) {
 								 return responseJson(
-									  403, 'Forbidden','Super-admins cannot update jobs directly'
+									  403, 'Forbidden','Super-admins can not update jobs directly'
 								 );
 						  }
 						  
 						  // Check if the admin has the permission to manage company jobs
 						  if (!$admin->hasPermissionTo('manage-company-jobs')) {
-								 return responseJson(403,'Forbidden','Unauthorized');
+								 return responseJson(403,'Forbidden','You do not have permission to manage company jobs');
 						  }
 						  
 						  // Check if the admin has a company associated
@@ -330,10 +313,10 @@
 									  'Forbidden','You can only add jobs to your own company'
 								 );
 						  }
-						  $job = Job::find($jobId);
+						  $job = Job::find($jobId)->where('job_status','!=','cancelled')->where('company_id',$admin->company_id);
 						  // Check if the job exists
 						  if (!$job) {
-								 return responseJson(404,'Error','Job not found');
+								 return responseJson(404,'Job not found','Job not found');
 						  }
 						  
 						  if ($admin->company_id !== $job->company_id) {
@@ -409,9 +392,9 @@
 						  $admin = auth('admin')->user();
 						  
 						  $job = Job::find($jobId);
-						  // Check if the job exists
+						  // Check if the job exists or not
 						  if (!$job) {
-								 return responseJson(404,'Error','Job not found');
+								 return responseJson(404,'Job not found','Job not found');
 						  }
 						  
 						  // Check authorization
@@ -421,10 +404,8 @@
 									  'Forbidden','You do not have permission to delete this job'
 								 );
 						  }
-						  
 						  // Delete the job
-						  $job->delete();
-						  
+						  $job->job_status='cancelled';
 						  return responseJson(200, 'Job deleted successfully');
 						  
 					} catch (\Exception $e) {
@@ -437,8 +418,7 @@
 			 }
 			 private function isAuthorizedToDelete($admin, $job): bool
 			 {
-					return $admin->hasRole('super-admin')
-						 || ($admin->hasPermissionTo('manage-company-jobs')
+					return ($admin->hasPermissionTo('manage-company-jobs')
 							  && $admin->company_id === $job->company_id);
 			 }
 	  }

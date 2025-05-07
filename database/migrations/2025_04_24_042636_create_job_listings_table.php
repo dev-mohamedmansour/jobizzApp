@@ -19,7 +19,7 @@ return new class extends Migration
 				  $table->decimal('salary', 15, 2);
 				  $table->text('description');
 				  $table->text('requirement');
-				  $table->enum('job_status', ['open', 'closed'])->default('open');
+				  $table->enum('job_status', ['open', 'closed','cancelled'])->default('open');
 				  $table->string('location');
 				  $table->string('position');
 				  $table->text('benefits')->nullable();

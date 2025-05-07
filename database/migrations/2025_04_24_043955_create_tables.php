@@ -18,22 +18,18 @@
 						  $table->string('slug')->unique();
 						  $table->timestamps();
 					});
-					
 					// Create applications' table
 					Schema::create('applications', function (Blueprint $table) {
 						  $table->id();
 						  $table->foreignId('profile_id')->constrained('profiles')->onUpdate('cascade')->onDelete('cascade');
-						  $table->foreignId('job_listing_id')->constrained('job_listings')->onUpdate('cascade')->onDelete('cascade');
+						  $table->foreignId('job_id')->constrained('job_listings')->onUpdate('cascade')->onDelete('cascade');
 						  $table->string('cover_letter')->default('No Thing');
 						  $table->string('resume_path');
-						  $table->enum('status', ['pending', 'reviewed', 'accepted', 'rejected'])->default('pending');
+						  $table->enum('status', ['pending', 'reviewed', 'accepted', 'rejected','submitted','team-matching','final-hr-interview','technical-interview','screening-interview'])->default('pending');
 						  $table->timestamps();
 					});
 			 }
 			 
-			 /**
-			  * Reverse the migrations.
-			  */
 			 public function down(): void
 			 {
 					Schema::dropIfExists('categories');

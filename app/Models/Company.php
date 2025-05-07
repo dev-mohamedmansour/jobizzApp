@@ -43,13 +43,9 @@
 					$this->admins()->whereNotIn('role', ['admin', 'super admin'])->delete();
 			 }
 			 
-			 public function jobs()
+			 public function jobs(): \Illuminate\Database\Eloquent\Relations\HasMany
 			 {
 					return $this->hasMany(JobListing::class);
 			 }
 			 
-//			 public function jobListings()
-//			 {
-//					return $this->hasMany(JobListing::class);
-//			 }
 	  }

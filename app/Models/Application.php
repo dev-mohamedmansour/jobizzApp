@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Application extends Model
 {
 	  protected $fillable = [
-			'job_listing_id','profile_id','resume_path'
+			'id','job_id','profile_id','status','resume_path'
 	  ];
 	  
 	  protected $casts
@@ -19,7 +19,7 @@ class Application extends Model
 	  
 	  public function job(): \Illuminate\Database\Eloquent\Relations\BelongsTo
 	  {
-			 return $this->belongsTo(JobListing::class,'job_listing_id');
+			 return $this->belongsTo(JobListing::class,'job_id');
 	  }
 	  
 	  public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -27,7 +27,7 @@ class Application extends Model
 			 return $this->belongsTo(Profile::class);
 	  }
 	  
-	  public function statuses()
+	  public function statuses(): \Illuminate\Database\Eloquent\Relations\HasMany
 	  {
 			 return $this->hasMany(ApplicationStatusHistory::class)
 				  ->orderByDesc('created_at');

@@ -98,7 +98,7 @@
 									  'index']
 								);
 								Route::put(
-									 '/{application}/status',
+									 '/{applicationId}/status',
 									 [ApplicationController::class,
 									  'updateStatus']
 								);
@@ -168,10 +168,6 @@
 			 // Social auth
 //			 Route::get(
 //				  '/{provider}', [AuthController::class, 'redirectToProvider']
-//			 );
-//			 Route::get(
-//				  '/{provider}/callback',
-//				  [AuthController::class, 'handleProviderCallback']
 //			 );
 			 Route::post(
 				  '/google-login', [AuthController::class, 'socialLogin']
@@ -308,7 +304,7 @@
 						 Route::get(
 							  '/',
 							  [ApplicationController::class,
-								'getUserProfileApplications']
+								'getApplicationsForUser']
 						 );
 						 Route::post(
 							  'add-application/{jobId}',
