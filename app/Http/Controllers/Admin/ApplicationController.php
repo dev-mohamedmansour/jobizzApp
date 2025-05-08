@@ -8,6 +8,7 @@
 	  use App\Models\ApplicationStatusHistory;
 	  use App\Models\JobListing as Job;
 	  use App\Models\Profile;
+	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
@@ -212,7 +213,7 @@
 						  $applications = Application::whereHas(
 								'job', function ($query) use ($admin) {
 								 $query->where('company_id', $admin->company_id)
-									  ->where('job_status', '!=','cancelled');
+									  ->where('job_status', '!=', 'cancelled');
 						  }
 						  )->with([
 								'job:id,title,salary',
@@ -296,7 +297,7 @@
 						  $applications = Application::whereHas(
 								'job', function ($query) use ($admin) {
 								 $query->where('company_id', $admin->company_id)
-									  ->where('job_status', '!=','cancelled');
+									  ->where('job_status', '!=', 'cancelled');
 						  }
 						  )->with([
 								'job:id,title,salary',
@@ -426,6 +427,16 @@
 								'feedback' => $validated['feedback'] ?? null,
 						  ]);
 						  
+						  // Notify the user
+						  $user = $application->profile->user;
+						  $user->notify(
+								new JobizzUserNotification(
+									 title: 'Application Status Updated',
+									 body: "Your application for {$application->job->title} is now {$validated['status']}.",
+									 data: ['profile_name' => $application->profile->title_job]
+								)
+						  );
+						  
 						  return responseJson(
 								200, 'Application status updated successfully', [
 									 'id'             => $application->id,
@@ -463,7 +474,7 @@
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
-
+						  
 						  // Find the application
 						  $application = Application::where('id', $applicationId)
 								->whereHas('job', function ($query) use ($admin) {
@@ -481,11 +492,19 @@
 						  // Record status history
 						  $application->statuses()->create([
 								'status'   => 'submitted',
-								'feedback' =>'admin restore this application',
+								'feedback' => 'admin restore this application',
 						  ]);
-						  
+						  // Notify the user
+						  $user = $application->profile->user;
+						  $user->notify(
+								new JobizzUserNotification(
+									 title: 'Application Status Updated',
+									 body: "Your application for {$application->job->title} is now submitted .",
+									 data: ['profile_name' => $application->profile->title_job]
+								)
+						  );
 						  return responseJson(
-								200, 'Application status updated successfully', [
+								200, 'Application restored successfully', [
 									 'id'             => $application->id,
 									 'job_title'      => $application->job->title,
 									 'user_name'      => $application->profile->user->name,
@@ -496,14 +515,16 @@
 						  );
 					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 						  // Handle case where no application matches the criteria
-						  return responseJson(404, 'Not Found', 'Application not found');
+						  return responseJson(
+								404, 'Not Found', 'Application not found'
+						  );
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, 'Server Error', $errorMessage);
 					}
-					}
+			 }
 			 
 			 public function getStatusHistoryForUser(Request $request, $profileId,
 				  $applicationId
@@ -549,13 +570,13 @@
 						  // Format statuses using a resource (optional, if using StatusResource)
 						  return responseJson(
 								200, 'Application retrieved successfully', [
-								'id'      => $application->id,
-								'job'     => $application->Job,
-								'company' => $application->job->company,
-								'status'  => StatusResource::collection(
-									 $application->statuses
-								),
-						  ]
+									 'id'      => $application->id,
+									 'job'     => $application->Job,
+									 'company' => $application->job->company,
+									 'status'  => StatusResource::collection(
+										  $application->statuses
+									 ),
+								]
 						  );
 						  
 					} catch (ModelNotFoundException $e) {
@@ -577,26 +598,46 @@
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
-						  
 						  $admin = auth('admin')->user();
-						  
 						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
-						  $application = Application::find($applicationId);
-						  if (!$application) {
-								 return responseJson(
-									  404, 'error', 'Application not found'
-								 );
-						  }
-						  // Delete the application
-						  $application->delete();
-						  
+						  // Find the application
+						  $application = Application::where('id', $applicationId)
+								->whereHas('job', function ($query) use ($admin) {
+									  $query->where('company_id', $admin->company_id)
+											->where('job_status', '!=', 'cancelled');
+								})
+								->where('status', '!=', 'rejected')
+								->firstOrFail();
+						  // Update application status
+						  $application->update([
+								'status' => 'rejected',
+						  ]);
+						  // Record status history
+						  $application->statuses()->create([
+								'status'   => 'rejected',
+								'feedback' => 'admin rejected this application',
+						  ]);
+						  // Notify the user
+						  $user = $application->profile->user;
+						  $user->notify(
+								new JobizzUserNotification(
+									 title: 'Application Status Updated',
+									 body: "Sorry, Your application for {$application->job->title} is rejected .",
+									 data: ['profile_name' => $application->profile->title_job]
+								)
+						  );
 						  return responseJson(
-								200, 'Application deleted successfully'
+								200, 'Application cancel successfully'
 						  );
 						  
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  // Handle a case where no application matches the criteria
+						  return responseJson(
+								404, 'Not Found', 'Application not found'
+						  );
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()

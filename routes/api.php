@@ -6,6 +6,7 @@
 	  use App\Http\Controllers\Admin\JobController;
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\ProfileController;
+	  use App\Http\Controllers\FirebasePushController;
 	  use App\Http\Controllers\Main\CategoryController;
 	  use Illuminate\Support\Facades\Route;
 	  
@@ -164,13 +165,12 @@
 				  '/resend-email-verification',
 				  [AuthController::class, 'resendVerificationEmail']
 			 );
-			 Route::post(
-				  '/resend-email-rest', [AuthController::class, 'resendRestEmail']
-			 );
+
 			 Route::post('/login', [AuthController::class, 'login']);
 			 
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::post('/logout', [AuthController::class, 'logout']);
+					Route::post('/fcm-token', [FirebasePushController::class, 'registerToken']);
 			 });
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::get('/home', [AuthController::class, 'home']);

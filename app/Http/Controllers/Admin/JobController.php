@@ -5,6 +5,8 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\JobListing;
 	  use App\Models\JobListing as Job;
+	  use App\Models\User;
+	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Log;
@@ -263,7 +265,15 @@
 						  $jobData['company_id'] = $admin->company_id;
 						  
 						  $job = Job::create($jobData);
-						  
+						  // Notify users
+						  $users = User::all();
+						  foreach ($users as $user) {
+								 $user->notify(new JobizzUserNotification(
+									  title: 'New Job Posted',
+									  body: "A new job, {$job->title}, is available at {$job->company->name}.",
+									  data: ['job_title' => $job->title]
+								 ));
+						  }
 						  return responseJson(201, 'Job created successfully', [
 								'job'  => $job,
 								'logo' => $admin->company->logo,
@@ -438,7 +448,6 @@
 						  return responseJson(500, 'Server Error', $errorMessage);
 					}
 			 }
-			 
 			 private function isAuthorizedToDelete($admin, $job): bool
 			 {
 					return ($admin->hasPermissionTo('manage-company-jobs')

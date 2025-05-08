@@ -712,7 +712,7 @@
 //						 ]
 //					);
 //
-//			 }
+//
 			 public function requestPasswordReset(Request $request): JsonResponse
 			 {
 					try {

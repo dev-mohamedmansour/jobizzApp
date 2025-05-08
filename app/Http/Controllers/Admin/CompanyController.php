@@ -5,6 +5,8 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\Company;
+	  use App\Models\User;
+	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Log;
@@ -237,7 +239,15 @@
 									  'company_id' => $company->id
 								 ]);
 						  }
-						  
+						  // Notify all users (or specific users)
+						  $users = User::all(); // Adjust based on your logic
+						  foreach ($users as $user) {
+								 $user->notify(new JobizzUserNotification(
+									  title: 'New Company Added',
+									  body: "A new company, {$company->name}, has been added to Jobizz.",
+									  data: ['company' => $company->name]
+								 ));
+						  }
 						  // Return success response
 						  return responseJson(201, 'Company created successfully', [
 								'company'      => $company,
