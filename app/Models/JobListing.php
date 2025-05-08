@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class JobListing extends Model
 {
+	  protected $table = 'job_listings';
+	  
 	  protected $fillable = [
 			'title', 'description',
 			'requirement', 'location',
@@ -34,9 +36,9 @@ class JobListing extends Model
 	  {
 			 return $this->belongsTo(Company::class,'company_id');
 	  }
-	  public function companyLogo(): BelongsTo
+	  public function getCompanyLogoAttribute()
 	  {
-			 return $this->belongsTo(Company::class)->logo;
+			 return $this->company ? $this->company->logo : null;
 	  }
 	  
 	  public function scopeActiveJobs($query)
@@ -44,8 +46,4 @@ class JobListing extends Model
 			 return $query->where('job_status', 'open');
 	  }
 	  
-//	  public function activeJobs(): \Illuminate\Database\Eloquent\Relations\HasMany
-//	  {
-//			 return $this->hasMany(JobListing::class)->where('job_status', 'open');
-//	  }
 }

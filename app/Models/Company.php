@@ -3,6 +3,8 @@
 	  namespace App\Models;
 	  
 	  use Illuminate\Database\Eloquent\Model;
+	  use Illuminate\Database\Eloquent\Relations\BelongsTo;
+	  use Illuminate\Database\Eloquent\Relations\HasMany;
 	  
 	  class Company extends Model
 	  {
@@ -28,12 +30,12 @@
 				  'updated_at' => 'date:Y-m-d',
 			 ];
 			 
-			 public function admin()
+			 public function admin(): BelongsTo
 			 {
 					return $this->belongsTo(Admin::class);
 			 }
 			 
-			 public function admins()
+			 public function admins(): HasMany
 			 {
 					return $this->hasMany(Admin::class);
 			 }
@@ -43,7 +45,7 @@
 					$this->admins()->whereNotIn('role', ['admin', 'super admin'])->delete();
 			 }
 			 
-			 public function jobs(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function jobs(): HasMany
 			 {
 					return $this->hasMany(JobListing::class);
 			 }

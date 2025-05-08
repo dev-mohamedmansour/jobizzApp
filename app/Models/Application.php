@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Casts\DateCast;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Application extends Model
 {
@@ -17,17 +18,17 @@ class Application extends Model
 				 'updated_at'        => 'date:Y-m-d',
 			];
 	  
-	  public function job(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+	  public function job(): BelongsTo
 	  {
 			 return $this->belongsTo(JobListing::class,'job_id');
 	  }
 	  
-	  public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+	  public function profile(): BelongsTo
 	  {
 			 return $this->belongsTo(Profile::class);
 	  }
 	  
-	  public function statuses(): \Illuminate\Database\Eloquent\Relations\HasMany
+	  public function statuses(): HasMany
 	  {
 			 return $this->hasMany(ApplicationStatusHistory::class)
 				  ->orderByDesc('created_at');

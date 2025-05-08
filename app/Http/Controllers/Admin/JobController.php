@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Models\JobListing;
 	  use App\Models\JobListing as Job;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
@@ -386,36 +387,55 @@
 					try {
 						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
 						  
-						  $job = Job::find($jobId);
-						  // Check if the job exists or not
+						  // Find the job (using JobListing as per your model)
+						  $job = JobListing::find($jobId);
 						  if (!$job) {
-								 return responseJson(404,'Job not found','Job not found');
+								 return responseJson(404, 'Job not found', 'Job not found');
+						  }elseif($job->job_status === 'cancelled') {
+								 return responseJson(400, 'Job already cancelled', 'This job has already been cancelled.');
 						  }
 						  
 						  // Check authorization
 						  if (!$this->isAuthorizedToDelete($admin, $job)) {
-								 return responseJson(
-									  403,
-									  'Forbidden','You do not have permission to delete this job'
-								 );
+								 return responseJson(403, 'Forbidden', 'You do not have permission to delete this job');
 						  }
-						  // Delete the job
-						  $job->job_status='cancelled';
-						  return responseJson(200, 'Job deleted successfully');
+						  
+						  // Set job status to cancel
+						  $job->job_status = 'cancelled';
+						  $job->save();
+						  
+						  // Update all related applications to reject
+						  $job->applications->each(function ($application) {
+								 $application->statuses()->create([
+									  'status' => 'rejected',
+									  'feedback' => 'Job was cancelled by admin.',
+								 ]);
+						  });
+						  
+						  // Schedule deletion of job and related applications after 15 days
+						  \Illuminate\Support\Facades\Artisan::call('schedule:run'); // Ensure scheduler is running
+						  \Illuminate\Support\Facades\Log::info("Scheduling deletion for job ID: {$jobId} after 15 days");
+						  
+						  // Schedule the deletion using a queued job
+						  \App\Jobs\DeleteJobAndApplications::dispatch($jobId)
+								->delay(now()->addDays(15));
+						  
+						  return responseJson(200, 'Job marked as cancelled and applications rejected. Scheduled for deletion in 15 days.');
 						  
 					} catch (\Exception $e) {
 						  // Handle exceptions
 						  Log::error('Server Error: ' . $e->getMessage());
 						  $errorMessage = config('app.debug') ? $e->getMessage()
 								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500,'Server Error',$errorMessage);
+						  return responseJson(500, 'Server Error', $errorMessage);
 					}
 			 }
+			 
 			 private function isAuthorizedToDelete($admin, $job): bool
 			 {
 					return ($admin->hasPermissionTo('manage-company-jobs')

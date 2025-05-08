@@ -3,11 +3,13 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Models\Admin;
 	  use App\Models\Application;
 	  use App\Models\ApplicationStatusHistory;
 	  use App\Models\JobListing as Job;
 	  use App\Models\Profile;
 	  use Carbon\Carbon;
+	  use Google\Service\Dfareporting\Ad;
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
@@ -134,17 +136,34 @@
 						  // Define the statuses you want to fetch
 						  $statuses = ['pending','reviewed','accepted','rejected','submitted','team-matching','final-hr-interview','technical-interview','screening-interview'];
 						  
-						  // Fetch applications for each status
+						  $applications = Application::with([
+								'job:id,title,salary,company_id',
+								'job.company:id,name,logo',
+								'profile.user:id,name,email'
+						  ])
+								->where('profile_id', $profile->id)
+								->get()
+								->groupBy('status');
+						  
 						  $applicationsByStatus = [];
 						  foreach ($statuses as $status) {
-								 $applicationsByStatus[$status] = Application::with([
-									  'job.company:id,name,logo',
-									  'profile.user:id,name,email'
-								 ])
-									  ->where('status', $status)
-									  ->where('profile_id', $profile->id)
-									  ->get();
+								 $apps = $applications->get($status, collect()); // Default to empty collection
+								 $formattedApplications = $apps->map(function ($application) {
+										return [
+											 'id' => $application->id,
+											 'resume_path' => $application->resume_path,
+											 'status' => $application->status,
+											 'created_at' => $application->created_at->format('Y-m-d'),
+											 'job' => $application->job,
+											 'user' => $application->profile->user ?? null,
+										];
+								 });
+								 $applicationsByStatus[$status] = [
+									  'applications' => $formattedApplications,
+									  'count' => $formattedApplications->count(),
+								 ];
 						  }
+						  
 						  return responseJson(200, 'Applications retrieved successfully', $applicationsByStatus);
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
@@ -160,53 +179,53 @@
 						  $admin = auth('admin')->user();
 						  
 						  // Check authentication and permissions
-						  if (!$admin->hasPermissionTo('manage-applications')
-								&& $admin->hasRole('super-admin')
-						  ) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'Not authorized to access this resource'
-								 );
+						  if (!$admin->hasPermissionTo('manage-applications') && $admin->hasRole('super-admin')) {
+								 return responseJson(403, 'Forbidden', 'Not authorized to access this resource');
 						  }
-						  
 						  // Verify admin has a company association
 						  if (!$admin->company_id) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'No company associated with this account'
-								 );
+								 return responseJson(403, 'Forbidden', 'No company associated with this account');
 						  }
+							// Log the company ID for debugging
+						  Log::info('Admin company_id: ' . $admin->company_id);
 						  
-						  // Get applications for the admin's company
-						  $applications = Application::whereHas(
-								'job', function ($query) use ($admin) {
+						  // Get applications for the admin's company with specific fields
+						  $applications = Application::whereHas('job', function ($query) use ($admin) {
 								 $query->where('company_id', $admin->company_id);
-						  }
-						  )
-								->with('profile', 'job', 'statuses')
-								->paginate(15);
+						  })->with([
+								'job:id,title,salary', // Select specific fields from jobListing
+								'profile.user:id,name,email', // Select specific fields from user via profile
+						  ])->get();
 						  
-						  if ($applications->isEmpty()) {
-								 return responseJson(
-									  404, 'No applications found',
-									  'No applications found'
-								 );
+						  // Transform the collection to include only desired fields
+						  $formattedApplications = $applications->map(function ($application) {
+								 return [
+									  'id' => $application->id,
+									  'resume_path' => $application->resume_path,
+									  'status' => $application->status,
+									  'created_at' => $application->created_at->format('Y-m-d'), // Format date as per casts
+									  'job' => $application->job, // Include jobListing with selected fields
+									  'user' => $application->profile->user ?? null, // Directly include user fields
+								 ];
+						  });
+						  
+						  // Log the number of applications found
+						  Log::info('Applications found: ' . $formattedApplications->count());
+						  
+						  // Check if there are no applications
+						  if ($formattedApplications->isEmpty()) {
+								 return responseJson(404, 'No applications found', 'No applications found');
 						  }
 						  
+						  // Return the formatted response without pagination
 						  return responseJson(200, 'Applications retrieved', [
-								'applications' => $applications->items(),
-								'meta'         => [
-									 'current_page'       => $applications->currentPage(
-									 ),
-									 'total_pages'        => $applications->lastPage(),
-									 'total_applications' => $applications->total(),
-								]
+								'applications' => $formattedApplications->values(),
+								'applications_count'=>$formattedApplications->count(),
 						  ]);
 						  
 					} catch (\Exception $e) {
 						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
 						  return responseJson(500, 'Server Error', $errorMessage);
 					}
 			 }

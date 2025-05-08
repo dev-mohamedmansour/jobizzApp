@@ -217,11 +217,11 @@
 						  $user = User::firstOrCreate(
 								['email' => $payload['email']],
 								[
-									 'name'              => $payload['name'] ??
-										  'Google User',
+									 'name'              => $payload['name'] ?? 'Google User',
 									 'provider_id'       => $payload['sub'],
 									 'provider_name'     => 'google',
 									 'password'          => Hash::make(Str::random(32)),
+									 'confirmed_email'   => true,
 									 'email_verified_at' => now()
 								]
 						  );
@@ -249,7 +249,6 @@
 						  );
 					}
 			 }
-			 
 			 // Social login redirect
 //			 public function redirectToProvider($provider):JsonResponse
 //			 {
