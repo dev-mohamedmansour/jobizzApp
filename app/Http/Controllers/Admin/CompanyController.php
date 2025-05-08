@@ -9,136 +9,226 @@
 	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
+	  use Illuminate\Validation\ValidationException;
 	  
 	  class CompanyController extends Controller
 	  {
+			 /**
+			  * Retrieve a list of companies based on the authenticated user's role and guard.
+			  *
+			  * @return JsonResponse
+			  */
 			 public function index(): JsonResponse
 			 {
 					try {
-						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
 						  }
 						  
-						  // Determine which guard the user is authenticated with
 						  if (auth()->guard('admin')->check()) {
-								 $user = auth('admin')->user();
-								 if (!$this->isAdminAuthorized($user)) {
-										return responseJson(
-											 403,
-											 'Forbidden',' You do not have permission to view this company'
-										);
-								 }
-								 $companies = Company::withCount('jobs')->paginate(10);
-								 
-								 if ($companies->isEmpty()) {
-										return responseJson(404, 'Error','No companies found');
-								 }
-								 
-								 return responseJson(
-									  200, 'Companies retrieved successfully', $companies
-								 );
-						  } elseif (auth()->guard('api')->check()) {
-								 
-								 $companyNum = Company::count();
-								 $number = $companyNum / 2;
-								 // Get active jobs count using a subquery
-								 $companyTrending = Company::with('jobs')
-									  ->inRandomOrder()
-									  ->take($number)
-									  ->get();
-								 $companyPopular = Company::with('jobs')
-									  ->inRandomOrder()
-									  ->take($number)
-									  ->get();
-								 if ($companyNum == 0) {
-										return responseJson(404, 'Error','No Jobs found');
-								 }
-								 
-								 return responseJson(
-									  200, 'Companies retrieved successfully', [
-											'Trending' => $companyTrending,
-											'Popular'  => $companyPopular,
-									  ]
-								 );
+								 return $this->handleAdminCompanies();
 						  }
+						  
+						  if (auth()->guard('api')->check()) {
+								 return $this->handleApiUserCompanies();
+						  }
+						  
+						  return responseJson(
+								403, 'Forbidden', 'Invalid authentication guard'
+						  );
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error',
+						  Log::error('Index companies error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 private function isAdminAuthorized($admin): bool
+			 
+			 /**
+			  * Handle company retrieval for admin users.
+			  *
+			  * @return JsonResponse
+			  */
+			 private function handleAdminCompanies(): JsonResponse
 			 {
-					// Check if the user is a super-admin
-					if ($admin->hasRole('super-admin')) {
-						  return true;
+					$admin = auth('admin')->user();
+					
+					if (!$this->isAdminAuthorized($admin)) {
+						  return responseJson(
+								403, 'Forbidden',
+								'You do not have permission to view companies'
+						  );
 					}
-					return false;
+					
+					$companies = Cache::remember(
+						 'admin_companies_page_' . request()->get('page', 1),
+						 now()->addMinutes(15), fn() => Company::withCount(
+						 ['jobs' => fn($query) => $query->where(
+							  'job_status', '!=', 'cancelled'
+						 )]
+					)
+						 ->paginate(10)
+					);
+					
+					if ($companies->isEmpty()) {
+						  return responseJson(
+								404, 'No companies found', 'No companies found'
+						  );
+					}
+					
+					return responseJson(
+						 200, 'Companies retrieved successfully', $companies
+					);
 			 }
-			 public function show($id): JsonResponse
+			 
+			 /**
+			  * Check if an admin is authorized to view all companies.
+			  *
+			  * @param mixed $admin
+			  *
+			  * @return bool
+			  */
+			 private function isAdminAuthorized(mixed $admin): bool
+			 {
+					return $admin->hasRole('super-admin');
+			 }
+			 
+			 /**
+			  * Handle company retrieval for API users.
+			  *
+			  * @return JsonResponse
+			  */
+			 private function handleApiUserCompanies(): JsonResponse
+			 {
+					$totalCompanies = Cache::remember(
+						 'total_companies_count', now()->addHours(1),
+						 fn() => Company::count()
+					);
+					
+					if ($totalCompanies === 0) {
+						  return responseJson(
+								404, 'No companies found', 'No companies found'
+						  );
+					}
+					
+					$companiesPerCategory = (int)($totalCompanies / 2);
+					
+					$trendingCompanies = Cache::remember(
+						 'trending_companies', now()->addHours(1),
+						 fn() => Company::with(
+							  ['jobs' => fn($query) => $query->where(
+									'job_status', '!=', 'cancelled'
+							  )->select('id', 'company_id', 'title', 'job_status')]
+						 )
+							  ->inRandomOrder()
+							  ->take($companiesPerCategory)
+							  ->get()
+					);
+					
+					$popularCompanies = Cache::remember(
+						 'popular_companies', now()->addHours(1),
+						 fn() => Company::with(
+							  ['jobs' => fn($query) => $query->where(
+									'job_status', '!=', 'cancelled'
+							  )->select('id', 'company_id', 'title', 'job_status')]
+						 )
+							  ->inRandomOrder()
+							  ->take($companiesPerCategory)
+							  ->get()
+					);
+					
+					return responseJson(200, 'Companies retrieved successfully', [
+						 'Trending' => $trendingCompanies,
+						 'Popular'  => $popularCompanies,
+					]);
+			 }
+			 
+			 /**
+			  * Retrieve details of a specific company.
+			  *
+			  * @param int $companyId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function show(int $companyId): JsonResponse
 			 {
 					try {
-						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
-						  }
-						  
-						  $company = Company::with('jobs')->find($id);
-						  
-						  if (!$company) {
-								 return responseJson(404, 'Error','Company not found');
-						  }
-						  
-						  // Determine which guard the user is authenticated with
-						  if (auth()->guard('admin')->check()) {
-								 $user = auth('admin')->user();
-								 if (!$this->isAdminAuthorizedToShow($user, $company)) {
-										return responseJson(
-											 403,
-											 'Forbidden','You do not have permission to view this company'
-										);
-								 }
-						  } elseif (!auth()->guard('api')->check()) {
-								 // Deny access if the user is authenticated with an unknown guard
 								 return responseJson(
-									  403,
-									  'Forbidden','You do not have permission to view this company'
+									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Get active jobs for this company
-						  $activeJobs = $company->jobs()
-								->activeJobs() // Use the scope defined in the Job model
-								->count();
+						  $company = Company::with(
+								['jobs' => fn($query) => $query->where(
+									 'job_status', '!=', 'cancelled'
+								)]
+						  )
+								->find($companyId);
 						  
-						  // If there are no active jobs, set active_jobs to 0
-						  $activeJobs = $activeJobs ?: 0;
+						  if (!$company) {
+								 return responseJson(
+									  404, 'Company not found', 'Company not found'
+								 );
+						  }
+						  
+						  if (auth()->guard('admin')->check()) {
+								 $admin = auth('admin')->user();
+								 if (!$this->isAdminAuthorizedToShow(
+									  $admin, $company
+								 )
+								 ) {
+										return responseJson(
+											 403, 'Forbidden',
+											 'You do not have permission to view this company'
+										);
+								 }
+						  } elseif (!auth()->guard('api')->check()) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You do not have permission to view this company'
+								 );
+						  }
+						  
+						  $activeJobsCount = $company->jobs()->where(
+								'job_status', '!=', 'cancelled'
+						  )->count();
 						  
 						  return responseJson(200, 'Company details retrieved', [
 								'company'     => $company,
-								'active_jobs' => $activeJobs
+								'active_jobs' => $activeJobsCount,
 						  ]);
-						  
 					} catch (\Exception $e) {
-						  return responseJson(500, 'Server error',
-								 config('app.debug') ? $e->getMessage() : null
+						  Log::error('Show company error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 private function isAdminAuthorizedToShow($admin, $company): bool
-			 {
-					// Check if the user is a super-admin
+			 
+			 /**
+			  * Check if an admin is authorized to view a specific company.
+			  *
+			  * @param mixed   $admin
+			  * @param Company $company
+			  *
+			  * @return bool
+			  */
+			 private function isAdminAuthorizedToShow(mixed $admin, Company $company
+			 ): bool {
 					if ($admin->hasRole('super-admin')) {
 						  return true;
 					}
-					// Check if the user is the admin who created the company
 					if ($admin->id === $company->admin_id) {
 						  return true;
 					}
-					// Check if the user is an HR or COO associated with the company
 					if ($admin->hasAnyRole(['hr', 'coo'])
 						 && $admin->company_id === $company->id
 					) {
@@ -146,87 +236,48 @@
 					}
 					return false;
 			 }
+			 
+			 /**
+			  * Create a new company.
+			  *
+			  * @param Request $request
+			  *
+			  * @return JsonResponse
+			  */
 			 public function store(Request $request): JsonResponse
 			 {
 					try {
 						  $admin = auth('admin')->user();
-						  $validationRules = [];
-						  $validationCustomMessages = [];
-						  
-						  if ($admin->hasRole('super-admin')) {
-								 $validationRules = [
-									  'admin_id'     => 'required|exists:admins,id',
-									  'name'         => 'required|string|max:255|unique:companies',
-									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-									  'description'  => 'required|string|max:1000',
-									  'location'     => 'required|string|max:255',
-									  'website'      => 'sometimes|url',
-									  'size'         => 'sometimes|string|max:255',
-									  'hired_people' => 'required|numeric|min:5',
-								 ];
-						  } else {
-								 if (!$admin->hasPermissionTo('manage-own-company')) {
-										return responseJson(403, 'Forbidden','Unauthorized');
-								 }
-								 if ($admin->company) {
-										return responseJson(
-											 403,'Forbidden',
-											 'You already have a company and cannot create another one'
-										);
-								 }
-								 
-								 $validationRules = [
-									  'name'         => 'required|string|max:255|unique:companies',
-									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-									  'description'  => 'required|string|max:1000',
-									  'location'     => 'required|string|max:255',
-									  'website'      => 'sometimes|url',
-									  'size'         => 'sometimes|string|max:255',
-									  'hired_people' => 'required|numeric|min:5',
-								 ];
+						  if (!$admin) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
 						  }
 						  
-						  // Add custom validation messages
-						  $validationCustomMessages = [
-								'name.unique'      => 'A company with this name already exists.',
-								'name.max'         => 'Company name cannot exceed 255 characters.',
-								'logo.image'       => 'The logo must be an image.',
-								'logo.mimes'       => 'The logo must be a file of type: jpeg, png, jpg, gif, svg.',
-								'logo.max'         => 'The logo cannot exceed 2MB in size.',
-								'description.max'  => 'Company description cannot exceed 1000 characters.',
-								'location.max'     => 'Location cannot exceed 255 characters.',
-								'size.max'         => 'Company size cannot exceed 255 characters.',
-								'hired_people.min' => 'Hired people count cannot be negative.',
-						  ];
-						  
-						  // Validate request data
+						  $validationRules = $this->getStoreValidationRules($admin);
 						  $validated = $request->validate(
-								$validationRules, $validationCustomMessages
+								$validationRules['rules'], $validationRules['messages']
 						  );
 						  
-						  // Handle logo upload
-						  if ($request->hasFile('logo')) {
-								 $logoPath = $request->file('logo')->store(
-									  'company_logos', 'public'
+						  if (!$admin->hasRole('super-admin') && $admin->company) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You already have a company and cannot create another'
 								 );
-								 $urlPath = Storage::disk('public')->url($logoPath);
-								 
-								 $validated['logo'] = $urlPath;
-						  } else {
-								 // Set default image URL
-								 $validated['logo']
-									  = 'https://jobizaa.com/still_images/company.png';
 						  }
 						  
-						  // Create company
+						  $validated = $this->handleLogoUpload($request, $validated);
+						  
 						  if ($admin->hasRole('super-admin')) {
-								 // Check if the specified admin already has a company
-								 $targetAdmin = \App\Models\Admin::find(
-									  $validated['admin_id']
-								 );
-								 if ($targetAdmin && $targetAdmin->company) {
+								 $targetAdmin = Admin::find($validated['admin_id']);
+								 if (!$targetAdmin) {
 										return responseJson(
-											 400,'Error',
+											 404, 'Admin not found', 'Admin not found'
+										);
+								 }
+								 if ($targetAdmin->company) {
+										return responseJson(
+											 400, 'Admin already has a company',
 											 'The specified admin already has a company'
 										);
 								 }
@@ -235,231 +286,304 @@
 						  } else {
 								 $validated['admin_id'] = $admin->id;
 								 $company = Company::create($validated);
-								 $admin->update([
-									  'company_id' => $company->id
-								 ]);
+								 $admin->update(['company_id' => $company->id]);
 						  }
-						  // Notify all users (or specific users)
-						  $users = User::all(); // Adjust based on your logic
-						  foreach ($users as $user) {
-								 $user->notify(new JobizzUserNotification(
-									  title: 'New Company Added',
-									  body: "A new company, {$company->name}, has been added to Jobizz.",
-									  data: ['company' => $company->name]
-								 ));
-						  }
-						  // Return success response
+						  
+						  User::all()->each(function ($user) use ($company) {
+								 $user->notify(
+									  new JobizzUserNotification(
+											title: 'New Company Added',
+											body: "A new company, {$company->name}, has been added to Jobizz.",
+											data: ['company' => $company->name]
+									  )
+								 );
+						  });
+						  
 						  return responseJson(201, 'Company created successfully', [
 								'company'      => $company,
 								'hired_people' => $company->hired_people,
 						  ]);
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
+					} catch (ValidationException $e) {
 						  return responseJson(
-								422,
-								" validation error",
-								$e->validator->errors()->all()
+								422, 'Validation error', $e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
-						  // Handle other exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  // For production: Generic error message
-						  $errorMessage
-								= "Server error: Something went wrong. Please try again later.";
-						  // For development: Detailed error message
-						  if (config('app.debug')) {
-								 $errorMessage = "Server error: " . $e->getMessage();
-						  }
-						  return responseJson(500, 'Server Error',$errorMessage);
+						  Log::error('Store company error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
-			 public function update(Request $request, $id
-			 ): JsonResponse {
-					try {
-						  $admin = auth('admin')->user();
-						  $company = Company::find($id);
-						  
-						  if (!$company) {
-								 return responseJson(404, 'Company not found');
-						  }
-						  
-						  // Define validation rules based on user role
-						  $validationRules = [];
-						  
-						  if ($admin->hasRole('super-admin')) {
-								 $validationRules = [
-									  'admin_id'     => 'required|exists:admins,id',
-									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-									  'description'  => 'sometimes|string|max:1000',
-									  'location'     => 'sometimes|string|max:255',
-									  'website'      => 'sometimes|url',
-									  'size'         => 'sometimes|string|max:255',
-									  'hired_people' => 'sometimes|nullable|numeric|min:5',
-								 ];
-						  } else {
-								 if (!$admin->hasPermissionTo('manage-own-company')) {
-										return responseJson(403,'Forbidden', 'Unauthorized');
-								 }
-								 
-								 if ($admin->id !== $company->admin_id) {
-										return responseJson(
-											 403,
-											 'Forbidden','You can only update your own company'
-										);
-								 }
-								 
-								 $validationRules = [
-									  'logo'         => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-									  'description'  => 'sometimes|string|max:1000',
-									  'location'     => 'sometimes|string|max:255',
-									  'website'      => 'sometimes|url',
-									  'size'         => 'sometimes|string|max:255',
-									  'hired_people' => 'sometimes|nullable|numeric|min:5',
-								 ];
-						  }
-						  
-						  // Add custom validation messages
-						  $validationCustomMessages = [
-								'logo.image'       => 'The logo must be an image.',
-								'logo.mimes'       => 'The logo must be a file of type: jpeg, png, jpg, gif, svg.',
-								'logo.max'         => 'The logo cannot exceed 2MB in size.',
-								'description.max'  => 'Company description cannot exceed 1000 characters.',
-								'location.max'     => 'Location cannot exceed 255 characters.',
-								'size.max'         => 'Company size cannot exceed 255 characters.',
-								'hired_people.min' => 'Hired people count cannot be negative.',
-						  ];
-						  
-						  // Validate request data
-						  $validated = $request->validate(
-								$validationRules, $validationCustomMessages
-						  );
-						  
-						  // Handle logo upload or removal
-						  if ($request->hasFile('logo')) {
-								 if ($company->logo
-									  && Storage::disk('public')->exists(
+			 
+			 /**
+			  * Get validation rules and messages for storing a company.
+			  *
+			  * @param mixed $admin
+			  *
+			  * @return array
+			  */
+			 private function getStoreValidationRules(mixed $admin): array
+			 {
+					$rules = [
+						 'name'         => 'required|string|max:255|unique:companies',
+						 'logo'         => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+						 'description'  => 'required|string|max:1000',
+						 'location'     => 'required|string|max:255',
+						 'website'      => 'nullable|url',
+						 'size'         => 'nullable|string|max:255',
+						 'hired_people' => 'required|numeric|min:5',
+					];
+					
+					if ($admin->hasRole('super-admin')) {
+						  $rules['admin_id'] = 'required|exists:admins,id';
+					}
+					
+					return [
+						 'rules'    => $rules,
+						 'messages' => [
+							  'name.unique'      => 'A company with this name already exists',
+							  'name.max'         => 'Company name cannot exceed 255 characters',
+							  'logo.image'       => 'The logo must be an image',
+							  'logo.mimes'       => 'The logo must be a file of type: jpeg, png, jpg, gif, svg',
+							  'logo.max'         => 'The logo cannot exceed 2MB in size',
+							  'description.max'  => 'Company description cannot exceed 1000 characters',
+							  'location.max'     => 'Location cannot exceed 255 characters',
+							  'size.max'         => 'Company size cannot exceed 255 characters',
+							  'hired_people.min' => 'Hired people count must be at least 5',
+						 ],
+					];
+			 }
+			 
+			 /**
+			  * Handle logo upload for company creation or update.
+			  *
+			  * @param Request      $request
+			  * @param array        $validated
+			  * @param Company|null $company
+			  *
+			  * @return array
+			  */
+			 private function handleLogoUpload(Request $request, array $validated,
+				  ?Company $company = null
+			 ): array {
+					if ($request->hasFile('logo')) {
+						  if ($company && $company->logo
+								&& Storage::disk('public')->exists(
+									 str_replace(
+										  Storage::disk('public')->url(''), '',
+										  $company->logo
+									 )
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  str_replace(
+											Storage::disk('public')->url(''), '',
 											$company->logo
 									  )
-								 ) {
-										Storage::disk('public')->delete($company->logo);
-								 }
-								 $logoPath = $request->file('logo')->store(
-									  'company_logos', 'public'
 								 );
-								 $urlPath = Storage::disk('public')->url($logoPath);
-								 $validated['logo'] = $urlPath;
 						  }
-						  // Get original data before update
-						  $originalData = $company->only(
-								['logo', 'description', 'location', 'website', 'size',
-								 'hired_people']
+						  $logoPath = $request->file('logo')->store(
+								'company_logos', 'public'
 						  );
-						  $newData = $validated;
+						  $validated['logo'] = Storage::disk('public')->url(
+								$logoPath
+						  );
+					} elseif (!$company || !$company->logo) {
+						  $validated['logo']
+								= 'https://jobizaa.com/still_images/company.png';
+					}
+					
+					return $validated;
+			 }
+			 
+			 /**
+			  * Update an existing company.
+			  *
+			  * @param Request $request
+			  * @param int     $companyId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function update(Request $request, int $companyId): JsonResponse
+			 {
+					try {
+						  $admin = auth('admin')->user();
+						  if (!$admin) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Check if any data actually changed
-						  $changes = array_diff_assoc($newData, $originalData);
+						  $company = Company::find($companyId);
+						  if (!$company) {
+								 return responseJson(
+									  404, 'Company not found', 'Company not found'
+								 );
+						  }
+						  
+						  $validationRules = $this->getUpdateValidationRules(
+								$admin, $company
+						  );
+						  $validated = $request->validate(
+								$validationRules['rules'], $validationRules['messages']
+						  );
+						  
+						  $validated = $this->handleLogoUpload(
+								$request, $validated, $company
+						  );
+						  
+						  $originalData = $company->only(array_keys($validated));
+						  $changes = array_diff_assoc($validated, $originalData);
 						  
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
 									  'company'      => $company,
 									  'hired_people' => $company->hired_people,
-									  'unchanged'    => true
+									  'unchanged'    => true,
 								 ]);
 						  }
 						  
-						  // Update company
 						  if ($admin->hasRole('super-admin')) {
-								 if (isset($validated['admin_id'])) {
-										// Check if the specified admin already has a company
-										$targetAdmin = \App\Models\Admin::find(
-											 $validated['admin_id']
+								 $targetAdmin = Admin::find(
+									  $validated['admin_id'] ?? null
+								 );
+								 if (!$targetAdmin) {
+										return responseJson(
+											 404, 'Admin not found', 'Admin not found'
 										);
-										if (!$targetAdmin) {
-											  return responseJson(
-													404, 'Error','This admin not found'
-											  );
-										} elseif ($targetAdmin->company
-											 && $targetAdmin->company->id !== $company->id
-										) {
-											  return responseJson(
-													400,'Error',
-													'The specified admin already has a company'
-											  );
-										}
-										$company->update($validated);
-								 } else {
-										return responseJson(404,'Error', 'This admin not found');
+								 }
+								 if ($targetAdmin->company
+									  && $targetAdmin->company->id !== $company->id
+								 ) {
+										return responseJson(
+											 400, 'Admin already has a company',
+											 'The specified admin already has a company'
+										);
+								 }
+								 $company->update($validated);
+								 if ($validated['admin_id'] !== $company->admin_id) {
+										$targetAdmin->update(
+											 ['company_id' => $company->id]
+										);
+										Admin::where('company_id', $company->id)->where(
+											 'id', '!=', $targetAdmin->id
+										)->update(['company_id' => null]);
 								 }
 						  } else {
-								 // Remove 'admin_id' from validated data if present
-								 if (isset($validated['admin_id'])) {
-										unset($validated['admin_id']);
-								 }
+								 unset($validated['admin_id']);
 								 $company->update($validated);
 						  }
 						  
-						  // Return success response
+						  Cache::forget(
+								'admin_companies_page_' . request()->get('page', 1)
+						  );
+						  Cache::forget('total_companies_count');
+						  Cache::forget('trending_companies');
+						  Cache::forget('popular_companies');
+						  
 						  return responseJson(200, 'Company updated successfully', [
-								'company'      => $company,
+								'company'      => $company->fresh(),
 								'hired_people' => $company->hired_people,
 						  ]);
-						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
+					} catch (ValidationException $e) {
 						  return responseJson(
-								422,
-								" validation error",
-								$e->validator->errors()->all()
+								422, 'Validation error', $e->validator->errors()->all()
 						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage
-								= "Server error: Something went wrong. Please try again later.";
-						  if (config('app.debug')) {
-								 $errorMessage = "Server error: " . $e->getMessage();
-						  }
-						  return responseJson(500,'Error',$errorMessage);
+						  Log::error('Update company error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
-			 public function destroy($id): JsonResponse
+			 
+			 /**
+			  * Get validation rules and messages for updating a company.
+			  *
+			  * @param mixed   $admin
+			  * @param Company $company
+			  *
+			  * @return array
+			  * @throws \Exception
+			  */
+			 private function getUpdateValidationRules(mixed $admin, Company $company
+			 ): array {
+					$rules = [
+						 'logo'         => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+						 'description'  => 'sometimes|string|max:1000',
+						 'location'     => 'sometimes|string|max:255',
+						 'website'      => 'sometimes|url',
+						 'size'         => 'sometimes|string|max:255',
+						 'hired_people' => 'sometimes|numeric|min:5',
+					];
+					
+					if ($admin->hasRole('super-admin')) {
+						  $rules['admin_id'] = 'sometimes|exists:admins,id';
+					} elseif ($admin->id !== $company->admin_id) {
+						  throw new \Exception(
+								'You can only update your own company'
+						  );
+					}
+					
+					return [
+						 'rules'    => $rules,
+						 'messages' => [
+							  'name.unique'      => 'A company with this name already exists',
+							  'name.max'         => 'Company name cannot exceed 255 characters',
+							  'logo.image'       => 'The logo must be an image',
+							  'logo.mimes'       => 'The logo must be a file of type: jpeg, png, jpg, gif, svg',
+							  'logo.max'         => 'The logo cannot exceed 2MB in size',
+							  'description.max'  => 'Company description cannot exceed 1000 characters',
+							  'location.max'     => 'Location cannot exceed 255 characters',
+							  'size.max'         => 'Company size cannot exceed 255 characters',
+							  'hired_people.min' => 'Hired people count must be at least 5',
+						 ],
+					];
+			 }
+			 
+			 /**
+			  * Delete a company and its associated resources.
+			  *
+			  * @param int $companyId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function destroy(int $companyId): JsonResponse
 			 {
 					try {
-						  // Check if the user is authenticated
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
-						  }
-						  
-						  $admin = auth('admin')->user();
-						  $company = Company::find($id);
-						  
-						  // Check if the company exists
-						  if (!$company) {
-								 return responseJson(404, 'Error','Company not found');
-						  }
-						  
-						  // Determine authorization
-						  if ($admin->hasPermissionTo('manage-all-companies')) {
-								 // Super-admins can delete any company
-						  } elseif ($admin->hasPermissionTo('manage-own-company')
-								&& $company->id === $admin->company_id
-						  ) {
-								 // Regular admins can only delete their own company
-						  } else {
 								 return responseJson(
-									  403,
-									  'Forbidden','You do not have permission to delete this company'
+									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Delete associated resources if needed (e.g., jobs)
-						  $company->jobs()->delete();
+						  $admin = auth('admin')->user();
+						  $company = Company::find($companyId);
 						  
-						  // Delete sub-admins associated with the company (excluding the current admin)
+						  if (!$company) {
+								 return responseJson(
+									  404, 'Company not found', 'Company not found'
+								 );
+						  }
+						  
+						  if (!$admin->hasPermissionTo('manage-all-companies')
+								&& !($admin->hasPermissionTo('manage-own-company')
+									 && $company->id === $admin->company_id)
+						  ) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You do not have permission to delete this company'
+								 );
+						  }
+						  
+						  $company->jobs()->where('job_status', '!=', 'cancelled')
+								->update(['job_status' => 'cancelled']);
+						  
 						  $subAdmins = Admin::where('company_id', $company->id)
-								->where('id', '!=', $admin->id)
-								->get();
-						  
+								->where('id', '!=', $admin->id)->get();
 						  foreach ($subAdmins as $subAdmin) {
-								 // Delete sub-admin's photo if it exists
 								 if ($subAdmin->photo
 									  && Storage::disk('public')->exists(
 											$subAdmin->photo
@@ -473,33 +597,45 @@
 								->where('id', '!=', $admin->id)
 								->delete();
 						  
-						  // Update the current admin's company_id to null if it matches the company being deleted
-						  if ($admin->company_id === $company->id) {
-								 $admin->update(['company_id' => null]);
-						  }
+						  Admin::where('company_id', $company->id)->update(
+								['company_id' => null]
+						  );
 						  
-						  // Delete the company logo from storage if it exists
 						  if ($company->logo
 								&& Storage::disk('public')->exists(
-									 $company->logo
+									 str_replace(
+										  Storage::disk('public')->url(''), '',
+										  $company->logo
+									 )
 								)
 						  ) {
-								 Storage::disk('public')->delete($company->logo);
+								 Storage::disk('public')->delete(
+									  str_replace(
+											Storage::disk('public')->url(''), '',
+											$company->logo
+									  )
+								 );
 						  }
-						  // Delete the company
+						  
 						  $company->delete();
+						  
+						  Cache::forget(
+								'admin_companies_page_' . request()->get('page', 1)
+						  );
+						  Cache::forget('total_companies_count');
+						  Cache::forget('trending_companies');
+						  Cache::forget('popular_companies');
 						  
 						  return responseJson(
 								200,
-								'Company and associated sub-admins deleted successfully'
+								'Company and associated resources deleted successfully'
 						  );
-						  
 					} catch (\Exception $e) {
-						  // Handle exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500,'Server Error',$errorMessage);
+						  Log::error('Destroy company error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 	  }

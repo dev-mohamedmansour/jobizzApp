@@ -27,7 +27,7 @@
 	  use Spatie\Permission\Exceptions\RoleAlreadyExists;
 	  class AdminAuthController extends Controller
 	  {
-			 protected $pinService;
+			 protected PinService $pinService;
 			 
 			 public function __construct(PinService $pinService)
 			 {

@@ -11,49 +11,80 @@
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Facades\Validator;
+	  use Illuminate\Validation\ValidationException;
 	  
 	  class ProfileController extends Controller
 	  {
+			 /**
+			  * Retrieve all profiles for the authenticated user.
+			  *
+			  * @param Request $request
+			  *
+			  * @return JsonResponse
+			  */
 			 public function getAllProfiles(Request $request): JsonResponse
 			 {
 					try {
 						  $user = $request->user();
-						  $profiles = $user->profiles()->with(
-								['educations', 'experiences', 'cvs',
-								 'portfolios']
-						  )->get();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profiles = Cache::remember(
+								'user_profiles_' . $user->id, now()->addMinutes(15),
+								fn() => $user->profiles()->with([
+									 'educations'  => fn($query) => $query->select(
+										  'id', 'profile_id', 'college', 'degree',
+										  'field_of_study', 'start_date', 'end_date',
+										  'is_current', 'description', 'location'
+									 ),
+									 'experiences' => fn($query) => $query->select(
+										  'id', 'profile_id', 'company', 'position',
+										  'start_date', 'end_date', 'is_current',
+										  'description', 'location'
+									 ),
+									 'cvs'         => fn($query) => $query->where(
+										  'type', 'cv'
+									 )->select(
+										  'id', 'profile_id', 'name', 'type', 'path'
+									 ),
+									 'portfolios'  => fn($query) => $query->where(
+										  'type', 'portfolio'
+									 )->select(
+										  'id', 'profile_id', 'name', 'type', 'format',
+										  'image_count', 'path', 'url'
+									 )
+								])->get()
+						  );
+						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
-									  404,
-									  'No profiles found',
+									  404, 'No profiles found',
 									  'You don\'t have any profiles yet. Please add a profile.'
 								 );
 						  }
 						  
-						  // Transform each profile to include messages about empty relationships
 						  $transformedProfiles = $profiles->map(function ($profile) {
 								 $messages = [];
-								 
 								 if ($profile->educations->isEmpty()) {
 										$messages[] = 'No education details added yet';
 								 }
-								 
 								 if ($profile->experiences->isEmpty()) {
 										$messages[] = 'No experience details added yet';
 								 }
-								 
 								 if ($profile->cvs->isEmpty()) {
 										$messages[] = 'No CVs uploaded yet';
 								 }
-								 
 								 if ($profile->portfolios->isEmpty()) {
 										$messages[] = 'No portfolios uploaded yet';
 								 }
-								 
 								 return [
 									  'profile'  => $profile,
 									  'messages' => $messages
@@ -62,178 +93,254 @@
 						  
 						  return responseJson(
 								200, 'Profiles retrieved successfully', [
-									 'profiles'      => $transformedProfiles,
-									 'profile_count' => $profiles->count()
-								]
+								'profiles'      => $transformedProfiles,
+								'profile_count' => $profiles->count()
+						  ]
 						  );
-						  
 					} catch (\Exception $e) {
-						  $message = config('app.debug')
-								? 'Failed to retrieve profiles: ' . $e->getMessage()
-								: 'Failed to retrieve profiles. Please try again later';
-						  
-						  return responseJson(500, 'Server Error', $message);
+						  Log::error('Get all profiles error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
-			 public function getProfileById(Request $request, $id
+			 
+			 /**
+			  * Retrieve a specific profile by ID.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getProfileById(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
-						  $profile = Profile::findOrFail($id);
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $profile = Cache::remember(
+								'profile_' . $profileId, now()->addMinutes(15),
+								fn() => Profile::with([
+									 'educations'  => fn($query) => $query->select(
+										  'id', 'profile_id', 'college', 'degree',
+										  'field_of_study', 'start_date', 'end_date',
+										  'is_current', 'description', 'location'
+									 ),
+									 'experiences' => fn($query) => $query->select(
+										  'id', 'profile_id', 'company', 'position',
+										  'start_date', 'end_date', 'is_current',
+										  'description', 'location'
+									 ),
+									 'documents'   => fn($query) => $query->select(
+										  'id', 'profile_id', 'name', 'type', 'format',
+										  'path', 'url'
+									 )
+								])->findOrFail($profileId)
+						  );
+						  
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
 						  return responseJson(
-								200, 'Profile retrieved successfully',
-								$profile->load(
-									 ['educations', 'experiences', 'documents']
-								)
+								200, 'Profile retrieved successfully', $profile
 						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
-						  $message = config('app.debug')
-								? 'Server error: ' . $e->getMessage()
-								: 'Server error. Please try again later';
-						  
-						  return responseJson(500, 'Server Error', $message);
+						  Log::error('Get profile by ID error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
+			 
+			 /**
+			  * Create a new profile for the authenticated user.
+			  *
+			  * @param Request $request
+			  *
+			  * @return JsonResponse
+			  */
 			 public function addProfile(Request $request): JsonResponse
 			 {
-					$user = $request->user();
-					
-					// Validate request data
-					$validator = Validator::make($request->all(), [
-						 'title_job'     => 'required|string|max:255',
-						 'job_position'  => 'required|string|max:255',
-						 'is_default'    => 'sometimes|boolean',
-						 'profile_image' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048',
-					]);
-					
-					// Check if validation fails
-					if ($validator->fails()) {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $validated = $this->validateProfile($request, null);
+						  
+						  if ($user->profiles()->where(
+								'title_job', $validated['title_job']
+						  )->exists()
+						  ) {
+								 return responseJson(
+									  409, 'Conflict',
+									  'Profile already exists with the same job title'
+								 );
+						  }
+						  
+						  $validated = $this->handleProfileImageUpload(
+								$request, $validated
+						  );
+						  
+						  if ($validated['is_default'] ?? false) {
+								 $user->profiles()->update(['is_default' => false]);
+						  }
+						  
+						  $profile = $user->profiles()->create($validated);
+						  
+						  Cache::forget('user_profiles_' . $user->id);
+						  
+						  return responseJson(201, 'Profile created successfully', [
+								'user_name' => $user->name,
+								'profile'   => $profile
+						  ]);
+					} catch (ValidationException $e) {
 						  return responseJson(
-								422, "validation error", $validator->errors()->all()
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Add profile error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Validate profile data.
+			  *
+			  * @param Request      $request
+			  * @param Profile|null $profile
+			  *
+			  * @return array
+			  */
+			 private function validateProfile(Request $request, ?Profile $profile
+			 ): array {
+					$rules = [
+						 'title_job'     => ['required', 'string', 'max:255'],
+						 'job_position'  => ['required', 'string', 'max:255'],
+						 'is_default'    => ['sometimes', 'boolean'],
+						 'profile_image' => ['nullable', 'image',
+													'mimes:jpeg,png,jpg,gif', 'max:2048']
+					];
+					
+					if ($profile) {
+						  $rules = array_map(
+								fn($rule) => str_replace(
+									 'required', 'sometimes', $rule
+								), $rules
 						  );
 					}
 					
-					// Check if the profile with the same title_job already exists for this user
-					$existingProfile = $user->profiles()
-						 ->where('title_job', $request->title_job)
-						 ->first();
-					
-					if ($existingProfile) {
-						  return responseJson(
-								409,
-								'Error',
-								'Profile already exists with the same job title',
-						  );
-					}
-					
-					// Prepare data
-					$validatedData = $validator->validated();
-					
-					// Handle image upload
+					return Validator::make($request->all(), $rules, [
+						 'title_job.max'       => 'Job title cannot exceed 255 characters',
+						 'job_position.max'    => 'Job position cannot exceed 255 characters',
+						 'profile_image.image' => 'The profile image must be an image',
+						 'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif',
+						 'profile_image.max'   => 'The profile image cannot exceed 2MB in size'
+					])->validate();
+			 }
+			 
+			 /**
+			  * Handle profile image upload.
+			  *
+			  * @param Request      $request
+			  * @param array        $validated
+			  * @param Profile|null $profile
+			  *
+			  * @return array
+			  */
+			 private function handleProfileImageUpload(Request $request,
+				  array $validated, ?Profile $profile = null
+			 ): array {
 					if ($request->hasFile('profile_image')) {
-						  $image = $request->file('profile_image')
-								->store('profiles', 'public');
-						  $validatedData['profile_image'] = Storage::disk('public')
-								->url($image);
-					} else {
-						  // Set default image path (use a local default image)
-						  $validatedData['profile_image']
+						  if ($profile && $profile->profile_image
+								&& Storage::disk(
+									 'public'
+								)->exists($this->normalizePath($profile->profile_image))
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($profile->profile_image)
+								 );
+						  }
+						  $path = $request->file('profile_image')->store(
+								'profiles', 'public'
+						  );
+						  $validated['profile_image'] = Storage::disk('public')->url(
+								$path
+						  );
+					} elseif (!$profile || !$profile->profile_image) {
+						  $validated['profile_image']
 								= 'https://jobizaa.com/still_images/userDefault.jpg';
 					}
 					
-					// If setting as default, remove default from other profiles
-					if ($request->is_default) {
-						  $user->profiles()->update(['is_default' => false]);
-					}
-					
-					// Create profile
-					$profile = $user->profiles()->create($validatedData);
-					
-					return responseJson(
-						 201,
-						 "Profile created successfully",
-						 [
-							  'user_name' => $user->name,
-							  'profile'   => $profile
-						 ]
-					);
+					return $validated;
 			 }
-			 public function updateProfile(Request $request, $id): JsonResponse
+			 
+			 /**
+			  * Normalize a file path by removing URL prefix.
+			  *
+			  * @param string $path
+			  *
+			  * @return string
+			  */
+			 private function normalizePath(string $path): string
 			 {
+					return str_replace(Storage::disk('public')->url(''), '', $path);
+			 }
+			 
+			 /**
+			  * Update an existing profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function updateProfile(Request $request, int $profileId
+			 ): JsonResponse {
 					try {
-						  // Find the profile or fail
-						  $profile = Profile::findOrFail($id);
-						  
-						  // Manual authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
-									  403, 'Unauthorized',
-									  'You cannot update this profile'
+									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'title_job'     => 'sometimes|string|max:255',
-								'job_position'  => 'sometimes|string|max:255',
-								'is_default'    => 'sometimes|boolean',
-								'profile_image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-						  ]);
-						  
-						  if ($validator->fails()) {
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
+									  403, 'Forbidden', 'You cannot update this profile'
 								 );
 						  }
 						  
-						  // Get original data before update
-						  $originalData = $profile->only(
-								['title_job', 'job_position', 'is_default',
-								 'profile_image']
+						  $validated = $this->validateProfile($request, $profile);
+						  
+						  $validated = $this->handleProfileImageUpload(
+								$request, $validated, $profile
 						  );
-						  $newData = $validator->validated();
 						  
-						  // Handle profile_image upload or removal
-						  if ($request->hasFile('profile_image')) {
-								 // Delete the old image if it exists
-								 if ($profile->profile_image
-									  && Storage::disk('public')->exists(
-											$profile->profile_image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $profile->profile_image
-										);
-								 }
-								 
-								 // Store the new image
-								 $new = $request->file(
-									  'profile_image'
-								 )->store('profiles', 'public');
-								 $newData['profile_image'] = Storage::disk('public')
-									  ->url($new);
-						  }
-						  
-						  // If setting as default, remove default from other profiles
-						  if (isset($newData['is_default'])
-								&& $newData['is_default']
-						  ) {
-								 $profile->user->profiles()
-									  ->where('id', '!=', $profile->id)
+						  if ($validated['is_default'] ?? false) {
+								 $user->profiles()->where('id', '!=', $profile->id)
 									  ->update(['is_default' => false]);
 						  }
 						  
-						  // Check if any data actually changed
-						  $changes = array_diff_assoc($newData, $originalData);
+						  $originalData = $profile->only(array_keys($validated));
+						  $changes = array_diff_assoc($validated, $originalData);
 						  
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
@@ -242,939 +349,1059 @@
 								 ]);
 						  }
 						  
-						  // Update the profile
-						  $profile->update($newData);
+						  $profile->update($validated);
 						  
-						  // Get the changed fields for a response message
-						  $changedFields = array_keys($changes);
-						  $changeMessage = !empty($changedFields)
-								? 'Profile updated. Changed: ' . implode(
-									 ', ', $changedFields
-								)
-								: 'Default status updated';
+						  Cache::forget('user_profiles_' . $user->id);
+						  Cache::forget('profile_' . $profileId);
 						  
-						  return responseJson(200, $changeMessage, [
-								'profile' => $profile,
+						  return responseJson(200, 'Profile updated successfully', [
+								'profile' => $profile->fresh(),
 								'changes' => $changes
 						  ]);
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500, 'Failed to update profile',
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Update profile error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function deleteProfile(Request $request, $id): JsonResponse
-			 {
-					try {
-						  // Find the profile or fail
-						  $profile = Profile::findOrFail($id);
-						  
-						  // Manual authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403, 'Unauthorized',
-									  'You cannot delete this profile'
-								 );
-						  }
-						  
-						  // Delete all related records first to maintain data integrity
-						  // Also delete associated images
-						  if ($profile->educations) {
-								 foreach ($profile->educations as $education) {
-										if ($education->image
-											 && Storage::disk('public')->exists(
-												  $education->image
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$education->image
-											  );
-										}
-								 }
-								 $profile->educations()->delete();
-						  }
-						  
-						  if ($profile->experiences) {
-								 foreach ($profile->experiences as $experience) {
-										if ($experience->image
-											 && Storage::disk('public')->exists(
-												  $experience->image
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$experience->image
-											  );
-										}
-								 }
-								 $profile->experiences()->delete();
-						  }
-						  
-						  if ($profile->documents) {
-								 foreach ($profile->documents as $document) {
-										if ($document->file
-											 && Storage::disk('public')->exists(
-												  $document->file
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$document->file
-											  );
-										}
-								 }
-								 $profile->documents()->delete();
-						  }
-						  
-						  // Delete the profile image if it exists
-						  if ($profile->profile_image
-								&& Storage::disk('public')->exists(
-									 $profile->profile_image
-								)
-						  ) {
-								 Storage::disk('public')->delete(
-									  $profile->profile_image
-								 );
-						  }
-						  
-						  // Delete the profile
-						  $profile->delete();
-						  
-						  return responseJson(200, 'Profile deleted successfully');
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
-						  return responseJson(
-								500, 'Failed to delete profile',
-								config('app.debug') ? $e->getMessage() : null
-						  );
-					}
-			 }
-			 // Education Logic
-			 public function getAllEducations(Request $request, $profileId
+			 
+			 /**
+			  * Delete a profile and its associated resources.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deleteProfile(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(
+									  403, 'Forbidden', 'You cannot delete this profile'
+								 );
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  DB::transaction(function () use ($profile) {
+								 foreach ($profile->educations as $education) {
+										if ($education->image
+											 && Storage::disk('public')->exists(
+												  $this->normalizePath(
+														$education->image
+												  )
+											 )
+										) {
+											  Storage::disk('public')->delete(
+													$this->normalizePath($education->image)
+											  );
+										}
+								 }
+								 $profile->educations()->delete();
+								 
+								 foreach ($profile->experiences as $experience) {
+										if ($experience->image
+											 && Storage::disk('public')->exists(
+												  $this->normalizePath(
+														$experience->image
+												  )
+											 )
+										) {
+											  Storage::disk('public')->delete(
+													$this->normalizePath($experience->image)
+											  );
+										}
+								 }
+								 $profile->experiences()->delete();
+								 
+								 foreach ($profile->documents as $document) {
+										if ($document->path
+											 && Storage::disk('public')->exists(
+												  $this->normalizePath($document->path)
+											 )
+										) {
+											  Storage::disk('public')->delete(
+													$this->normalizePath($document->path)
+											  );
+										}
+								 }
+								 $profile->documents()->delete();
+								 
+								 if ($profile->profile_image
+									  && Storage::disk('public')->exists(
+											$this->normalizePath(
+												 $profile->profile_image
+											)
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $this->normalizePath($profile->profile_image)
+										);
+								 }
+								 
+								 $profile->delete();
+						  });
+						  
+						  Cache::forget('user_profiles_' . $user->id);
+						  Cache::forget('profile_' . $profileId);
+						  
+						  return responseJson(200, 'Profile deleted successfully');
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (\Exception $e) {
+						  Log::error('Delete profile error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Retrieve all educations for a specific profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getAllEducations(Request $request, int $profileId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Get all educations for the profile
-						  $educations = $profile->educations()->get();
+						  $educations = Cache::remember(
+								'profile_educations_' . $profileId,
+								now()->addMinutes(15),
+								fn() => $profile->educations()->get()
+						  );
 						  
 						  if ($educations->isEmpty()) {
 								 return responseJson(
 									  404, 'Not found',
-									  'No Educations found for this profile'
+									  'No educations found for this profile'
 								 );
 						  }
 						  
-						  // Append image URLs if they exist
 						  $educations->each(function ($education) {
 								 if ($education->image) {
 										$education->image_url = Storage::disk('public')
-											 ->url($education->image);
+											 ->url(
+												  $this->normalizePath($education->image)
+											 );
 								 }
 						  });
 						  
 						  return responseJson(
 								200, 'Educations retrieved successfully', [
-									 'educations' => $educations,
-								]
+								'educations' => $educations
+						  ]
 						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
+						  Log::error('Get all educations error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'Failed to retrieve educations',
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function getEducationById(Request $request, $profileId,
-				  $educationId
+			 
+			 /**
+			  * Retrieve a specific education by ID.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $educationId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getEducationById(Request $request, int $profileId,
+				  int $educationId
 			 ): JsonResponse {
 					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Find the education
-						  $education = $profile->educations()->where(
-								'id', $educationId
-						  )->first();
+						  $education = $profile->educations()->findOrFail(
+								$educationId
+						  );
 						  
-						  if (!$education) {
-								 return responseJson(
-									  404, 'Not found', 'Education not found'
-								 );
-						  }
-						  
-						  // Append image URL if it exists
 						  if ($education->image) {
 								 $education->image_url = Storage::disk('public')->url(
-									  $education->image
+									  $this->normalizePath($education->image)
 								 );
 						  }
 						  
 						  return responseJson(
 								200, 'Education retrieved successfully', [
-									 'education' => $education,
-								]
-						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
-						  return responseJson(
-								500, 'Failed to retrieve education',
-								config('app.debug') ? $e->getMessage() : null
-						  );
-					}
-			 }
-			 public function addEducation(Request $request, $profileId
-			 ): JsonResponse {
-					try {
-						  // Find the profile
-						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  
-						  // Create a validator
-						  $validator = Validator::make($request->all(), [
-								'college'        => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
-								'degree'         => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
-								'field_of_study' => 'required|string|max:255|regex:/^[a-zA-Z\s\']+$/',
-								'start_date'     => [
-									 'required',
-									 'date',
-									 'before_or_equal:today',
-									 function ($attribute, $value, $fail) use (
-										  $profile, $request
-									 ) {
-											// Check for a duplicate institution + start_date
-											$exists = $profile->educations()
-												 ->where('college', $request->college)
-												 ->where('start_date', $value)
-												 ->exists();
-											
-											if ($exists) {
-												  $fail(
-														'You already have an education record from this college with the same start date.'
-												  );
-											}
-									 }
-								],
-								'end_date'       => 'nullable|date|after:start_date',
-								'is_current'     => 'sometimes|boolean',
-								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
-								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-						  ]);
-						  
-						  // Check if validation fails
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  // Prepare data
-						  $educationData = $validator->validated(
-						  ); // Use validated() to get the validated data
-						  
-						  // Handle image upload
-						  if ($request->hasFile('image')) {
-								 $imagePath = $request->file('image')->store(
-									  'educations', 'public'
-								 );
-								 $educationData['image'] = Storage::disk('public')->url(
-									  $imagePath
-								 );
-						  } else {
-								 // Set default image URL
-								 $educationData['image']
-									  = 'https://jobizaa.com/still_images/education.jpg';
-						  }
-						  
-						  // If 'is_current' is true, set end_date to null
-						  if (isset($educationData['is_current'])
-								&& $educationData['is_current']
-						  ) {
-								 $educationData['end_date'] = null;
-						  }
-						  
-						  // Create education
-						  $education = $profile->educations()->create($educationData);
-						  
-						  return responseJson(201, 'Education added successfully', [
 								'education' => $education
-						  ]);
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
-						  return responseJson(
-								500, 'Failed to add education',
-								config('app.debug') ? $e->getMessage() : null
+						  ]
 						  );
-					}
-			 }
-			 public function updateEducation(Request $request, $profileId,
-				  $educationId
-			 ): JsonResponse {
-					try {
-						  // Find the profile and education
-						  $profile = Profile::findOrFail($profileId);
-						  $education = Education::findOrFail($educationId);
-						  
-						  // Verify ownership
-						  if ($request->user()->id !== $profile->user_id
-								|| $education->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403, 'Unauthorized',
-									  'You cannot update this education record'
-								 );
-						  }
-						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'college'        => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'degree'         => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'field_of_study' => 'sometimes|string|max:255|regex:/^[a-zA-Z\s]+$/',
-								'start_date'     => 'sometimes|date|before_or_equal:today',
-								'end_date'       => 'nullable|date|after:start_date',
-								'is_current'     => 'sometimes|boolean',
-								'description'    => 'sometimes|string|max:500|regex:/^[a-zA-Z\s]+$/',
-								'location'       => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
-								'image'          => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-						  ]);
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  // Prepare update data
-						  $updateData = $validator->validated();
-						  
-						  // Handle the current education case
-						  if (isset($updateData['is_current'])
-								&& $updateData['is_current']
-						  ) {
-								 $updateData['end_date'] = null;
-						  }
-						  
-						  // Handle image upload or removal
-						  if ($request->hasFile('image')) {
-								 // Delete the old image if it exists and is not the default image
-								 if ($education->image
-									  && Storage::disk('public')->exists(
-											$education->image
-									  )
-								 ) {
-										Storage::disk('public')->delete(
-											 $education->image
-										);
-								 }
-								 // Store the new image
-								 $new = $request->file('image')->store(
-									  'educations', 'public'
-								 );
-								 $updateData['image'] = Storage::disk('public')->url(
-									  $new
-								 );
-						  }
-						  
-						  // Get original data before update
-						  $originalData = $education->only([
-								'college', 'degree', 'field_of_study',
-								'start_date', 'end_date', 'is_current', 'description',
-								'image', 'location'
-						  ]);
-						  
-						  // Check for actual changes
-						  $changes = [];
-						  foreach ($updateData as $key => $value) {
-								 if ($originalData[$key] != $value) {
-										$changes[$key] = [
-											 'from' => $originalData[$key],
-											 'to'   => $value
-										];
-								 }
-						  }
-						  
-						  if (empty($changes)) {
-								 return responseJson(200, 'No changes detected', [
-									  'education' => $education,
-									  'changes'   => null,
-									  'unchanged' => true
-								 ]);
-						  }
-						  
-						  // Perform the update
-						  $education->update($updateData);
-						  
-						  return responseJson(200, 'Education updated successfully', [
-								'education' => $education->fresh(),
-								'changes'   => $changes,
-								'unchanged' => false
-						  ]);
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
 								404, 'Not found', 'Education not found'
 						  );
 					} catch (\Exception $e) {
+						  Log::error(
+								'Get education by ID error: ' . $e->getMessage()
+						  );
 						  return responseJson(
-								500, 'Failed to update education',
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function deleteEducation(Request $request, $profileId,
-				  $educationId
+			 
+			 /**
+			  * Add a new education to a profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function addEducation(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
-						  // Find the profile and education
-						  $profile = Profile::findOrFail($profileId);
-						  $education = Education::findOrFail($educationId);
-						  
-						  // Verify ownership - user must own both profile and education
-						  if ($request->user()->id !== $profile->user_id
-								|| $education->profile_id !== $profile->id
-						  ) {
-								 return responseJson(
-									  403, 'Unauthorized',
-									  'You cannot delete this education record'
-								 );
-						  }
-						  
-						  // Delete the education image from storage if it exists
-						  if ($education->image) {
-								 try {
-										if (Storage::disk('public')->exists(
-											 $education->image
-										)
-										) {
-											  Storage::disk('public')->delete(
-													$education->image
-											  );
-										}
-								 } catch (\Exception $e) {
-										// Log the error but proceed with deleting the education record
-										Log::error(
-											 'Failed to delete image: ' . $e->getMessage()
-										);
-								 }
-						  }
-						  
-						  // Delete the education record
-						  $education->delete();
-						  
-						  return responseJson(200, 'Education deleted successfully');
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(
-								404, 'Not found', 'Education not found'
-						  );
-					} catch (\Exception $e) {
-						  return responseJson(
-								500, 'Failed to delete education',
-								config('app.debug') ? $e->getMessage() : null
-						  );
-					}
-			 }
-			 // Experience Logic
-			 public function getAllExperiences(Request $request, $profileId
-			 ): \Illuminate\Http\JsonResponse {
-					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Get all experiences for the profile
-						  $experiences = $profile->experiences()->get();
+						  $validated = $this->validateEducation($request, $profile);
+						  
+						  if ($profile->educations()->where(
+								'college', $validated['college']
+						  )->where('start_date', $validated['start_date'])->exists()
+						  ) {
+								 return responseJson(
+									  409, 'Conflict',
+									  'Education record with the same college and start date already exists'
+								 );
+						  }
+						  
+						  $validated = $this->handleEducationImageUpload(
+								$request, $validated
+						  );
+						  
+						  if ($validated['is_current'] ?? false) {
+								 $validated['end_date'] = null;
+						  }
+						  
+						  $education = $profile->educations()->create($validated);
+						  
+						  Cache::forget('profile_educations_' . $profileId);
+						  
+						  return responseJson(201, 'Education added successfully', [
+								'education' => $education
+						  ]);
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Add education error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Validate education data.
+			  *
+			  * @param Request $request
+			  * @param Profile $profile
+			  * @param bool    $isCreate
+			  *
+			  * @return array
+			  */
+			 private function validateEducation(Request $request, Profile $profile,
+				  bool $isCreate = true
+			 ): array {
+					$rules = [
+						 'college'        => ['required', 'string', 'max:255',
+													 'regex:/^[a-zA-Z\s\']+$/'],
+						 'degree'         => ['required', 'string', 'max:255',
+													 'regex:/^[a-zA-Z\s\']+$/'],
+						 'field_of_study' => ['required', 'string', 'max:255',
+													 'regex:/^[a-zA-Z\s\']+$/'],
+						 'start_date'     => ['required', 'date',
+													 'before_or_equal:today'],
+						 'end_date'       => ['nullable', 'date', 'after:start_date'],
+						 'is_current'     => ['sometimes', 'boolean'],
+						 'description'    => ['nullable', 'string', 'max:500',
+													 'regex:/^[a-zA-Z\s]+$/'],
+						 'location'       => ['nullable', 'string', 'max:255',
+													 'regex:/^[a-zA-Z\s\-]+$/'],
+						 'image'          => ['nullable', 'image',
+													 'mimes:jpeg,png,jpg,gif,svg',
+													 'max:2048']
+					];
+					
+					if (!$isCreate) {
+						  $rules = array_map(
+								fn($rule) => str_replace(
+									 'required', 'sometimes', $rule
+								), $rules
+						  );
+					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'college.max'        => 'College name cannot exceed 255 characters',
+						 'degree.max'         => 'Degree cannot exceed 255 characters',
+						 'field_of_study.max' => 'Field of study cannot exceed 255 characters',
+						 'description.max'    => 'Description cannot exceed 500 characters',
+						 'location.max'       => 'Location cannot exceed 255 characters',
+						 'image.image'        => 'The image must be an image',
+						 'image.mimes'        => 'The image must be a file of type: jpeg, png, jpg, gif, svg',
+						 'image.max'          => 'The image cannot exceed 2MB in size'
+					])->validate();
+			 }
+			 
+			 /**
+			  * Handle education image upload.
+			  *
+			  * @param Request        $request
+			  * @param array          $validated
+			  * @param Education|null $education
+			  *
+			  * @return array
+			  */
+			 private function handleEducationImageUpload(Request $request,
+				  array $validated, ?Education $education = null
+			 ): array {
+					if ($request->hasFile('image')) {
+						  if ($education && $education->image
+								&& Storage::disk(
+									 'public'
+								)->exists($this->normalizePath($education->image))
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($education->image)
+								 );
+						  }
+						  $path = $request->file('image')->store(
+								'educations', 'public'
+						  );
+						  $validated['image'] = Storage::disk('public')->url($path);
+					} elseif (!$education || !$education->image) {
+						  $validated['image']
+								= 'https://jobizaa.com/still_images/education.jpg';
+					}
+					
+					return $validated;
+			 }
+			 
+			 /**
+			  * Update an existing education.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $educationId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function updateEducation(Request $request, int $profileId,
+				  int $educationId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  $education = Education::findOrFail($educationId);
+						  
+						  if ($user->id !== $profile->user_id
+								|| $education->profile_id !== $profile->id
+						  ) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You cannot update this education record'
+								 );
+						  }
+						  
+						  $validated = $this->validateEducation(
+								$request, $profile, false
+						  );
+						  
+						  $validated = $this->handleEducationImageUpload(
+								$request, $validated, $education
+						  );
+						  
+						  if ($validated['is_current'] ?? false) {
+								 $validated['end_date'] = null;
+						  }
+						  
+						  $originalData = $education->only(array_keys($validated));
+						  $changes = array_diff_assoc($validated, $originalData);
+						  
+						  if (empty($changes)) {
+								 return responseJson(200, 'No changes detected', [
+									  'education' => $education,
+									  'unchanged' => true
+								 ]);
+						  }
+						  
+						  $education->update($validated);
+						  
+						  Cache::forget('profile_educations_' . $profileId);
+						  
+						  return responseJson(200, 'Education updated successfully', [
+								'education' => $education->fresh(),
+								'changes'   => $changes
+						  ]);
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Not found', 'Education not found'
+						  );
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Update education error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Delete an education record.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $educationId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deleteEducation(Request $request, int $profileId,
+				  int $educationId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  $education = Education::findOrFail($educationId);
+						  
+						  if ($user->id !== $profile->user_id
+								|| $education->profile_id !== $profile->id
+						  ) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You cannot delete this education record'
+								 );
+						  }
+						  
+						  if ($education->image
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath($education->image)
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($education->image)
+								 );
+						  }
+						  
+						  $education->delete();
+						  
+						  Cache::forget('profile_educations_' . $profileId);
+						  
+						  return responseJson(200, 'Education deleted successfully');
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Not found', 'Education not found'
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Delete education error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Retrieve all experiences for a specific profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getAllExperiences(Request $request, int $profileId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
+						  $experiences = Cache::remember(
+								'profile_experiences_' . $profileId,
+								now()->addMinutes(15),
+								fn() => $profile->experiences()->get()
+						  );
 						  
 						  if ($experiences->isEmpty()) {
 								 return responseJson(
 									  404, 'Not found',
-									  'No Experiences found for this profile'
+									  'No experiences found for this profile'
 								 );
 						  }
-						  // Append image URLs if they exist
+						  
 						  $experiences->each(function ($experience) {
 								 if ($experience->image) {
 										$experience->image_url = Storage::disk('public')
-											 ->url($experience->image);
+											 ->url(
+												  $this->normalizePath($experience->image)
+											 );
 								 }
 						  });
 						  
 						  return responseJson(
 								200, 'Experiences retrieved successfully', [
-									 'experiences' => $experiences,
-								]
+								'experiences' => $experiences
+						  ]
 						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
+						  Log::error(
+								'Get all experiences error: ' . $e->getMessage()
+						  );
 						  return responseJson(
-								500, 'Failed to retrieve experiences',
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function getExperienceById(Request $request, $profileId,
-				  $experienceId
-			 ): \Illuminate\Http\JsonResponse {
+			 
+			 /**
+			  * Retrieve a specific experience by ID.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $experienceId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getExperienceById(Request $request, int $profileId,
+				  int $experienceId
+			 ): JsonResponse {
 					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Find the profile
 						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Find the experience
-						  $experience = $profile->experiences()->where(
-								'id', $experienceId
-						  )->first();
+						  $experience = $profile->experiences()->findOrFail(
+								$experienceId
+						  );
 						  
-						  if (!$experience) {
-								 return responseJson(
-									  404, 'Not found', 'Experience not found'
-								 );
-						  }
-						  
-						  // Append image URL if it exists
 						  if ($experience->image) {
 								 $experience->image_url = Storage::disk('public')->url(
-									  $experience->image
+									  $this->normalizePath($experience->image)
 								 );
 						  }
 						  
 						  return responseJson(
 								200, 'Experience retrieved successfully', [
-									 'experience' => $experience,
-								]
+								'experience' => $experience
+						  ]
 						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
-								500, 'Failed to retrieve experience',
+								404, 'Not found', 'Experience not found'
+						  );
+					} catch (\Exception $e) {
+						  Log::error(
+								'Get experience by ID error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function addExperience(Request $request, $profileId
+			 
+			 /**
+			  * Add a new experience to a profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function addExperience(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
-						  // Find the profile
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $validated = $this->validateExperience($request);
+						  
+						  if ($profile->experiences()->where(
+								'company', $validated['company']
+						  )->where('start_date', $validated['start_date'])->exists()
+						  ) {
 								 return responseJson(
-									  403, 'Unauthorized',
-									  'You cannot add experiences to this profile'
+									  409, 'Conflict',
+									  'Experience record with the same company and start date already exists'
 								 );
 						  }
 						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'company'     => 'required|string|max:255',
-								'position'    => 'required|string|max:255',
-								'start_date'  => 'required|date|before_or_equal:today',
-								'end_date'    => 'nullable|date|after:start_date|required_if:is_current,false',
-								'is_current'  => 'sometimes|boolean',
-								'description' => 'nullable|string|max:1000',
-								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
-								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-						  ]);
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  // Check for duplicate experience
-						  $existingExperience = $profile->experiences()
-								->where('company', $request->company)
-								->where('start_date', $request->start_date)
-								->first();
-						  
-						  if ($existingExperience) {
-								 return responseJson(
-									  409, 'Not found',
-									  'An experience record with the same company and start date already exists'
-								 );
-						  }
-						  
-						  // Handle image upload
-						  $imagePath = null;
-						  if ($request->hasFile('image')) {
-								 // Store the uploaded image
-								 $imagePath = $request->file('image')->store(
-									  'experiences', 'public'
-								 );
-								 $experienceData['image'] = Storage::disk('public')
-									  ->url($imagePath);
-						  } else {
-								 // Use a default image path (should be a path to a default image in your storage)
-								 $experienceData['image']
-									  = 'https://jobizaa.com/still_images/experience.png';
-						  }
-						  
-						  // Prepare data
-						  $experienceData = $validator->validated();
-						  
-						  // Handle the current job case
-						  if ($experienceData['is_current'] ?? false) {
-								 $experienceData['end_date'] = null;
-						  }
-						  
-						  // Create experience
-						  $experience = $profile->experiences()->create(
-								$experienceData
+						  $validated = $this->handleExperienceImageUpload(
+								$request, $validated
 						  );
+						  
+						  if ($validated['is_current'] ?? false) {
+								 $validated['end_date'] = null;
+						  }
+						  
+						  $experience = $profile->experiences()->create($validated);
+						  
+						  Cache::forget('profile_experiences_' . $profileId);
 						  
 						  return responseJson(201, 'Experience added successfully', [
 								'experience' => $experience
 						  ]);
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
-					} catch (\Exception $e) {
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500, 'Failed to add experience',
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Add experience error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function editExperience(Request $request, $profileId,
-				  $experienceId
+			 
+			 /**
+			  * Validate experience data.
+			  *
+			  * @param Request $request
+			  * @param bool    $isCreate
+			  *
+			  * @return array
+			  */
+			 private function validateExperience(Request $request,
+				  bool $isCreate = true
+			 ): array {
+					$rules = [
+						 'company'     => ['required', 'string', 'max:255'],
+						 'position'    => ['required', 'string', 'max:255'],
+						 'start_date'  => ['required', 'date',
+												 'before_or_equal:today'],
+						 'end_date'    => ['nullable', 'date', 'after:start_date',
+												 'required_if:is_current,false'],
+						 'is_current'  => ['sometimes', 'boolean'],
+						 'description' => ['nullable', 'string', 'max:1000'],
+						 'location'    => ['nullable', 'string', 'max:255',
+												 'regex:/^[a-zA-Z\s\-]+$/'],
+						 'image'       => ['nullable', 'image',
+												 'mimes:jpeg,png,jpg,gif,svg', 'max:2048']
+					];
+					
+					if (!$isCreate) {
+						  $rules = array_map(
+								fn($rule) => str_replace(
+									 'required', 'sometimes', $rule
+								), $rules
+						  );
+					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'company.max'     => 'Company name cannot exceed 255 characters',
+						 'position.max'    => 'Position cannot exceed 255 characters',
+						 'description.max' => 'Description cannot exceed 1000 characters',
+						 'location.max'    => 'Location cannot exceed 255 characters',
+						 'image.image'     => 'The image must be an image',
+						 'image.mimes'     => 'The image must be a file of type: jpeg, png, jpg, gif, svg',
+						 'image.max'       => 'The image cannot exceed 2MB in size'
+					])->validate();
+			 }
+			 
+			 /**
+			  * Handle experience image upload.
+			  *
+			  * @param Request         $request
+			  * @param array           $validated
+			  * @param Experience|null $experience
+			  *
+			  * @return array
+			  */
+			 private function handleExperienceImageUpload(Request $request,
+				  array $validated, ?Experience $experience = null
+			 ): array {
+					if ($request->hasFile('image')) {
+						  if ($experience && $experience->image
+								&& Storage::disk(
+									 'public'
+								)->exists($this->normalizePath($experience->image))
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($experience->image)
+								 );
+						  }
+						  $path = $request->file('image')->store(
+								'experiences', 'public'
+						  );
+						  $validated['image'] = Storage::disk('public')->url($path);
+					} elseif (!$experience || !$experience->image) {
+						  $validated['image']
+								= 'https://jobizaa.com/still_images/experience.png';
+					}
+					
+					return $validated;
+			 }
+			 
+			 /**
+			  * Update an existing experience.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $experienceId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function editExperience(Request $request, int $profileId,
+				  int $experienceId
 			 ): JsonResponse {
 					try {
-						  // Find the profile and experience
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
 						  
-						  // Verify ownership
-						  if ($request->user()->id !== $profile->user_id
+						  if ($user->id !== $profile->user_id
 								|| $experience->profile_id !== $profile->id
 						  ) {
 								 return responseJson(
-									  403, 'Unauthorized',
+									  403, 'Forbidden',
 									  'You cannot update this experience'
 								 );
 						  }
 						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'company'     => 'sometimes|string|max:255',
-								'position'    => 'sometimes|string|max:255',
-								'start_date'  => 'sometimes|date|before_or_equal:today',
-								'end_date'    => 'nullable|date|after:start_date',
-								'is_current'  => 'sometimes|boolean',
-								'description' => 'sometimes|string|max:1000',
-								'location'    => 'sometimes|string|max:255|regex:/^[a-zA-Z\s\-]+$/',
-								'image'       => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-						  ]);
+						  $validated = $this->validateExperience($request, false);
 						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
+						  $validated = $this->handleExperienceImageUpload(
+								$request, $validated, $experience
+						  );
+						  
+						  if ($validated['is_current'] ?? false) {
+								 $validated['end_date'] = null;
 						  }
 						  
-						  // Get original data before update
-						  $originalData = $experience->only([
-								'company', 'position', 'start_date', 'end_date',
-								'is_current', 'description', 'image', 'location'
-						  ]);
-						  
-						  // Prepare update data
-						  $updateData = $validator->validated();
-						  
-						  // Handle the current job case
-						  if ($updateData['is_current'] ?? false) {
-								 $updateData['end_date'] = null;
-						  }
-						  
-						  // Handle image upload or removal
-						  if ($request->hasFile('image')) {
-								 // Delete the old image if it exists
-								 if ($experience->image
-									  && Storage::disk('public')->exists(
-											$experience->image
-									  )
-								 ) {
-										try {
-											  Storage::disk('public')->delete(
-													$experience->image
-											  );
-										} catch (\Exception $e) {
-											  // Log the error but proceed with updating other fields
-											  Log::error(
-													'Failed to delete old image: '
-													. $e->getMessage()
-											  );
-										}
-								 }
-								 
-								 // Store the new image
-								 $new = $request->file('image')->store(
-									  'experiences', 'public'
-								 );
-								 $updateData['image'] = Storage::disk('public')->url(
-									  $new
-								 );
-						  }
-						  
-						  // Check for actual changes
-						  $changes = [];
-						  foreach ($updateData as $key => $value) {
-								 if (isset($originalData[$key])
-									  && $originalData[$key] != $value
-								 ) {
-										$changes[$key] = [
-											 'from' => $originalData[$key],
-											 'to'   => $value
-										];
-								 }
-						  }
+						  $originalData = $experience->only(array_keys($validated));
+						  $changes = array_diff_assoc($validated, $originalData);
 						  
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
 									  'experience' => $experience,
-									  'changes'    => null,
 									  'unchanged'  => true
 								 ]);
 						  }
 						  
-						  // Perform the update
-						  $experience->update($updateData);
+						  $experience->update($validated);
+						  
+						  Cache::forget('profile_experiences_' . $profileId);
 						  
 						  return responseJson(
 								200, 'Experience updated successfully', [
 								'experience' => $experience->fresh(),
-								'changes'    => $changes,
-								'unchanged'  => false
+								'changes'    => $changes
 						  ]
 						  );
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
 								404, 'Not found', 'Experience not found'
 						  );
-					} catch (\Exception $e) {
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500, 'Failed to update experience',
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Update experience error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function deleteExperience(Request $request, $profileId,
-				  $experienceId
+			 
+			 /**
+			  * Delete an experience record.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $experienceId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deleteExperience(Request $request, int $profileId,
+				  int $experienceId
 			 ): JsonResponse {
 					try {
-						  // Find the profile and experience
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
 						  $experience = Experience::findOrFail($experienceId);
 						  
-						  // Verify ownership
-						  if ($request->user()->id !== $profile->user_id
+						  if ($user->id !== $profile->user_id
 								|| $experience->profile_id !== $profile->id
 						  ) {
 								 return responseJson(
-									  403, 'Unauthorized',
+									  403, 'Forbidden',
 									  'You cannot delete this experience'
 								 );
 						  }
 						  
-						  // Delete the experience image from storage if it exists
-						  if ($experience->image) {
-								 try {
-										if (Storage::disk('public')->exists(
-											 $experience->image
-										)
-										) {
-											  Storage::disk('public')->delete(
-													$experience->image
-											  );
-										}
-								 } catch (\Exception $e) {
-										// Log the error but proceed with deleting the experience record
-										Log::error(
-											 'Failed to delete image: ' . $e->getMessage()
-										);
-								 }
+						  if ($experience->image
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath($experience->image)
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($experience->image)
+								 );
 						  }
 						  
-						  // Delete the experience record
 						  $experience->delete();
 						  
-						  return responseJson(200, 'Experience deleted successfully');
+						  Cache::forget('profile_experiences_' . $profileId);
 						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(200, 'Experience deleted successfully');
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
 								404, 'Not found', 'Experience not found'
 						  );
 					} catch (\Exception $e) {
+						  Log::error('Delete experience error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'Failed to delete experience',
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 // Document Logic
-			 public function uploadCV(Request $request, $profileId): JsonResponse
+			 
+			 /**
+			  * Upload a CV to a profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function uploadCV(Request $request, int $profileId): JsonResponse
 			 {
 					try {
-						  // Find the profile or fail
-						  $profile = Profile::findOrFail($profileId);
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Check maximum CV limit
 						  $currentCVCount = $profile->documents()->where('type', 'cv')
 								->count();
 						  if ($currentCVCount >= 3) {
 								 return responseJson(
-									  400, 'Limit Upload',
+									  400, 'Limit exceeded',
 									  'Maximum 3 CVs allowed per profile'
 								 );
 						  }
 						  
-						  // Validate request data
-						  $validator = Validator::make($request->all(), [
-								'name' => 'sometimes|string|max:255',
-								'file' => 'required|file|mimes:pdf,doc,docx|max:5120'
-						  ]);
+						  $validated = $this->validateCV($request);
 						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  // Store the file
 						  $path = $request->file('file')->store('cvs', 'public');
 						  $urlPath = Storage::disk('public')->url($path);
-						  // Create a new document record
+						  
 						  $cv = $profile->documents()->create([
-								'name'   => $request->name,
+								'name'   => $validated['name'] ?? 'CV_' . time(),
 								'type'   => 'cv',
 								'format' => 'cv',
 								'path'   => $urlPath
 						  ]);
 						  
-						  return responseJson(
-								201, 'CV uploaded successfully', [
-									 'cv'        => $cv,
-									 'total_cvs' => $currentCVCount + 1
-								]
-						  );
+						  Cache::forget('user_profiles_' . $user->id);
 						  
+						  return responseJson(201, 'CV uploaded successfully', [
+								'cv'        => $cv,
+								'total_cvs' => $currentCVCount + 1
+						  ]);
 					} catch (ModelNotFoundException $e) {
-						  return responseJson(404, 'Not Found', 'Profile not found');
-					} catch (\Exception $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500, 'CV upload failed',
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Upload CV error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function editCV(Request $request, $profileId, $cvId
+			 
+			 /**
+			  * Validate CV data.
+			  *
+			  * @param Request $request
+			  * @param bool    $isCreate
+			  *
+			  * @return array
+			  * @throws ValidationException
+			  */
+			 private function validateCV(Request $request, bool $isCreate = true
+			 ): array {
+					$rules = [
+						 'name' => ['nullable', 'string', 'max:255'],
+						 'file' => ['required', 'file', 'mimes:pdf,doc,docx',
+										'max:5120']
+					];
+					
+					if (!$isCreate) {
+						  $rules['file'] = str_replace(
+								'required', 'sometimes', $rules['file']
+						  );
+					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'name.max'   => 'Name cannot exceed 255 characters',
+						 'file.mimes' => 'The file must be a file of type: pdf, doc, docx',
+						 'file.max'   => 'The file cannot exceed 5MB in size'
+					])->validate();
+			 }
+			 
+			 /**
+			  * Update an existing CV.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $cvId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function editCV(Request $request, int $profileId, int $cvId
 			 ): JsonResponse {
 					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
-						  // Authorization
-						  if ($request->user()->id !== $profile->user_id) {
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
-						  $cv = $profile->documents()->where('type', 'cv')->find(
-								$cvId
-						  );
 						  
-						  if (!$cv) {
-								 return responseJson(
-									  404, 'Not found',
-									  'CV not found or does not belong to this profile'
-								 );
-						  }
+						  $cv = $profile->documents()->where('type', 'cv')
+								->findOrFail($cvId);
 						  
-						  $validator = Validator::make($request->all(), [
-								'name' => 'sometimes|string|max:255',
-								'file' => 'sometimes|file|mimes:pdf,doc,docx|max:5120'
-						  ]);
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
+						  $validated = $this->validateCV($request, false);
 						  
 						  $changes = [];
 						  $originalPath = $cv->path;
@@ -1183,9 +1410,7 @@
 								 $newPath = $request->file('file')->store(
 									  'cvs', 'public'
 								 );
-								 $urlPath = Storage::disk('public')->url($newPath);
-								 
-								 $cv->path = $urlPath;
+								 $cv->path = Storage::disk('public')->url($newPath);
 								 $changes[] = 'CV file updated';
 						  }
 						  
@@ -1203,216 +1428,249 @@
 						  
 						  $cv->save();
 						  
-						  // Delete an old file after successful update
-						  if (isset($newPath)) {
-								 Storage::disk('public')->delete($originalPath);
+						  if (isset($newPath)
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath($originalPath)
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($originalPath)
+								 );
 						  }
+						  
+						  Cache::forget('user_profiles_' . $user->id);
 						  
 						  return responseJson(200, 'CV updated successfully', [
 								'cv'      => $cv,
 								'changes' => $changes
 						  ]);
-						  
-					} catch (\Exception $e) {
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'CV not found');
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500, 'CV update failed',
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Edit CV error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function deleteCV(Request $request, $profileId, $cvId
+			 
+			 /**
+			  * Delete a CV.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $cvId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deleteCV(Request $request, int $profileId, int $cvId
 			 ): JsonResponse {
 					try {
-						  // Find the profile
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Find the CV
-						  $cv = Document::where('profile_id', $profileId)
-								->where('type', 'cv')
-								->where('id', $cvId)
-								->firstOrFail();
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Delete the CV file from storage
+						  $cv = Document::where('profile_id', $profileId)->where(
+								'type', 'cv'
+						  )->findOrFail($cvId);
+						  
 						  if ($cv->path
 								&& Storage::disk('public')->exists(
-									 $cv->path
+									 $this->normalizePath($cv->path)
 								)
 						  ) {
-								 Storage::disk('public')->delete($cv->path);
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($cv->path)
+								 );
 						  }
 						  
-						  // Delete the CV record
 						  $cv->delete();
 						  
-						  return responseJson(200, 'CV deleted successfully');
+						  Cache::forget('user_profiles_' . $user->id);
 						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(200, 'CV deleted successfully');
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'CV not found');
 					} catch (\Exception $e) {
+						  Log::error('Delete CV error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'CV deletion failed',
-								config('app.debug') ? $e->getMessage()
-									 : 'An error occurred during CV deletion'
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function addPortfolioTypeImages(Request $request, $profileId
+			 
+			 /**
+			  * Add a portfolio with image format.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function addPortfolioTypeImages(Request $request, int $profileId
 			 ): JsonResponse {
-					$validator = Validator::make($request->all(), [
-						 'name'     => 'sometimes|string|max:255',
-						 'images'   => 'nullable|array|max:12',
-						 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-					], [
-						 'images.max' => 'Maximum 12 images allowed',
-					]);
-					
-					if ($validator->fails()) {
-						  return responseJson(
-								422, 'Validation failed',
-								$validator->errors()->all()
-						  );
-					}
-					
 					try {
-						  $profile = Profile::findOrFail($profileId);
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  DB::beginTransaction();
+						  $validated = $this->validatePortfolioImages($request);
 						  
-						  $format = $this->determineFormat($request);
-						  $existingPortfolio = null;
-						  
-						  // For image format handling
-						  if ($format === 'images') {
-								 $existingPortfolio = $profile->portfolios()
-									  ->where('format', 'images')
-									  ->first();
-						  }
-						  
-						  if ($existingPortfolio) {
-								 // Handle existing image portfolio
-								 return $this->handleExistingImagePortfolio(
-									  $request, $existingPortfolio
-								 );
-						  }
-						  
-						  // Create a new portfolio
-						  if ($profile->portfolios()->count() >= 3) {
-								 throw new \Exception(
-									  'Maximum of 3 portfolios allowed'
-								 );
-						  }
-						  
-						  if ($profile->portfolios()->where('format', $format)
-								->exists()
-						  ) {
-								 throw new \Exception(
-									  'You already have a portfolio images with this format'
-								 );
-						  }
-						  
-						  $portfolio = $profile->documents()->create([
-								'name'        => $request->name,
-								'type'        => 'portfolio',
-								'format'      => $format,
-								'image_count' => 0
-						  ]);
-						  
-						  $this->handleFiles($request, $portfolio);
-						  
-						  DB::commit();
-						  
-						  return responseJson(
-								201,
-								' Images Portfolio created successfully',
-								$portfolio->load('images')
+						  return DB::transaction(
+								function () use ($request, $profile, $validated) {
+									  if ($profile->portfolios()->count() >= 3) {
+											 throw new \Exception(
+												  'Maximum of 3 portfolios allowed'
+											 );
+									  }
+									  
+									  $format = 'images';
+									  if ($profile->portfolios()->where(
+											'format', $format
+									  )->exists()
+									  ) {
+											 return $this->handleExistingImagePortfolio(
+												  $request, $profile->portfolios()->where(
+												  'format', $format
+											 )->first()
+											 );
+									  }
+									  
+									  $portfolio = $profile->documents()->create([
+											'name'        => $validated['name'] ??
+												 'Portfolio_' . time(),
+											'type'        => 'portfolio',
+											'format'      => $format,
+											'image_count' => 0
+									  ]);
+									  
+									  $this->handleImageUpload(
+											$validated['images'] ?? [], $portfolio
+									  );
+									  
+									  Cache::forget(
+											'user_profiles_' . $profile->user_id
+									  );
+									  
+									  return responseJson(
+											201, 'Images portfolio created successfully',
+											$portfolio->load('images')
+									  );
+								}
 						  );
-						  
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
-						  DB::rollBack();
+						  Log::error(
+								'Add portfolio images error: ' . $e->getMessage()
+						  );
 						  return responseJson(
-								500,
-								"Operation failed" ,
-								$e->getMessage()
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 protected function determineFormat(Request $request): string
-			 {
-					if ($request->has('images')) {
-						  return 'images';
-					}
-					if ($request->hasFile('pdf')) {
-						  return 'pdf';
-					}
-					if ($request->filled('url')) {
-						  return 'url';
-					}
-					throw new \Exception('No valid portfolio content provided');
+			 
+			 /**
+			  * Validate portfolio images data.
+			  *
+			  * @param Request $request
+			  * @param int     $currentImageCount
+			  *
+			  * @return array
+			  * @throws ValidationException
+			  */
+			 private function validatePortfolioImages(Request $request,
+				  int $currentImageCount = 0
+			 ): array {
+					return Validator::make($request->all(), [
+						 'name'             => ['nullable', 'string', 'max:255'],
+						 'images'           => ['nullable', 'array',
+														'max:' . (12 - $currentImageCount)],
+						 'images.*'         => ['image', 'mimes:jpeg,png,jpg,gif',
+														'max:2048'],
+						 'deleted_images'   => ['sometimes', 'array'],
+						 'deleted_images.*' => ['exists:document_images,id']
+					], [
+						 'name.max'       => 'Name cannot exceed 255 characters',
+						 'images.max'     => 'You can only upload ' . (12
+									- $currentImageCount) . ' more images',
+						 'images.*.mimes' => 'Each image must be a file of type: jpeg, png, jpg, gif',
+						 'images.*.max'   => 'Each image cannot exceed 2MB in size'
+					])->validate();
 			 }
-			 protected function handleExistingImagePortfolio(Request $request,
+			 
+			 /**
+			  * Handle existing image portfolio updates.
+			  *
+			  * @param Request  $request
+			  * @param Document $portfolio
+			  *
+			  * @return JsonResponse
+			  * @throws \Exception
+			  */
+			 private function handleExistingImagePortfolio(Request $request,
 				  Document $portfolio
 			 ): JsonResponse {
 					$currentCount = $portfolio->image_count;
-					$newImages = $request->file('images');
+					$newImages = $request->file('images') ?? [];
 					$newCount = count($newImages);
 					
 					if (($currentCount + $newCount) > 12) {
 						  $remaining = 12 - $currentCount;
 						  throw new \Exception(
-								"You can only add {$remaining} more images to this portfolio. "
-								.
-								"Please create a new portfolio with a different format."
+								"You can only add {$remaining} more images to this portfolio."
 						  );
 					}
 					
-					foreach ($newImages as $image) {
-						  $path = $image->store('portfolios/images', 'public');
-						  $urlPath = Storage::disk('public')->url($path);
-						  $portfolio->images()->create([
-								'path'      => $urlPath,
-								'mime_type' => $image->getMimeType()
-						  ]);
-					}
+					$this->handleImageUpload($newImages, $portfolio);
 					
-					$portfolio->increment('image_count', $newCount);
-					DB::commit();
+					Cache::forget('user_profiles_' . $portfolio->profile->user_id);
 					
 					return responseJson(
-						 200,
-						 'Images added to existing portfolio',
+						 200, 'Images added to existing portfolio',
 						 $portfolio->fresh(['images'])
 					);
 			 }
-			 protected function handleFiles(Request $request, Document $portfolio
-			 ): void {
-					switch ($portfolio->format) {
-						  case 'images':
-								 $this->handleImageUpload($request->images, $portfolio);
-								 break;
-						  case 'pdf':
-								 $this->handlePdfUpload(
-									  $request->file('pdf'), $portfolio
-								 );
-								 break;
-						  case 'url':
-								 $portfolio->update(['url' => $request->url]);
-								 break;
-					}
-			 }
-			 protected function handleImageUpload($images, Document $portfolio
+			 
+			 /**
+			  * Handle image uploads for a portfolio.
+			  *
+			  * @param array    $images
+			  * @param Document $portfolio
+			  *
+			  * @return void
+			  */
+			 private function handleImageUpload(array $images, Document $portfolio
 			 ): void {
 					$count = count($images);
-					$portfolio->update(['image_count' => $count]);
+					$portfolio->increment('image_count', $count);
 					
 					foreach ($images as $image) {
 						  $path = $image->store('portfolios/images', 'public');
@@ -1423,649 +1681,706 @@
 						  ]);
 					}
 			 }
-			 protected function handlePdfUpload($file, Document $portfolio): void
-			 {
-					$path = $file->store('portfolios/pdfs', 'public');
-					$urlPath = Storage::disk('public')->url($path);
-					$portfolio->update(['path' => $urlPath]);
-			 }
-			 public function deletePortfolioImage(Request $request, $profileId,
-				  $imageId
+			 
+			 /**
+			  * Add a portfolio with PDF format.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function addPortfolioTypePdf(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
-						  // Find the profile
-						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Find the portfolio (document)
-						  $portfolio = Document::where('profile_id', $profileId)
-								->where('type', 'portfolio')
-								->where('format', 'images')
-								->firstOrFail();
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  
-						  // Check a portfolio format
-						  if ($portfolio->format !== 'images') {
+						  $user = $request->user();
+						  if (!$user) {
 								 return responseJson(
-									  422,'Validation error', 'This portfolio is not an image portfolio'
+									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
 						  
-						  // Find the image
-						  $image = DocumentImage::where('id', $imageId)
-								->where('document_id', $portfolio->id)
-								->firstOrFail();
-						  
-						  DB::beginTransaction();
-						  
-						  // Delete the image file from storage
-						  if ($image->path
-								&& Storage::disk('public')->exists(
-									 $image->path
-								)
-						  ) {
-								 Storage::disk('public')->delete($image->path);
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Delete the image record
-						  $image->delete();
+						  $validated = $this->validatePortfolioPdf($request);
 						  
-						  // Decrement the image count in the portfolio
-						  $portfolio->decrement('image_count');
-						  
-						  DB::commit();
-						  
-						  return responseJson(200, 'Image deleted successfully');
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404,'Not found','image not found');
+						  return DB::transaction(
+								function () use ($request, $profile, $validated) {
+									  if ($profile->portfolios()->count() >= 3) {
+											 throw new \Exception(
+												  'Maximum of 3 portfolios allowed'
+											 );
+									  }
+									  
+									  $format = 'pdf';
+									  if ($profile->portfolios()->where(
+											'format', $format
+									  )->exists()
+									  ) {
+											 throw new \Exception(
+												  'You already have a portfolio with this format'
+											 );
+									  }
+									  
+									  $portfolio = $profile->documents()->create([
+											'name'        => $validated['name'] ??
+												 'Portfolio_' . time(),
+											'type'        => 'portfolio',
+											'format'      => $format,
+											'image_count' => 0
+									  ]);
+									  
+									  $this->handlePdfUpload(
+											$request->file('pdf'), $portfolio
+									  );
+									  
+									  Cache::forget(
+											'user_profiles_' . $profile->user_id
+									  );
+									  
+									  return responseJson(
+											201, 'PDF portfolio created successfully',
+											$portfolio
+									  );
+								}
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
-						  DB::rollBack();
-						  return responseJson(500, 'Failed to delete image',
+						  Log::error('Add portfolio PDF error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function addPortfolioTypePdf(Request $request, $profileId
-			 ): JsonResponse {
-					$validator = Validator::make($request->all(), [
-						 'name' => 'sometimes|string|max:255',
-						 'pdf'  => 'required|file|mimes:pdf|max:10240',
-					], [
+			 
+			 /**
+			  * Validate portfolio PDF data.
+			  *
+			  * @param Request $request
+			  * @param bool    $isCreate
+			  *
+			  * @return array
+			  * @throws ValidationException
+			  */
+			 private function validatePortfolioPdf(Request $request,
+				  bool $isCreate = true
+			 ): array {
+					$rules = [
+						 'name' => ['nullable', 'string', 'max:255'],
+						 'pdf'  => ['required', 'file', 'mimes:pdf', 'max:10240']
+					];
+					
+					if (!$isCreate) {
+						  $rules['pdf'] = str_replace(
+								'required', 'sometimes', $rules['pdf']
+						  );
+					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'name.max'  => 'Name cannot exceed 255 characters',
 						 'pdf.mimes' => 'Only PDF files are allowed',
-					]);
-					
-					if ($validator->fails()) {
-						  return responseJson(
-								422,'Validation errors',
-								$validator->errors()->all()
-						  );
-					}
-					
-					try {
-						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  $format = $this->determineFormat($request);
-						  // Create a new portfolio
-						  if ($profile->portfolios()->count() >= 3) {
-								 throw new \Exception(
-									  'Maximum of 3 portfolios allowed'
-								 );
-						  }
-						  
-						  if ($profile->portfolios()->where('format', $format)
-								->exists()
-						  ) {
-								 throw new \Exception(
-									  'You already have a portfolio pdf with this format'
-								 );
-						  }
-						  
-						  $portfolio = $profile->documents()->create([
-								'name'        => $request->name,
-								'type'        => 'portfolio',
-								'format'      => $format,
-								'image_count' => 0
-						  ]);
-						  
-						  $this->handleFiles($request, $portfolio);
-						  
-						  DB::commit();
-						  
-						  return responseJson(
-								201,
-								'Pdf Portfolio created successfully',
-								$portfolio->load('images')
-						  );
-						  
-					} catch (\Exception $e) {
-						  DB::rollBack();
-						  return responseJson(
-								500,
-								'Operation failed',
-								$e->getMessage()
-						  );
-					}
+						 'pdf.max'   => 'The PDF cannot exceed 10MB in size'
+					])->validate();
 			 }
-			 public function addPortfolioTypeLink(Request $request, $profileId
+			 
+			 /**
+			  * Handle PDF upload for a portfolio.
+			  *
+			  * @param mixed    $file
+			  * @param Document $portfolio
+			  *
+			  * @return void
+			  */
+			 private function handlePdfUpload(mixed $file, Document $portfolio): void
+			 {
+					$path = $file->store('portfolios/pdfs', 'public');
+					$portfolio->update(
+						 ['path' => Storage::disk('public')->url($path)]
+					);
+			 }
+			 
+			 /**
+			  * Add a portfolio with URL format.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function addPortfolioTypeLink(Request $request, int $profileId
 			 ): JsonResponse {
-					$validator = Validator::make($request->all(), [
-						 'name' => 'sometimes|string|max:255',
-						 'url'  => 'required|url'
-					], [
-						 'url.url' => 'Invalid URL format'
-					]);
-					
-					if ($validator->fails()) {
-						  return responseJson(
-								422,
-								'Validation errors',
-								$validator->errors()->all()
-						  );
-					}
-					
 					try {
-						  $profile = Profile::findOrFail($profileId);
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  DB::beginTransaction();
+						  $validated = $this->validatePortfolioUrl($request);
 						  
-						  $format = $this->determineFormat($request);
-						  // Create a new portfolio
-						  if ($profile->portfolios()->count() >= 3) {
-								 throw new \Exception(
-									  'Maximum of 3 portfolios allowed'
-								 );
-						  }
-						  
-						  if ($profile->portfolios()->where('format', $format)
-								->exists()
-						  ) {
-								 throw new \Exception(
-									  'You already have a portfolio link with this format'
-								 );
-						  }
-						  
-						  $portfolio = $profile->documents()->create([
-								'name'        => $request->name,
-								'type'        => 'portfolio',
-								'format'      => $format,
-								'image_count' => 0
-						  ]);
-						  
-						  $this->handleFiles($request, $portfolio);
-						  
-						  DB::commit();
-						  
-						  return responseJson(
-								201,
-								' Link Portfolio created successfully',
-								$portfolio->load('images')
+						  return DB::transaction(
+								function () use ($request, $profile, $validated) {
+									  if ($profile->portfolios()->count() >= 3) {
+											 throw new \Exception(
+												  'Maximum of 3 portfolios allowed'
+											 );
+									  }
+									  
+									  $format = 'url';
+									  if ($profile->portfolios()->where(
+											'format', $format
+									  )->exists()
+									  ) {
+											 throw new \Exception(
+												  'You already have a portfolio with this format'
+											 );
+									  }
+									  
+									  $portfolio = $profile->documents()->create([
+											'name'        => $validated['name'] ??
+												 'Portfolio_' . time(),
+											'type'        => 'portfolio',
+											'format'      => $format,
+											'image_count' => 0,
+											'url'         => $validated['url']
+									  ]);
+									  
+									  Cache::forget(
+											'user_profiles_' . $profile->user_id
+									  );
+									  
+									  return responseJson(
+											201, 'Link portfolio created successfully',
+											$portfolio
+									  );
+								}
 						  );
-						  
-					} catch (\Exception $e) {
-						  DB::rollBack();
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
+					} catch (ValidationException $e) {
 						  return responseJson(
-								500,
-								'Operation failed',
-								$e->getMessage()
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Add portfolio link error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function editPortfolioImages(Request $request, $profileId,
-				  $portfolioId
-			 ): \Illuminate\Http\JsonResponse {
+			 
+			 /**
+			  * Validate portfolio URL data.
+			  *
+			  * @param Request $request
+			  * @param bool    $isCreate
+			  *
+			  * @return array
+			  * @throws ValidationException
+			  */
+			 private function validatePortfolioUrl(Request $request,
+				  bool $isCreate = true
+			 ): array {
+					$rules = [
+						 'name' => ['nullable', 'string', 'max:255'],
+						 'url'  => ['required', 'url']
+					];
+					
+					if (!$isCreate) {
+						  $rules['url'] = str_replace(
+								'required', 'sometimes', $rules['url']
+						  );
+					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'name.max' => 'Name cannot exceed 255 characters',
+						 'url.url'  => 'Invalid URL format'
+					])->validate();
+			 }
+			 
+			 /**
+			  * Edit an image-based portfolio.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $portfolioId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function editPortfolioImages(Request $request, int $profileId,
+				  int $portfolioId
+			 ): JsonResponse {
 					try {
-						  // Find the profile
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
 						  
-						  // Find the portfolio
 						  $portfolio = Document::where('profile_id', $profileId)
-								->where('type', 'portfolio')
-								->where('id', $portfolioId)
-								->firstOrFail();
+								->where('type', 'portfolio')->findOrFail($portfolioId);
 						  
-						  // Check a portfolio format
 						  if ($portfolio->format !== 'images') {
 								 return responseJson(
-									  422, 'Validation error','This portfolio is not an image portfolio'
+									  422, 'Validation error',
+									  'This portfolio is not an image portfolio'
 								 );
 						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  
-						  // Define validation rules
-						  $validationRules = [
-								'name'             => 'sometimes|string|max:255',
-								'images'           => 'sometimes|array|max:' . (12
-										  - $portfolio->image_count),
-								'images.*'         => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-								'deleted_images'   => 'sometimes|array',
-								'deleted_images.*' => 'exists:document_images,id',
-						  ];
-						  
-						  // Custom validation messages
-						  $validationMessages = [
-								'images.max' => 'You can only upload ' . (12
-										  - $portfolio->image_count) . ' more images',
-						  ];
-						  
-						  // Validate request data
-						  $validator = Validator::make(
-								$request->all(), $validationRules, $validationMessages
+						  $validated = $this->validatePortfolioImages(
+								$request, $portfolio->image_count
 						  );
 						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  $changesMade = false;
-						  
-						  // Update portfolio name if provided
-						  if ($request->has('name')
-								&& $request->name !== $portfolio->name
-						  ) {
-								 $portfolio->name = $request->name;
-								 $changesMade = true;
-						  }
-						  
-						  // Handle image uploads
-						  if ($request->hasFile('images')) {
-								 foreach ($request->file('images') as $image) {
-										// Store the image
-										$path = $image->store(
-											 'portfolios/images', 'public'
-										);
-										$urlPath = Storage::disk('public')->url($path);
-										$portfolio->images()->create([
-											 'path'      => $urlPath,
-											 'mime_type' => $image->getMimeType(),
-										]);
-								 }
-								 $portfolio->increment(
-									  'image_count', count($request->file('images'))
-								 );
-								 $changesMade = true;
-						  }
-						  
-						  // Handle image deletions
-						  if ($request->has('deleted_images')
-								&& !empty($request->deleted_images)
-						  ) {
-								 // Validate each image ID
-								 foreach ($request->deleted_images as $imageId) {
-										$image = DocumentImage::where('id', $imageId)
-											 ->where('document_id', $portfolio->id)
-											 ->firstOrFail();
-								 }
-								 
-								 // Delete the images
-								 foreach ($request->deleted_images as $imageId) {
-										$image = DocumentImage::findOrFail($imageId);
-										if ($image->path
-											 && Storage::disk('public')->exists(
-												  $image->path
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$image->path
-											  );
-										}
-										$image->delete();
-								 }
-								 $portfolio->decrement(
-									  'image_count', count($request->deleted_images)
-								 );
-								 $changesMade = true;
-						  }
-						  
-						  // Commit changes if any were made
-						  if ($changesMade) {
-								 $portfolio->save();
-								 DB::commit();
-								 return responseJson(
-									  200, 'Portfolio updated successfully', [
-									  'portfolio' => $portfolio->fresh(['images']),
-								 ]
-								 );
-						  }
-						  
-						  DB::rollBack();
-						  return responseJson(200, 'No changes detected',[
-								'portfolio' => $portfolio->fresh(['images']),
-						  ]);
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  DB::rollBack();
-						  return responseJson(404, 'Not found','Portfolio not found');
+						  return DB::transaction(
+								function () use ($request, $portfolio, $validated) {
+									  $changesMade = false;
+									  
+									  if ($request->has('name')
+											&& $portfolio->name !== $request->name
+									  ) {
+											 $portfolio->name = $request->name;
+											 $changesMade = true;
+									  }
+									  
+									  if ($request->hasFile('images')) {
+											 $this->handleImageUpload(
+												  $request->file('images'), $portfolio
+											 );
+											 $changesMade = true;
+									  }
+									  
+									  if ($request->has('deleted_images')
+											&& !empty($request->deleted_images)
+									  ) {
+											 foreach ($request->deleted_images as $imageId)
+											 {
+													$image = DocumentImage::where(
+														 'id', $imageId
+													)->where('document_id', $portfolio->id)
+														 ->firstOrFail();
+													if ($image->path
+														 && Storage::disk(
+															  'public'
+														 )->exists(
+															  $this->normalizePath(
+																	$image->path
+															  )
+														 )
+													) {
+														  Storage::disk('public')->delete(
+																$this->normalizePath(
+																	 $image->path
+																)
+														  );
+													}
+													$image->delete();
+											 }
+											 $portfolio->decrement(
+												  'image_count',
+												  count($request->deleted_images)
+											 );
+											 $changesMade = true;
+									  }
+									  
+									  if ($changesMade) {
+											 $portfolio->save();
+											 Cache::forget(
+												  'user_profiles_'
+												  . $portfolio->profile->user_id
+											 );
+											 return responseJson(
+												  200, 'Portfolio updated successfully',
+												  $portfolio->fresh(['images'])
+											 );
+									  }
+									  
+									  return responseJson(
+											200, 'No changes detected',
+											$portfolio->fresh(['images'])
+									  );
+								}
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Not found', 'Portfolio not found'
+						  );
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
-						  DB::rollBack();
-						  return responseJson(500, 'Failed to update portfolio',
-								 config('app.debug') ? $e->getMessage() : 'An error occurred during the update process'
+						  Log::error(
+								'Edit portfolio images error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-			 public function editPortfolioPdf(Request $request, $profileId,
-				  $portfolioId
+			 
+			 /**
+			  * Edit a PDF-based portfolio.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $portfolioId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function editPortfolioPdf(Request $request, int $profileId,
+				  int $portfolioId
 			 ): JsonResponse {
 					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
 						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()
-								->where('type', 'portfolio')
-								->findOrFail($portfolioId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
+						  $portfolio = Document::where('profile_id', $profileId)
+								->where('type', 'portfolio')->findOrFail($portfolioId);
 						  
 						  if ($portfolio->format !== 'pdf') {
 								 return responseJson(
-									  422,'Validation error','This portfolio is not an pdf portfolio'
+									  422, 'Validation error',
+									  'This portfolio is not a PDF portfolio'
 								 );
 						  }
 						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  $validationRules = [
-								'name' => 'sometimes|string|max:255',
-						  ];
-						  // Format-specific validation
+						  $validated = $this->validatePortfolioPdf($request, false);
 						  
-						  $validationRules['pdf']
-								= 'sometimes|file|mimes:pdf|max:10240';
-						  
-						  $validator = Validator::make(
-								$request->all(), $validationRules, [
-									 'pdf.mimes' => 'Only PDF files are allowed',
-								]
+						  return DB::transaction(
+								function () use ($request, $portfolio, $validated) {
+									  $changesMade = false;
+									  
+									  if ($request->has('name')
+											&& $portfolio->name !== $request->name
+									  ) {
+											 $portfolio->name = $request->name;
+											 $changesMade = true;
+									  }
+									  
+									  if ($request->hasFile('pdf')) {
+											 if ($portfolio->path
+												  && Storage::disk(
+														'public'
+												  )->exists(
+														$this->normalizePath($portfolio->path)
+												  )
+											 ) {
+													Storage::disk('public')->delete(
+														 $this->normalizePath(
+															  $portfolio->path
+														 )
+													);
+											 }
+											 $path = $request->file('pdf')->store(
+												  'portfolios/pdfs', 'public'
+											 );
+											 $portfolio->path = Storage::disk('public')
+												  ->url($path);
+											 $changesMade = true;
+									  }
+									  
+									  if ($changesMade) {
+											 $portfolio->save();
+											 Cache::forget(
+												  'user_profiles_'
+												  . $portfolio->profile->user_id
+											 );
+											 return responseJson(
+												  200, 'PDF portfolio updated successfully',
+												  $portfolio->fresh()
+											 );
+									  }
+									  
+									  return responseJson(
+											200, 'No changes detected', $portfolio->fresh()
+									  );
+								}
 						  );
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  $changesMade = false;
-						  
-						  // Update name
-						  if ($request->has('name')
-								&& $portfolio->name !== $request->name
-						  ) {
-								 $portfolio->name = $request->name;
-								 $changesMade = true;
-						  }
-						  // Handle format-specific updates
-						  $changesMade = $this->handlePdfUpdate(
-									 $request, $portfolio
-								) || $changesMade;
-						  if ($changesMade) {
-								 $portfolio->save();
-								 DB::commit();
-								 
-								 return responseJson(
-									  200,
-									  'Pdf Portfolio updated successfully',
-									  $portfolio
-								 );
-						  }
-						  
-						  DB::rollBack();
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
-								200,
-								'No changes detected',
-								$portfolio
+								404, 'Not found', 'Portfolio not found'
 						  );
-						  
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
 					} catch (\Exception $e) {
-						  DB::rollBack();
+						  Log::error('Edit portfolio PDF error: ' . $e->getMessage());
 						  return responseJson(
-								500,
-								'Update failed', $e->getMessage()
-						  );
-					}
-			 }
-			 protected function handlePdfUpdate(Request $request,
-				  Document $portfolio
-			 ): bool {
-					if (!$request->hasFile('pdf')) {
-						  return false;
-					}
-					
-					// Delete old PDF
-					if ($portfolio->path) {
-						  Storage::disk('public')->delete($portfolio->path);
-					}
-					
-					// Store new PDF
-					$path = $request->file('pdf')->store(
-						 'portfolios/pdfs', 'public'
-					);
-					$urlPath = Storage::disk('public')->url($path);
-					$portfolio->path = $urlPath;
-					return true;
-			 }
-			 public function editPortfolioUrl(Request $request, $profileId,
-				  $portfolioId
-			 ): JsonResponse {
-					try {
-						  $profile = Profile::findOrFail($profileId);
-						  $portfolio = $profile->documents()
-								->where('type', 'portfolio')
-								->findOrFail($portfolioId);
-						  
-						  if ($portfolio->format !== 'url') {
-								 return responseJson(
-									  422,'Validation error','This portfolio is not an url portfolio'
-								 );
-						  }
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  $validationRules = [
-								'name' => 'sometimes|string|max:255',
-						  ];
-						  // Format-specific validation
-						  
-						  $validationRules['url'] = 'sometimes|url';
-						  
-						  $validator = Validator::make(
-								$request->all(), $validationRules, [
-									 'url.url' => 'Invalid URL format'
-								]
-						  );
-						  
-						  if ($validator->fails()) {
-								 return responseJson(
-									  422, 'Validation failed',
-									  $validator->errors()->all()
-								 );
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  $changesMade = false;
-						  
-						  // Update name
-						  if ($request->has('name')
-								&& $portfolio->name !== $request->name
-						  ) {
-								 $portfolio->name = $request->name;
-								 $changesMade = true;
-						  }
-						  
-						  // Handle format-specific updates
-						  $changesMade = $this->handleUrlUpdate(
-									 $request, $portfolio
-								)
-								|| $changesMade;
-						  
-						  if ($changesMade) {
-								 $portfolio->save();
-								 DB::commit();
-								 
-								 return responseJson(
-									  200,
-									  'Link Portfolio updated successfully',
-									  $portfolio
-								 );
-						  }
-						  
-						  DB::rollBack();
-						  return responseJson(
-								200,
-								'No changes detected',
-								$portfolio
-						  );
-						  
-					} catch (\Exception $e) {
-						  DB::rollBack();
-						  return responseJson(
-								500,
-								'Update failed', $e->getMessage()
-						  );
-					}
-			 }
-			 protected function handleUrlUpdate(Request $request,
-				  Document $portfolio
-			 ): bool {
-					if (!$request->has('url')) {
-						  return false;
-					}
-					if ($portfolio->url !== $request->url) {
-						  $portfolio->url = $request->url;
-						  return true;
-					}
-					
-					return false;
-			 }
-			 public function deletePortfolio(Request $request, $profileId,
-				  $portfolioId
-			 ): JsonResponse {
-					try {
-						  // Find the profile
-						  $profile = Profile::findOrFail($profileId);
-						  
-						  // Find the portfolio
-						  $portfolio = Document::where('id', $portfolioId)
-								->where('profile_id', $profileId)
-								->where('type', 'portfolio')
-								->firstOrFail();
-						  
-						  // Authorization check
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
-						  
-						  DB::beginTransaction();
-						  
-						  // Delete associated files
-						  if ($portfolio->format === 'images') {
-								 // Delete all images related to this portfolio
-								 foreach ($portfolio->images as $image) {
-										if ($image->path
-											 && Storage::disk('public')->exists(
-												  $image->path
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$image->path
-											  );
-										}
-										$image->delete();
-								 }
-						  } elseif ($portfolio->format === 'pdf') {
-								 // Delete the PDF file
-								 if ($portfolio->path
-									  && Storage::disk('public')->exists(
-											$portfolio->path
-									  )
-								 ) {
-										Storage::disk('public')->delete($portfolio->path);
-								 }
-						  }
-						  
-						  // Delete the portfolio
-						  $portfolio->delete();
-						  
-						  DB::commit();
-						  
-						  return responseJson(200, 'Portfolio deleted successfully');
-						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  return responseJson(404,'Not found','Portfolio not found');
-					} catch (\Exception $e) {
-						  DB::rollBack();
-						  return responseJson(500, 'Failed to delete portfolio',
+								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
 			 }
-//			 protected function handleImageUpdate(Request $request,
-//				  Document $portfolio
-//			 ): bool {
-//					$changes = false;
-//
-//					// Add new images
-//					if ($request->has('images')) {
-//						  $newImages = $request->file('images');
-//						  $path = 'portfolios/images';
-//
-//						  foreach ($newImages as $image) {
-//								 $path = $image->store($path, 'public');
-//								 $urlPath = Storage::disk('public')->url($path);
-//								 $portfolio->images()->create([
-//									  'path'      => $urlPath,
-//									  'mime_type' => $image->getMimeType()
-//								 ]);
-//						  }
-//
-//						  $portfolio->increment('image_count', count($newImages));
-//						  $changes = true;
-//					}
-//
-//					// Delete images
-//					if ($request->has('deleted_images')) {
-//						  $deletedImages = $portfolio->images()
-//								->whereIn('id', $request->deleted_images)
-//								->get();
-//
-//						  foreach ($deletedImages as $image) {
-//								 Storage::disk('public')->delete($image->path);
-//								 $image->delete();
-//						  }
-//
-//						  $portfolio->decrement(
-//								'image_count', count($request->deleted_images)
-//						  );
-//						  $changes = true;
-//					}
-//
-//					return $changes;
-//			 }
+			 
+			 /**
+			  * Edit a URL-based portfolio.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $portfolioId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function editPortfolioUrl(Request $request, int $profileId,
+				  int $portfolioId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
+						  $portfolio = Document::where('profile_id', $profileId)
+								->where('type', 'portfolio')->findOrFail($portfolioId);
+						  
+						  if ($portfolio->format !== 'url') {
+								 return responseJson(
+									  422, 'Validation error',
+									  'This portfolio is not a URL portfolio'
+								 );
+						  }
+						  
+						  $validated = $this->validatePortfolioUrl($request, false);
+						  
+						  return DB::transaction(
+								function () use ($request, $portfolio, $validated) {
+									  $changesMade = false;
+									  
+									  if ($request->has('name')
+											&& $portfolio->name !== $request->name
+									  ) {
+											 $portfolio->name = $request->name;
+											 $changesMade = true;
+									  }
+									  
+									  if ($request->has('url')
+											&& $portfolio->url !== $request->url
+									  ) {
+											 $portfolio->url = $request->url;
+											 $changesMade = true;
+									  }
+									  
+									  if ($changesMade) {
+											 $portfolio->save();
+											 Cache::forget(
+												  'user_profiles_'
+												  . $portfolio->profile->user_id
+											 );
+											 return responseJson(
+												  200,
+												  'Link portfolio updated successfully',
+												  $portfolio->fresh()
+											 );
+									  }
+									  
+									  return responseJson(
+											200, 'No changes detected', $portfolio->fresh()
+									  );
+								}
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Not found', 'Portfolio not found'
+						  );
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Edit portfolio URL error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Delete a portfolio image.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $imageId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deletePortfolioImage(Request $request, int $profileId,
+				  int $imageId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
+						  $portfolio = Document::where('profile_id', $profileId)
+								->where('type', 'portfolio')->where('format', 'images')
+								->firstOrFail();
+						  
+						  $image = DocumentImage::where('id', $imageId)->where(
+								'document_id', $portfolio->id
+						  )->firstOrFail();
+						  
+						  return DB::transaction(
+								function () use ($image, $portfolio) {
+									  if ($image->path
+											&& Storage::disk('public')->exists(
+												 $this->normalizePath($image->path)
+											)
+									  ) {
+											 Storage::disk('public')->delete(
+												  $this->normalizePath($image->path)
+											 );
+									  }
+									  
+									  $image->delete();
+									  $portfolio->decrement('image_count');
+									  
+									  Cache::forget(
+											'user_profiles_' . $portfolio->profile->user_id
+									  );
+									  
+									  return responseJson(
+											200, 'Image deleted successfully'
+									  );
+								}
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Image not found');
+					} catch (\Exception $e) {
+						  Log::error(
+								'Delete portfolio image error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Delete a portfolio.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $portfolioId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function deletePortfolio(Request $request, int $profileId,
+				  int $portfolioId
+			 ): JsonResponse {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profile = Profile::findOrFail($profileId);
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
+						  $portfolio = Document::where('id', $portfolioId)->where(
+								'profile_id', $profileId
+						  )->where('type', 'portfolio')->firstOrFail();
+						  
+						  return DB::transaction(function () use ($portfolio) {
+								 if ($portfolio->format === 'images') {
+										foreach ($portfolio->images as $image) {
+											  if ($image->path
+													&& Storage::disk('public')->exists(
+														 $this->normalizePath(
+															  $image->path
+														 )
+													)
+											  ) {
+													 Storage::disk('public')->delete(
+														  $this->normalizePath($image->path)
+													 );
+											  }
+											  $image->delete();
+										}
+								 } elseif ($portfolio->format === 'pdf'
+									  && $portfolio->path
+									  && Storage::disk('public')->exists(
+											$this->normalizePath($portfolio->path)
+									  )
+								 ) {
+										Storage::disk('public')->delete(
+											 $this->normalizePath($portfolio->path)
+										);
+								 }
+								 
+								 $portfolio->delete();
+								 
+								 Cache::forget(
+									  'user_profiles_' . $portfolio->profile->user_id
+								 );
+								 
+								 return responseJson(
+									  200, 'Portfolio deleted successfully'
+								 );
+						  });
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Not found', 'Portfolio not found'
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Delete portfolio error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
 	  }

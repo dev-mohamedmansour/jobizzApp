@@ -5,114 +5,30 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Http\Resources\StatusResource;
 	  use App\Models\Application;
-	  use App\Models\ApplicationStatusHistory;
-	  use App\Models\JobListing as Job;
+	  use App\Models\JobListing;
 	  use App\Models\Profile;
 	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Validation\ValidationException;
 	  
 	  class ApplicationController extends Controller
 	  {
+			 /**
+			  * Submit a new job application.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $jobId
+			  *
+			  * @return JsonResponse
+			  */
 			 public function store(Request $request, $profileId, $jobId
 			 ): JsonResponse {
 					try {
-						  // Check authentication
-						  if (!auth('api')->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
-								 );
-						  }
-						  // Validate request data
-						  $validated = $request->validate([
-								'cover_letter' => 'sometimes|string|max:1000',
-								'cv_id'        => 'required|integer|exists:documents,id',
-						  ]);
-						  // Find the profile
-						  $profile = Profile::with('documents')->findOrFail(
-								$profileId
-						  );
-						  // Authorization check: Ensure the current user owns this profile
-						  if ($request->user()->id !== $profile->user_id) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'This profile does not belong to you.'
-								 );
-						  }
-						  // Verify that the CV belongs to this profile
-						  $cv = $profile->documents()->where('type', 'cv')
-								->where('id', $validated['cv_id'])
-								->first();
-						  if (!$cv) {
-								 return responseJson(
-									  404,
-									  'CV not found or does not belong to this profile',
-									  'CV not found or does not belong to this profile'
-								 );
-						  }
-						  if (!isset($validated['cover_letter'])) {
-								 $validated['cover_letter'] = 'no thing';
-						  }
-						  $job = Job::find($jobId)->where(
-								'job_status', '!=', 'cancelled'
-						  );
-						  if (!$job) {
-								 return responseJson(
-									  404, 'Job not found', 'Job not found'
-								 );
-						  }
-						  $existsApplication = Application::Where(
-								'profile_id', $profile->id
-						  )->where('job_id', $jobId)->exists();
-						  // Check if the user has already applied for this job
-						  if ($existsApplication) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'You have already applied for this job.'
-								 );
-						  }
-						  // Create application
-						  $application = Application::create([
-								'profile_id'   => $profile->id,
-								'job_id'       => $jobId,
-								'cover_letter' => $validated['cover_letter']
-									 ?: 'No thing',
-								'resume_path'  => $cv->path,
-								'status'       => 'pending', // Initial status
-						  ]);
-						  // Record initial status history
-						  $application->statuses()->create([
-								'status' => 'pending',
-						  ]);
-						  return responseJson(
-								201, 'Application submitted successfully', [
-									 'application' => $application,
-								]
-						  );
-					} catch (ValidationException $e) {
-						  return responseJson(
-								422, 'Validation error', $e->validator->errors()->all()
-						  );
-					} catch (ModelNotFoundException $e) {
-						  return responseJson(
-								404, 'Profile or CV not found',
-								'Profile or CV not found'
-						  );
-					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
-					}
-			 }
-			 
-			 public function getApplicationsForUser(Request $request, $profileId
-			 ): JsonResponse {
-					try {
-						  // Check authentication
 						  if (!auth('api')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
@@ -121,52 +37,158 @@
 						  
 						  $user = auth('api')->user();
 						  
-						  // Find profile with authorization check
-						  $profile = Profile::where('id', $profileId)
-								->where('user_id', $user->id)
-								->first();
+						  $validated = $request->validate([
+								'cover_letter' => 'nullable|string|max:1000',
+								'cv_id'        => 'required|integer|exists:documents,id',
+						  ]);
+						  
+						  $profile = Profile::with('documents')->find($profileId);
+						  if (!$profile) {
+								 return responseJson(
+									  404, 'Profile not found', 'Profile not found'
+								 );
+						  }
+						  
+						  if ($user->id !== $profile->user_id) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'This profile does not belong to you'
+								 );
+						  }
+						  
+						  $cv = $profile->documents()->where('type', 'cv')->where(
+								'id', $validated['cv_id']
+						  )->first();
+						  if (!$cv) {
+								 return responseJson(
+									  404, 'CV not found',
+									  'CV not found or does not belong to this profile'
+								 );
+						  }
+						  
+						  $job = JobListing::where('job_status', '!=', 'cancelled')
+								->find($jobId);
+						  if (!$job) {
+								 return responseJson(
+									  404, 'Job not found', 'Job not found'
+								 );
+						  }
+						  
+						  if (Application::where('profile_id', $profile->id)->where(
+								'job_id', $jobId
+						  )->exists()
+						  ) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You have already applied for this job'
+								 );
+						  }
+						  
+						  $application = Application::create([
+								'profile_id'   => $profile->id,
+								'job_id'       => $jobId,
+								'cover_letter' => $validated['cover_letter'] ??
+									 'No cover letter provided',
+								'resume_path'  => $cv->path,
+								'status'       => 'pending',
+						  ]);
+						  
+						  $application->statuses()->create(['status' => 'pending']);
+						  
+						  return responseJson(
+								201, 'Application submitted successfully', [
+									 'application' => $application->load(
+										  ['job', 'profile.user']
+									 ),
+								]
+						  );
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Resource not found', 'Profile or CV not found'
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Store application error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 /**
+			  * Retrieve applications for a user's profile.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function getApplicationsForUser(Request $request, $profileId
+			 ): JsonResponse {
+					try {
+						  if (!auth('api')->check()) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $user = auth('api')->user();
+						  $profile = Profile::where('id', $profileId)->where(
+								'user_id', $user->id
+						  )->first();
 						  
 						  if (!$profile) {
 								 return responseJson(
 									  403, 'Forbidden',
-									  'You do not have permission to this profile'
+									  'You do not have permission to access this profile'
 								 );
 						  }
-						  // Define the statuses you want to fetch
-						  $statuses = ['pending', 'reviewed', 'accepted', 'rejected',
-											'submitted', 'team-matching',
-											'final-hr-interview', 'technical-interview',
-											'screening-interview'];
 						  
-						  $applications = Application::with([
-								'job:id,title,salary,company_id',
-								'job.company:id,name,logo',
-								'profile.user:id,name,email'
-						  ])
-								->where('profile_id', $profile->id)
-								->get()
-								->groupBy('status');
+						  $statuses = [
+								'pending', 'reviewed', 'accepted', 'rejected',
+								'submitted',
+								'team-matching', 'final-hr-interview',
+								'technical-interview', 'screening-interview'
+						  ];
+						  
+						  $applications = Cache::remember(
+								"applications_profile_{$profileId}",
+								now()->addMinutes(15),
+								fn() => Application::with([
+									 'job'          => fn($query) => $query->select(
+										  'id', 'title', 'salary', 'company_id'
+									 ),
+									 'job.company'  => fn($query) => $query->select(
+										  'id', 'name', 'logo'
+									 ),
+									 'profile.user' => fn($query) => $query->select(
+										  'id', 'name', 'email'
+									 ),
+								])
+									 ->where('profile_id', $profile->id)
+									 ->get()
+						  );
 						  
 						  $applicationsByStatus = [];
 						  foreach ($statuses as $status) {
-								 $apps = $applications->get(
-									  $status, collect()
-								 ); // Default to empty collection
+								 $apps = $applications->where('status', $status);
 								 $formattedApplications = $apps->map(
-									  function ($application) {
-											 return [
-												  'id'          => $application->id,
-												  'resume_path' => $application->resume_path,
-												  'status'      => $application->status,
-												  'created_at'  => $application->created_at->format(
-														'Y-m-d'
-												  ),
-												  'job'         => $application->job,
-												  'user'        => $application->profile->user
-														?? null,
-											 ];
-									  }
+									  fn($application) => [
+											'id'          => $application->id,
+											'resume_path' => $application->resume_path,
+											'status'      => $application->status,
+											'created_at'  => $application->created_at->format(
+												 'Y-m-d'
+											),
+											'job'         => $application->job,
+											'user'        => $application->profile->user,
+									  ]
 								 );
+								 
 								 $applicationsByStatus[$status] = [
 									  'applications' => $formattedApplications,
 									  'count'        => $formattedApplications->count(),
@@ -178,74 +200,76 @@
 								$applicationsByStatus
 						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error(
+								'Get applications for user error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Retrieve all active applications for an admin's company.
+			  *
+			  * @return JsonResponse
+			  */
 			 public function index(): JsonResponse
 			 {
 					try {
 						  $admin = auth('admin')->user();
+						  if (!$admin) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Check authentication and permissions
 						  if (!$admin->hasPermissionTo('manage-applications')
-								&& $admin->hasRole('super-admin')
+								&& !$admin->hasRole('super-admin')
 						  ) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'Not authorized to access this resource'
 								 );
 						  }
-						  // Verify admin has a company association
+						  
 						  if (!$admin->company_id) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'No company associated with this account'
 								 );
 						  }
-						  // Log the company ID for debugging
-						  Log::info('Admin company_id: ' . $admin->company_id);
 						  
-						  // Get applications for the admin's company with specific fields
 						  $applications = Application::whereHas(
-								'job', function ($query) use ($admin) {
-								 $query->where('company_id', $admin->company_id)
-									  ->where('job_status', '!=', 'cancelled');
-						  }
-						  )->with([
-								'job:id,title,salary',
-								// Select specific fields from jobListing
-								'profile.user:id,name,email',
-								// Select specific fields from user via profile
-						  ])->where('status', '!=', 'rejected')->get();
+								'job', fn($query) => $query
+								->where('company_id', $admin->company_id)
+								->where('job_status', '!=', 'cancelled')
+						  )
+								->with([
+									 'job'          => fn($query) => $query->select(
+										  'id', 'title', 'salary'
+									 ),
+									 'profile.user' => fn($query) => $query->select(
+										  'id', 'name', 'email'
+									 ),
+								])
+								->where('status', '!=', 'rejected')
+								->get();
 						  
-						  // Transform the collection to include only desired fields
 						  $formattedApplications = $applications->map(
-								function ($application) {
-									  return [
-											'id'          => $application->id,
-											'resume_path' => $application->resume_path,
-											'status'      => $application->status,
-											'created_at'  => $application->created_at->format(
-												 'Y-m-d'
-											), // Format date as per casts
-											'job'         => $application->job,
-											// Include jobListing with selected fields
-											'user'        => $application->profile->user ??
-												 null, // Directly include user fields
-									  ];
-								}
+								fn($application) => [
+									 'id'          => $application->id,
+									 'resume_path' => $application->resume_path,
+									 'status'      => $application->status,
+									 'created_at'  => $application->created_at->format(
+										  'Y-m-d'
+									 ),
+									 'job'         => $application->job,
+									 'user'        => $application->profile->user,
+								]
 						  );
 						  
-						  // Log the number of applications found
-						  Log::info(
-								'Applications found: ' . $formattedApplications->count()
-						  );
-						  
-						  // Check if there are no applications
 						  if ($formattedApplications->isEmpty()) {
 								 return responseJson(
 									  404, 'No applications found',
@@ -253,36 +277,48 @@
 								 );
 						  }
 						  
-						  // Return the formatted response without pagination
+						  Log::info(
+								"Retrieved {$formattedApplications->count()} active applications for company ID: {$admin->company_id}"
+						  );
+						  
 						  return responseJson(200, 'Applications retrieved', [
 								'applications'       => $formattedApplications->values(
 								),
 								'applications_count' => $formattedApplications->count(),
 						  ]);
-						  
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error('Index applications error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Retrieve cancelled (rejected) applications for an admin's company.
+			  *
+			  * @return JsonResponse
+			  */
 			 public function cancelledApplicationsForAdmin(): JsonResponse
 			 {
 					try {
 						  $admin = auth('admin')->user();
+						  if (!$admin) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
 						  
-						  // Check authentication and permissions
 						  if (!$admin->hasPermissionTo('manage-applications')
-								&& $admin->hasRole('super-admin')
+								&& !$admin->hasRole('super-admin')
 						  ) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'Not authorized to access this resource'
 								 );
 						  }
-						  // Verify admin has a company association
+						  
 						  if (!$admin->company_id) {
 								 return responseJson(
 									  403, 'Forbidden',
@@ -290,73 +326,76 @@
 								 );
 						  }
 						  
-						  // Log the company ID for debugging
-						  Log::info('Admin company_id: ' . $admin->company_id);
-						  
-						  // Get applications for the admin's company with specific fields
 						  $applications = Application::whereHas(
-								'job', function ($query) use ($admin) {
-								 $query->where('company_id', $admin->company_id)
-									  ->where('job_status', '!=', 'cancelled');
-						  }
-						  )->with([
-								'job:id,title,salary',
-								// Select specific fields from jobListing
-								'profile.user:id,name,email',
-								// Select specific fields from user via profile
-						  ])->where('status', '=', 'rejected')->get();
+								'job', fn($query) => $query
+								->where('company_id', $admin->company_id)
+								->where('job_status', '!=', 'cancelled')
+						  )
+								->with([
+									 'job'          => fn($query) => $query->select(
+										  'id', 'title', 'salary'
+									 ),
+									 'profile.user' => fn($query) => $query->select(
+										  'id', 'name', 'email'
+									 ),
+								])
+								->where('status', 'rejected')
+								->get();
 						  
-						  
-						  // Transform the collection to include only desired fields
 						  $formattedApplications = $applications->map(
-								function ($application) {
-									  return [
-											'id'          => $application->id,
-											'resume_path' => $application->resume_path,
-											'status'      => $application->status,
-											'created_at'  => $application->created_at->format(
-												 'Y-m-d'
-											), // Format date as per casts
-											'job'         => $application->job,
-											// Include jobListing with selected fields
-											'user'        => $application->profile->user ??
-												 null, // Directly include user fields
-									  ];
-								}
+								fn($application) => [
+									 'id'          => $application->id,
+									 'resume_path' => $application->resume_path,
+									 'status'      => $application->status,
+									 'created_at'  => $application->created_at->format(
+										  'Y-m-d'
+									 ),
+									 'job'         => $application->job,
+									 'user'        => $application->profile->user,
+								]
 						  );
 						  
-						  // Log the number of applications found
-						  Log::info(
-								'Applications found: ' . $formattedApplications->count()
-						  );
-						  
-						  // Check if there are no applications
 						  if ($formattedApplications->isEmpty()) {
 								 return responseJson(
-									  404, 'No applications found',
-									  'No applications found'
+									  404, 'No rejected applications found',
+									  'No rejected applications found'
 								 );
 						  }
 						  
-						  // Return the formatted response without pagination
-						  return responseJson(200, 'Applications retrieved', [
-								'applications'       => $formattedApplications->values(
-								),
-								'applications_count' => $formattedApplications->count(),
-						  ]);
+						  Log::info(
+								"Retrieved {$formattedApplications->count()} rejected applications for company ID: {$admin->company_id}"
+						  );
 						  
+						  return responseJson(
+								200, 'Rejected applications retrieved', [
+									 'applications'       => $formattedApplications->values(
+									 ),
+									 'applications_count' => $formattedApplications->count(
+									 ),
+								]
+						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error(
+								'Cancelled applications error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Update the status of an application.
+			  *
+			  * @param int     $applicationId
+			  * @param Request $request
+			  *
+			  * @return JsonResponse
+			  */
 			 public function updateStatus($applicationId, Request $request
 			 ): JsonResponse {
 					try {
-						  // Check authentication
 						  if (!auth('admin')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
@@ -364,19 +403,15 @@
 						  }
 						  
 						  $admin = auth('admin')->user();
-						  
-						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Validate request data
 						  $validated = $request->validate([
 								'status'   => 'required|string|in:submitted,reviewed,screening-interview,technical-interview,final-hr-interview,team-matching,accepted,rejected,offer-letter',
-								'feedback' => 'sometimes|string|max:500',
+								'feedback' => 'nullable|string|max:500',
 						  ]);
 						  
-						  // Define the allowed status progression
 						  $statusOrder = [
 								'pending'             => ['submitted'],
 								'submitted'           => ['reviewed'],
@@ -387,47 +422,45 @@
 								'team-matching'       => ['accepted', 'rejected'],
 								'accepted'            => ['offer-letter'],
 								'rejected'            => [],
-								// No further steps after rejection
-								'offer-letter'        => [], // End state
+								'offer-letter'        => [],
 						  ];
 						  
-						  // Fetch the latest status history for the application
-						  $latestStatus = ApplicationStatusHistory::where(
-								'application_id', $applicationId
+						  $application = Application::whereHas(
+								'job', fn($query) => $query
+								->where('company_id', $admin->company_id)
 						  )
-								->latest('updated_at')
-								->first();
+								->find($applicationId);
 						  
+						  if (!$application) {
+								 return responseJson(
+									  404, 'Application not found',
+									  'Application not found'
+								 );
+						  }
+						  
+						  $latestStatus = $application->statuses()->latest(
+								'updated_at'
+						  )->first();
 						  $currentStatus = $latestStatus ? $latestStatus->status
-								: 'pending'; // Default to 'submitted' if no history
+								: 'pending';
 						  
-						  // Check if the new status is valid in the progression
 						  if (!in_array(
 								$validated['status'], $statusOrder[$currentStatus]
 						  )
 						  ) {
-								 return responseJson(400, 'Invalid Status', [
-									  'message'        => 'Invalid status transition. Next allowed statuses are: '
+								 return responseJson(400, 'Invalid status transition', [
+									  'message'        => 'Invalid status transition. Next allowed statuses: '
 											. implode(', ', $statusOrder[$currentStatus]),
 									  'current_status' => $currentStatus,
 								 ]);
 						  }
 						  
-						  // Find the application
-						  $application = Application::findOrFail($applicationId);
-						  
-						  // Update application status
-						  $application->update([
-								'status' => $validated['status'],
-						  ]);
-						  
-						  // Record status history
+						  $application->update(['status' => $validated['status']]);
 						  $application->statuses()->create([
 								'status'   => $validated['status'],
-								'feedback' => $validated['feedback'] ?? null,
+								'feedback' => $validated['feedback'],
 						  ]);
 						  
-						  // Notify the user
 						  $user = $application->profile->user;
 						  $user->notify(
 								new JobizzUserNotification(
@@ -444,65 +477,80 @@
 									 'user_name'      => $application->profile->user->name,
 									 'user_email'     => $application->profile->user->email,
 									 'current_status' => $validated['status'],
-									 'history'        => $application->statuses,
+									 'history'        => StatusResource::collection(
+										  $application->statuses
+									 ),
 								]
 						  );
-						  
 					} catch (ValidationException $e) {
 						  return responseJson(
 								422, 'Validation error', $e->validator->errors()->all()
 						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Application not found', 'Application not found'
+						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error('Update status error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Restore a rejected application to submitted status.
+			  *
+			  * @param int $applicationId
+			  *
+			  * @return JsonResponse
+			  */
 			 public function restore($applicationId): JsonResponse
 			 {
 					try {
-						  // Check authentication
 						  if (!auth('admin')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
+						  
 						  $admin = auth('admin')->user();
-						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Find the application
 						  $application = Application::where('id', $applicationId)
-								->whereHas('job', function ($query) use ($admin) {
-									  $query->where('company_id', $admin->company_id)
-											->where('job_status', '!=', 'cancelled');
-								})
-								->where('status', '=', 'rejected')
-								->firstOrFail();
+								->whereHas(
+									 'job', fn($query) => $query->where(
+									 'company_id', $admin->company_id
+								)->where('job_status', '!=', 'cancelled')
+								)
+								->where('status', 'rejected')
+								->first();
 						  
-						  // Update application status
-						  $application->update([
-								'status' => 'submitted',
-						  ]);
+						  if (!$application) {
+								 return responseJson(
+									  404, 'Application not found',
+									  'Application not found'
+								 );
+						  }
 						  
-						  // Record status history
+						  $application->update(['status' => 'submitted']);
 						  $application->statuses()->create([
 								'status'   => 'submitted',
-								'feedback' => 'admin restore this application',
+								'feedback' => 'Application restored by admin',
 						  ]);
-						  // Notify the user
+						  
 						  $user = $application->profile->user;
 						  $user->notify(
 								new JobizzUserNotification(
-									 title: 'Application Status Updated',
-									 body: "Your application for {$application->job->title} is now submitted .",
+									 title: 'Application Restored',
+									 body: "Your application for {$application->job->title} has been restored to submitted status.",
 									 data: ['profile_name' => $application->profile->title_job]
 								)
 						  );
+						  
 						  return responseJson(
 								200, 'Application restored successfully', [
 									 'id'             => $application->id,
@@ -510,27 +558,39 @@
 									 'user_name'      => $application->profile->user->name,
 									 'user_email'     => $application->profile->user->email,
 									 'current_status' => 'submitted',
-									 'history'        => $application->statuses,
+									 'history'        => StatusResource::collection(
+										  $application->statuses
+									 ),
 								]
 						  );
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  // Handle case where no application matches the criteria
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
-								404, 'Not Found', 'Application not found'
+								404, 'Application not found', 'Application not found'
 						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error(
+								'Restore application error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Retrieve status history for a user's application.
+			  *
+			  * @param Request $request
+			  * @param int     $profileId
+			  * @param int     $applicationId
+			  *
+			  * @return JsonResponse
+			  */
 			 public function getStatusHistoryForUser(Request $request, $profileId,
 				  $applicationId
 			 ): JsonResponse {
 					try {
-						  // Check authentication
 						  if (!auth('api')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
@@ -538,111 +598,137 @@
 						  }
 						  
 						  $user = auth('api')->user();
-						  
-						  // Find profile with authorization check
-						  $profile = Profile::where('id', $profileId)
-								->where('user_id', $user->id)
-								->first();
+						  $profile = Profile::where('id', $profileId)->where(
+								'user_id', $user->id
+						  )->first();
 						  
 						  if (!$profile) {
 								 return responseJson(
 									  403, 'Forbidden',
-									  'You do not have permission to this profile'
+									  'You do not have permission to access this profile'
 								 );
 						  }
-						  // Get applications with specific relationships and fields
+						  
 						  $application = Application::with([
-								'Job'         => function ($query) {
-									  $query->select('id', 'title', 'salary', 'location')
-											->withOut('company');
-								},
-								'job.company' => function ($query) {
-									  $query->select('id', 'name', 'logo');
-								},
-								'statuses'    => function ($query) {
-									  $query->select(
-											'id', 'application_id', 'status', 'updated_at'
-									  );
-								}
-						  ])->where('profile_id', $profile->id)
+								'job'         => fn($query) => $query->select(
+									 'id', 'title', 'salary', 'location'
+								),
+								'job.company' => fn($query) => $query->select(
+									 'id', 'name', 'logo'
+								),
+								'statuses'    => fn($query) => $query->select(
+									 'id', 'application_id', 'status', 'feedback',
+									 'updated_at'
+								),
+						  ])
+								->where('profile_id', $profile->id)
 								->where('id', $applicationId)
-								->firstOrFail();
-						  // Format statuses using a resource (optional, if using StatusResource)
+								->first();
+						  
+						  if (!$application) {
+								 return responseJson(
+									  404, 'Application not found',
+									  'Application not found'
+								 );
+						  }
+						  
 						  return responseJson(
-								200, 'Application retrieved successfully', [
+								200,
+								'Application status history retrieved successfully', [
 									 'id'      => $application->id,
-									 'job'     => $application->Job,
+									 'job'     => $application->job,
 									 'company' => $application->job->company,
 									 'status'  => StatusResource::collection(
 										  $application->statuses
 									 ),
 								]
 						  );
-						  
 					} catch (ModelNotFoundException $e) {
-						  return responseJson(404, 'Error', 'Application not found');
+						  return responseJson(
+								404, 'Application not found', 'Application not found'
+						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error('Get status history error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
+			 /**
+			  * Reject an application.
+			  *
+			  * @param int $applicationId
+			  *
+			  * @return JsonResponse
+			  */
 			 public function destroy($applicationId): JsonResponse
 			 {
 					try {
-						  // Check authentication
-						  if (!auth()->check()) {
+						  if (!auth('admin')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
+						  
 						  $admin = auth('admin')->user();
-						  // Check authorization
 						  if (!$admin->hasPermissionTo('manage-applications')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
-						  // Find the application
+						  
 						  $application = Application::where('id', $applicationId)
-								->whereHas('job', function ($query) use ($admin) {
-									  $query->where('company_id', $admin->company_id)
-											->where('job_status', '!=', 'cancelled');
-								})
+								->whereHas(
+									 'job', fn($query) => $query->where(
+									 'company_id', $admin->company_id
+								)->where('job_status', '!=', 'cancelled')
+								)
 								->where('status', '!=', 'rejected')
-								->firstOrFail();
-						  // Update application status
-						  $application->update([
-								'status' => 'rejected',
-						  ]);
-						  // Record status history
+								->first();
+						  
+						  if (!$application) {
+								 return responseJson(
+									  404, 'Application not found',
+									  'Application not found'
+								 );
+						  }
+						  
+						  $application->update(['status' => 'rejected']);
 						  $application->statuses()->create([
 								'status'   => 'rejected',
-								'feedback' => 'admin rejected this application',
+								'feedback' => 'Application rejected by admin',
 						  ]);
-						  // Notify the user
+						  
 						  $user = $application->profile->user;
 						  $user->notify(
 								new JobizzUserNotification(
-									 title: 'Application Status Updated',
-									 body: "Sorry, Your application for {$application->job->title} is rejected .",
+									 title: 'Application Rejected',
+									 body: "Your application for {$application->job->title} has been rejected.",
 									 data: ['profile_name' => $application->profile->title_job]
 								)
 						  );
-						  return responseJson(
-								200, 'Application cancel successfully'
-						  );
 						  
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-						  // Handle a case where no application matches the criteria
 						  return responseJson(
-								404, 'Not Found', 'Application not found'
+								200, 'Application rejected successfully', [
+									 'id'             => $application->id,
+									 'job_title'      => $application->job->title,
+									 'user_name'      => $application->profile->user->name,
+									 'user_email'     => $application->profile->user->email,
+									 'current_status' => 'rejected',
+								]
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(
+								404, 'Application not found', 'Application not found'
 						  );
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server Error', $errorMessage);
+						  Log::error(
+								'Destroy application error: ' . $e->getMessage()
+						  );
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 	  }
