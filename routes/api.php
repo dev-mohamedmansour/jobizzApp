@@ -102,6 +102,16 @@
 									 [ApplicationController::class,
 									  'updateStatus']
 								);
+								Route::get(
+									 '/cancelled',
+									 [ApplicationController::class,
+									  'cancelledApplicationsForAdmin']
+								);
+								Route::put(
+									 '/restore/{applicationId}',
+									 [ApplicationController::class,
+									  'restore']
+								);
 								Route::delete(
 									 '/{applicationId}',
 									 [ApplicationController::class,
@@ -185,7 +195,8 @@
 				  '/password/reset', [AuthController::class, 'newPassword']
 			 )->middleware(['auth:api', 'check.reset.token']);
 			 Route::post(
-				  '/password/change-password', [AuthController::class, 'changePassword']
+				  '/password/change-password',
+				  [AuthController::class, 'changePassword']
 			 )->middleware(['auth:api']);
 			 
 			 

@@ -411,6 +411,9 @@
 						  
 						  // Update all related applications to reject
 						  $job->applications->each(function ($application) {
+								 $application->update([
+									  'status' => 'rejected',
+								 ]);
 								 $application->statuses()->create([
 									  'status' => 'rejected',
 									  'feedback' => 'Job was cancelled by admin.',
