@@ -15,6 +15,12 @@
 					
 					try {
 						  // Check if token needs refresh (within last 25% of TTL)
+						  // Safely check if a token exists
+						  $token = JWTAuth::setRequest($request)->getToken();
+						  if (!$token) {
+								 return $response; // Skip refresh logic if no token
+						  }
+						  
 						  $token = JWTAuth::parseToken();
 						  $payload = $token->getPayload();
 						  

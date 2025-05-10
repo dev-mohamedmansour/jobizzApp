@@ -163,7 +163,7 @@
 			 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
 			 Route::post(
 				  '/resend-email-verification',
-				  [AuthController::class, 'resendVerificationEmail']
+				  [AuthController::class, 'resendEmail']
 			 );
 
 			 Route::post('/login', [AuthController::class, 'login']);
