@@ -26,7 +26,7 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function store(Request $request, $profileId, $jobId
+			 public function store(Request $request, int $profileId, int $jobId
 			 ): JsonResponse {
 					try {
 						  if (!auth('api')->check()) {
@@ -393,7 +393,7 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function updateStatus($applicationId, Request $request
+			 public function updateStatus(int $applicationId, Request $request
 			 ): JsonResponse {
 					try {
 						  if (!auth('admin')->check()) {
@@ -506,7 +506,7 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function restore($applicationId): JsonResponse
+			 public function restore(int $applicationId): JsonResponse
 			 {
 					try {
 						  if (!auth('admin')->check()) {

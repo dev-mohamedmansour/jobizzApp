@@ -28,7 +28,7 @@ class UserController extends Controller
 						  if (!$this->isAdminAuthorized($user)) {
 								 return responseJson(
 									  403,
-									  'Forbidden','You do not have permission to view this company'
+									  'Forbidden','You do not have permission to view users '
 								 );
 						  }
 					} elseif (auth()->guard('api')->check()) {

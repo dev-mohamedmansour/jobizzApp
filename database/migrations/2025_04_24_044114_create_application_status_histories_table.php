@@ -15,7 +15,7 @@
 						  $table->id();
 						  $table->foreignId('application_id')->constrained()->onDelete('cascade');
 						  $table->string('status');
-						  $table->text('feedback')->nullable();
+						  $table->string('feedback')->default('No feedback provided');;
 						  $table->timestamps();
 					});
 			 }

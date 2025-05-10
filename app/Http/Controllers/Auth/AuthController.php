@@ -10,6 +10,7 @@
 	  use Google\Client as GoogleClient;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Str;
@@ -655,70 +656,112 @@
 					}
 			 }
 			 
+			 
+			 /**
+			  * Retrieve job recommendations for the authenticated user.
+			  *
+			  * @param Request $request
+			  * @return JsonResponse
+			  */
 			 public function home(Request $request): JsonResponse
 			 {
 					try {
-						  // Check authentication
-						  if (!auth('api')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+						  $user = auth('api')->user();
+						  if (!$user) {
+								 return responseJson(401, 'Unauthorized', 'Unauthenticated');
 						  }
 						  
-						  $user = auth('api')->user();
-						  // Check if the user has a profile
 						  if (!$user->defaultProfile) {
-								 return responseJson(404,'Error', 'Profile not found');
+								 return responseJson(404, 'Not found', 'Profile not found');
 						  }
 						  
 						  $profileJobTitle = $user->defaultProfile->title_job;
-						  // Retrieve 10 random jobs with similar titles
-//						  $recommendedJobs = JobListing::where(
-//								'title', 'like', '%' . $profileJobTitle . '%'
-//						  )
-//								->inRandomOrder()
-//								->take(4)
-//								->get();
-//						  $popularJobs = JobListing::where(
-//								'title', 'like', '%' . $profileJobTitle . '%'
-//						  )
-//								->inRandomOrder()
-//								->take(4)
-//								->get();
-						  $jobsNum = Job::count();
-						  $number = $jobsNum / 3;
-						  // Get active jobs count using a subquery
-						  $jobsTrending = Job::
-						  inRandomOrder()
-								->take($number)
-								->get();
-						  $jobsPopular = Job::
-						  inRandomOrder()
-								->take($number)
-								->get();
-						  $jobsRecommended = Job::where(
-								'title', 'like', '%' . $profileJobTitle . '%'
-						  )
-								->inRandomOrder()
-								->take($number)
-								->get();
-						  if ($jobsNum == 0) {
-								 return responseJson(404,'Not found now', 'No similar jobs found');
+						  $jobsNum = Cache::remember('job_count', now()->addHours(1), fn () => Job::count());
+						  
+						  if ($jobsNum === 0) {
+								 return responseJson(404, 'Not found', 'No jobs available');
 						  }
 						  
-						  // Structure the response
-						  return responseJson(
-								200, 'Jobs retrieved successfully', [
-									 'Trending'    => $jobsTrending,
-									 'Popular'     => $jobsPopular,
-									 'Recommended' => $jobsRecommended,
-								]
+						  $number = max(1, (int) ($jobsNum / 3));
+						  
+						  $jobsTrending = Cache::remember('jobs_trending_' . $user->id, now()->addMinutes(15), fn () =>
+						  Job::inRandomOrder()->take($number)->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
 						  );
 						  
+						  $jobsPopular = Cache::remember('jobs_popular_' . $user->id, now()->addMinutes(15), fn () =>
+						  Job::inRandomOrder()->take($number)->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
+						  );
+						  
+						  $jobsRecommended = Cache::remember('jobs_recommended_' . $user->id . '_' . md5($profileJobTitle), now()->addMinutes(15), fn () =>
+						  Job::where('title', 'like', '%' . $profileJobTitle . '%')
+								->inRandomOrder()
+								->take($number)
+								->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
+						  );
+						  
+						  return responseJson(200, 'Jobs retrieved successfully', [
+								'Trending' => $jobsTrending,
+								'Popular' => $jobsPopular,
+								'Recommended' => $jobsRecommended,
+						  ]);
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, "Server error", $errorMessage);
+						  Log::error('Home error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : null);
 					}
 			 }
+			 
+			 
+//			 public function home(Request $request): JsonResponse
+//			 {
+//					try {
+//						  // Check authentication
+//						  if (!auth('api')->check()) {
+//								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+//						  }
+//
+//						  $user = auth('api')->user();
+//						  // Check if the user has a profile
+//						  if (!$user->defaultProfile) {
+//								 return responseJson(404,'Error', 'Profile not found');
+//						  }
+//
+//						  $profileJobTitle = $user->defaultProfile->title_job;
+//						  $jobsNum = Job::count();
+//						  $number = $jobsNum / 3;
+//						  // Get active jobs count using a subquery
+//						  $jobsTrending = Job::
+//						  inRandomOrder()
+//								->take($number)
+//								->get();
+//						  $jobsPopular = Job::
+//						  inRandomOrder()
+//								->take($number)
+//								->get();
+//						  $jobsRecommended = Job::where(
+//								'title', 'like', '%' . $profileJobTitle . '%'
+//						  )
+//								->inRandomOrder()
+//								->take($number)
+//								->get();
+//						  if ($jobsNum == 0) {
+//								 return responseJson(404,'Not found now', 'No similar jobs found');
+//						  }
+//
+//						  // Structure the response
+//						  return responseJson(
+//								200, 'Jobs retrieved successfully', [
+//									 'Trending'    => $jobsTrending,
+//									 'Popular'     => $jobsPopular,
+//									 'Recommended' => $jobsRecommended,
+//								]
+//						  );
+//
+//					} catch (\Exception $e) {
+//						  Log::error('Server Error: ' . $e->getMessage());
+//						  $errorMessage = config('app.debug') ? $e->getMessage()
+//								: 'Server error: Something went wrong. Please try again later.';
+//						  return responseJson(500, "Server error", $errorMessage);
+//					}
+//			 }
 			 
 	  }

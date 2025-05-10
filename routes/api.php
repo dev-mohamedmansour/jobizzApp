@@ -62,11 +62,11 @@
 									 '/add-company', [CompanyController::class, 'store']
 								);
 								Route::get('/', [CompanyController::class, 'index']);
-								Route::get('/{id}', [CompanyController::class, 'show']);
-								Route::put('/{id}', [CompanyController::class, 'update']
+								Route::get('/{companyId}', [CompanyController::class, 'show']);
+								Route::put('/{companyId}', [CompanyController::class, 'update']
 								);
 								Route::delete(
-									 '/{id}', [CompanyController::class, 'destroy']
+									 '/{companyId}', [CompanyController::class, 'destroy']
 								);
 						 });
 						 
@@ -78,7 +78,7 @@
 								Route::get('/{jobId}', [JobController::class, 'show']
 								);
 								Route::get(
-									 '/company/{id}',
+									 '/company/{companyId}',
 									 [JobController::class, 'getAllJobsForCompany']
 								);
 								Route::get('/', [JobController::class, 'index']
@@ -175,10 +175,6 @@
 			 Route::middleware(['auth:api'])->group(function () {
 					Route::get('/home', [AuthController::class, 'home']);
 			 });
-			 // Social auth
-//			 Route::get(
-//				  '/{provider}', [AuthController::class, 'redirectToProvider']
-//			 );
 			 Route::post(
 				  '/google-login', [AuthController::class, 'socialLogin']
 			 );
@@ -205,11 +201,11 @@
 					Route::post(
 						 '/add-profile', [ProfileController::class, 'addProfile']
 					);
-					Route::get('/{id}', [ProfileController::class, 'getProfileById']
+					Route::get('/{profileId}', [ProfileController::class, 'getProfileById']
 					);
-					Route::put('/{id}', [ProfileController::class, 'updateProfile']);
+					Route::put('/{profileId}', [ProfileController::class, 'updateProfile']);
 					Route::delete(
-						 '/{id}', [ProfileController::class, 'deleteProfile']
+						 '/{profileId}', [ProfileController::class, 'deleteProfile']
 					);
 					
 					// Profile educations
@@ -331,7 +327,7 @@
 				  function () {
 						 Route::get('/', [CompanyController::class, 'index']);
 						 
-						 Route::get('/{id}', [CompanyController::class, 'show']);
+						 Route::get('/{companyId}', [CompanyController::class, 'show']);
 				  }
 			 );
 			 // Job routes
@@ -339,7 +335,7 @@
 					
 					Route::get('/', [JobController::class, 'index']
 					);
-					Route::get('/{job}', [JobController::class, 'show']
+					Route::get('/{jobId}', [JobController::class, 'show']
 					);
 			 });
 			 

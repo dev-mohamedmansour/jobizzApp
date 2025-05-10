@@ -124,6 +124,10 @@
 								 );
 						  }
 						  
+						  if ($user->id !== $profileId) {
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
+						  }
+						  
 						  $profile = Cache::remember(
 								'profile_' . $profileId, now()->addMinutes(15),
 								fn() => Profile::with([
@@ -143,14 +147,65 @@
 									 )
 								])->findOrFail($profileId)
 						  );
+						  // Filter profile data to include only relevant fields
+						  $filteredData = [
+								'id' => $profile->id,
+								'user_id' => $profile->user_id,
+								'title_job' => $profile->title_job,
+								'job_position' => $profile->job_position,
+								'is_default' => $profile->is_default,
+								'profile_image' => $profile->profile_image,
+								'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
+								'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
+								'educations' => $profile->educations->map(fn ($edu) => [
+									 'id' => $edu->id,
+									 'college' => $edu->college,
+									 'degree' => $edu->degree,
+									 'field_of_study' => $edu->field_of_study,
+									 'start_date' => $edu->start_date,
+									 'end_date' => $edu->end_date,
+									 'is_current' => (bool) $edu->is_current,
+									 'description' => $edu->description,
+									 'location' => $edu->location,
+								])->toArray(),
+								'experiences' => $profile->experiences->map(fn ($exp) => [
+									 'id' => $exp->id,
+									 'company' => $exp->company,
+									 'position' => $exp->position,
+									 'start_date' => $exp->start_date,
+									 'end_date' => $exp->end_date,
+									 'is_current' => (bool) $exp->is_current,
+									 'description' => $exp->description,
+									 'location' => $exp->location,
+								])->toArray(),
+								'documents' => $profile->documents->map(fn ($doc) => [
+									 'id' => $doc->id,
+									 'name' => $doc->name,
+									 'type' => $doc->type,
+									 'format' => $doc->format,
+									 'url' => $doc->url ?? $doc->path, // Prefer url, fallback to path
+								])->toArray(),
+						  ];
 						  
-						  if ($user->id !== $profile->user_id) {
-								 return responseJson(403, 'Forbidden', 'Unauthorized');
-						  }
+						  // Sanitize strings for JSON encoding
+						  array_walk_recursive($filteredData, function (&$item) {
+								 if (is_string($item) && !mb_check_encoding($item, 'UTF-8')) {
+										$item = mb_convert_encoding($item, 'UTF-8', 'auto');
+								 }
+						  });
 						  
-						  return responseJson(
-								200, 'Profile retrieved successfully', $profile
-						  );
+						  // Log filtered data for debugging
+						  Log::info('Filtered profile data', $filteredData);
+						  
+						  // Clean any stray output
+						  ob_start();
+						  $response = responseJson(200, 'Profile retrieved successfully', $filteredData);
+						  ob_end_clean();
+						  
+						  return $response;
+//						  return responseJson(
+//								200, 'Profile retrieved successfully', $profile
+//						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
