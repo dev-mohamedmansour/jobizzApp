@@ -5,6 +5,7 @@
 	  use App\Http\Controllers\Admin\CompanyController;
 	  use App\Http\Controllers\Admin\JobController;
 	  use App\Http\Controllers\Auth\AuthController;
+	  use App\Http\Controllers\Auth\FavoriteController;
 	  use App\Http\Controllers\Auth\ProfileController;
 	  use App\Http\Controllers\FirebasePushController;
 	  use App\Http\Controllers\Main\CategoryController;
@@ -21,7 +22,8 @@
 			 Route::post(
 				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
 			 );
-			 Route::post('/login', [AdminAuthController::class, 'login']);
+			 Route::post('/login', [AdminAuthController::class, 'login'])
+				  ->withoutMiddleware('admin');
 			 
 			 //password Logic
 			 Route::post(
@@ -38,11 +40,8 @@
 			 )->middleware(['auth:admin', 'check.reset.token']);
 			 
 			 // Authenticated routes
-			 Route::middleware(['auth:admin'])
+			 Route::middleware(['admin'])
 				  ->group(function () {
-						 // Auth routes
-						 Route::post('/logout', [AdminAuthController::class, 'logout']
-						 );
 						 Route::prefix('users')->group(function () {
 								Route::get(
 									 '/',
@@ -55,6 +54,9 @@
 									  'destroy']
 								);
 						 });
+						 // Auth routes
+						 Route::post('/logout', [AdminAuthController::class, 'logout']
+						 );
 						 
 						 // Company routes
 						 Route::prefix('companies')->group(function () {
@@ -62,11 +64,15 @@
 									 '/add-company', [CompanyController::class, 'store']
 								);
 								Route::get('/', [CompanyController::class, 'index']);
-								Route::get('/{companyId}', [CompanyController::class, 'show']);
-								Route::put('/{companyId}', [CompanyController::class, 'update']
+								Route::get(
+									 '/{companyId}', [CompanyController::class, 'show']
+								);
+								Route::put(
+									 '/{companyId}', [CompanyController::class, 'update']
 								);
 								Route::delete(
-									 '/{companyId}', [CompanyController::class, 'destroy']
+									 '/{companyId}',
+									 [CompanyController::class, 'destroy']
 								);
 						 });
 						 
@@ -158,196 +164,233 @@
 			 
 	  });
 	  Route::prefix('auth')->group(function () {
-			 // Regular auth
-			 Route::post('/register', [AuthController::class, 'register']);
-			 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
-			 Route::post(
-				  '/resend-email-verification',
-				  [AuthController::class, 'resendEmail']
-			 );
-
-			 Route::post('/login', [AuthController::class, 'login']);
-			 
-			 Route::middleware(['auth:api'])->group(function () {
+			 Route::withoutMiddleware('api')->group(function () {
+					// Regular auth
+					Route::post('/register', [AuthController::class, 'register']);
+					Route::post(
+						 '/verify-email', [AuthController::class, 'verifyEmail']
+					);
+					Route::post(
+						 '/resend-email-verification',
+						 [AuthController::class, 'resendEmail']
+					);
+					Route::post('/login', [AuthController::class, 'login']);
+					Route::post(
+						 '/google-login', [AuthController::class, 'socialLogin']
+					);
+					//password Logic
+					Route::post(
+						 '/password/reset-request',
+						 [AuthController::class, 'requestPasswordReset']
+					);
+					Route::post(
+						 '/password/verify-pin',
+						 [AuthController::class, 'checkResetPasswordPinCode']
+					);
+			 });
+			 Route::middleware('api')->group(function () {
 					Route::post('/logout', [AuthController::class, 'logout']);
-					Route::post('/fcm-token', [FirebasePushController::class, 'registerToken']);
-			 });
-			 Route::middleware(['auth:api'])->group(function () {
+					Route::post(
+						 '/fcm-token',
+						 [FirebasePushController::class, 'registerToken']
+					);
 					Route::get('/home', [AuthController::class, 'home']);
+					Route::post(
+						 '/password/reset', [AuthController::class, 'newPassword']
+					)->middleware('check.reset.token');
+					Route::post(
+						 '/password/change-password',
+						 [AuthController::class, 'changePassword']
+					);
+					
+					Route::prefix('profiles')->group(
+						 function () {
+								Route::get(
+									 '/', [ProfileController::class, 'getAllProfiles']
+								);
+								Route::post(
+									 '/add-profile',
+									 [ProfileController::class, 'addProfile']
+								);
+								Route::get(
+									 '/{profileId}',
+									 [ProfileController::class, 'getProfileById']
+								);
+								Route::put(
+									 '/{profileId}',
+									 [ProfileController::class, 'updateProfile']
+								);
+								Route::delete(
+									 '/{profileId}',
+									 [ProfileController::class, 'deleteProfile']
+								);
+								// Profile educations
+								Route::post(
+									 '/{profileId}/educations/add-education',
+									 [ProfileController::class, 'addEducation']
+								);
+								Route::get(
+									 '/{profileId}/educations/{educationId}',
+									 [ProfileController::class, 'getEducationById']
+								);
+								Route::get(
+									 '/{profileId}/educations',
+									 [ProfileController::class, 'getAllEducations']
+								);
+								Route::put(
+									 '/{profileId}/educations/{educationId}',
+									 [ProfileController::class, 'updateEducation']
+								);
+								Route::delete(
+									 '/{profileId}/educations/{educationId}',
+									 [ProfileController::class, 'deleteEducation']
+								);
+								// Profile experiences
+								Route::post(
+									 '/{profileId}/experiences/add-experience',
+									 [ProfileController::class, 'addExperience']
+								);
+								Route::put(
+									 '/{profileId}/experiences/{experienceId}',
+									 [ProfileController::class, 'editExperience']
+								);
+								Route::delete(
+									 '/{profileId}/experiences/{experienceId}',
+									 [ProfileController::class, 'deleteExperience']
+								);
+								Route::get(
+									 '/{profileId}/experiences/{experienceId}',
+									 [ProfileController::class, 'getExperienceById']
+								);
+								Route::get(
+									 '/{profileId}/experiences',
+									 [ProfileController::class, 'getAllExperiences']
+								);
+								// Profile documents
+								// CV Routes
+								Route::post(
+									 '/{profileId}/cvs',
+									 [ProfileController::class, 'uploadCV']
+								);
+								Route::put(
+									 '/{profileId}/cvs/{cvId}',
+									 [ProfileController::class, 'editCV']
+								);
+								Route::delete(
+									 '/{profileId}/cvs/{cvId}',
+									 [ProfileController::class, 'deleteCV']
+								);
+								// Portfolio Routes
+								Route::prefix('{profileId}/portfolio')->group(
+									 function () {
+											Route::post(
+												 '/images',
+												 [ProfileController::class,
+												  'addPortfolioTypeImages']
+											);
+											Route::post(
+												 '/pdf',
+												 [ProfileController::class,
+												  'addPortfolioTypePdf']
+											);
+											Route::post(
+												 '/url',
+												 [ProfileController::class,
+												  'addPortfolioTypeLink']
+											);
+											Route::put(
+												 '/images/{portfolioId}',
+												 [ProfileController::class,
+												  'editPortfolioImages']
+											);
+											Route::put(
+												 '/pdf/{portfolioId}',
+												 [ProfileController::class,
+												  'editPortfolioPdf']
+											);
+											Route::put(
+												 '/url/{portfolioId}',
+												 [ProfileController::class,
+												  'editPortfolioUrl']
+											);
+											Route::delete(
+												 '/{portfolioId}',
+												 [ProfileController::class,
+												  'deletePortfolio']
+											);
+											Route::delete(
+												 '/image/{imageId}',
+												 [ProfileController::class,
+												  'deletePortfolioImage']
+											);
+									 }
+								);
+						 }
+					);
+					
+					Route::prefix('/profile/{profileId}/applications')->group(
+						 function () {
+								Route::get(
+									 '/',
+									 [ApplicationController::class,
+									  'getApplicationsForUser']
+								);
+								Route::post(
+									 'add-application/{jobId}',
+									 [ApplicationController::class, 'store']
+								);
+								Route::get(
+									 '/{applicationId}/status',
+									 [ApplicationController::class,
+									  'getStatusHistoryForUser']
+								);
+						 }
+					);
+					
+					Route::prefix('/profile/{profileId}/favorite')->group(
+						 function () {
+								Route::get(
+									 '/',
+									 [FavoriteController::class,
+									  'index']
+								);
+								Route::post(
+									 '/{jobId}',
+									 [FavoriteController::class, 'store']
+								);
+						 }
+					);
+					
+					Route::prefix('companies')->group(
+						 function () {
+								Route::get('/', [CompanyController::class, 'index']);
+								
+								Route::get(
+									 '/{companyId}', [CompanyController::class, 'show']
+								);
+						 }
+					);
+					
+					Route::prefix('jobs')->group(
+						 function () {
+								
+								Route::get('/', [JobController::class, 'index']
+								);
+								Route::get('/{jobId}', [JobController::class, 'show']
+								);
+						 }
+					);
+					
+					Route::prefix('categories')->group(
+						 function () {
+								Route::get('/', [CategoryController::class, 'index']
+								);
+								Route::get(
+									 '/{categoryId}',
+									 [CategoryController::class, 'show']
+								);
+						 }
+					);
 			 });
-			 Route::post(
-				  '/google-login', [AuthController::class, 'socialLogin']
-			 );
-			 //password Logic
-			 Route::post(
-				  '/password/reset-request',
-				  [AuthController::class, 'requestPasswordReset']
-			 );
-			 Route::post(
-				  '/password/verify-pin',
-				  [AuthController::class, 'checkResetPasswordPinCode']
-			 );
-			 Route::post(
-				  '/password/reset', [AuthController::class, 'newPassword']
-			 )->middleware(['auth:api', 'check.reset.token']);
-			 Route::post(
-				  '/password/change-password',
-				  [AuthController::class, 'changePassword']
-			 )->middleware(['auth:api']);
-			 
-			 
-			 Route::prefix('profiles')->middleware('auth:api')->group(function () {
-					Route::get('/', [ProfileController::class, 'getAllProfiles']);
-					Route::post(
-						 '/add-profile', [ProfileController::class, 'addProfile']
-					);
-					Route::get('/{profileId}', [ProfileController::class, 'getProfileById']
-					);
-					Route::put('/{profileId}', [ProfileController::class, 'updateProfile']);
-					Route::delete(
-						 '/{profileId}', [ProfileController::class, 'deleteProfile']
-					);
-					
-					// Profile educations
-					
-					Route::post(
-						 '/{profileId}/educations/add-education',
-						 [ProfileController::class, 'addEducation']
-					);
-					Route::get(
-						 '/{profileId}/educations/{educationId}',
-						 [ProfileController::class, 'getEducationById']
-					);
-					Route::get(
-						 '/{profileId}/educations',
-						 [ProfileController::class, 'getAllEducations']
-					);
-					Route::put(
-						 '/{profileId}/educations/{educationId}',
-						 [ProfileController::class, 'updateEducation']
-					);
-					Route::delete(
-						 '/{profileId}/educations/{educationId}',
-						 [ProfileController::class, 'deleteEducation']
-					);
-					
-					// Profile experiences
-					Route::post(
-						 '/{profileId}/experiences/add-experience',
-						 [ProfileController::class, 'addExperience']
-					);
-					Route::put(
-						 '/{profileId}/experiences/{experienceId}',
-						 [ProfileController::class, 'editExperience']
-					);
-					Route::delete(
-						 '/{profileId}/experiences/{experienceId}',
-						 [ProfileController::class, 'deleteExperience']
-					);
-					Route::get(
-						 '/{profileId}/experiences/{experienceId}',
-						 [ProfileController::class, 'getExperienceById']
-					);
-					Route::get(
-						 '/{profileId}/experiences',
-						 [ProfileController::class, 'getAllExperiences']
-					);
-					
-					// Profile documents
-					// CV Routes
-					Route::post(
-						 '/{profileId}/cvs', [ProfileController::class, 'uploadCV']
-					);
-					Route::put(
-						 '/{profileId}/cvs/{cvId}',
-						 [ProfileController::class, 'editCV']
-					);
-					Route::delete(
-						 '/{profileId}/cvs/{cvId}',
-						 [ProfileController::class, 'deleteCV']
-					);
-					
-					// Portfolio Routes
-					Route::prefix('{profileId}/portfolio')->group(function () {
-						  Route::post(
-								'/images',
-								[ProfileController::class, 'addPortfolioTypeImages']
-						  );
-						  Route::post(
-								'/pdf',
-								[ProfileController::class, 'addPortfolioTypePdf']
-						  );
-						  Route::post(
-								'/url',
-								[ProfileController::class, 'addPortfolioTypeLink']
-						  );
-						  Route::put(
-								'/images/{portfolioId}',
-								[ProfileController::class, 'editPortfolioImages']
-						  );
-						  Route::put(
-								'/pdf/{portfolioId}',
-								[ProfileController::class, 'editPortfolioPdf']
-						  );
-						  Route::put(
-								'/url/{portfolioId}',
-								[ProfileController::class, 'editPortfolioUrl']
-						  );
-						  Route::delete(
-								'/{portfolioId}',
-								[ProfileController::class, 'deletePortfolio']
-						  );
-						  Route::delete(
-								'/image/{imageId}',
-								[ProfileController::class, 'deletePortfolioImage']
-						  );
-					});
-			 });
-			 
-			 Route::prefix('/profile/{profileId}/applications')->middleware(
-				  'auth:api'
-			 )->group(
-				  function () {
-						 Route::get(
-							  '/',
-							  [ApplicationController::class,
-								'getApplicationsForUser']
-						 );
-						 Route::post(
-							  'add-application/{jobId}',
-							  [ApplicationController::class, 'store']
-						 );
-						 Route::get(
-							  '/{applicationId}/status',
-							  [ApplicationController::class, 'getStatusHistoryForUser']
-						 );
-				  }
-			 );
-			 Route::prefix('companies')->middleware('auth:api')->group(
-				  function () {
-						 Route::get('/', [CompanyController::class, 'index']);
-						 
-						 Route::get('/{companyId}', [CompanyController::class, 'show']);
-				  }
-			 );
-			 // Job routes
-			 Route::prefix('jobs')->middleware('auth:api')->group(function () {
-					
-					Route::get('/', [JobController::class, 'index']
-					);
-					Route::get('/{jobId}', [JobController::class, 'show']
-					);
-			 });
-			 
-			 Route::prefix('categories')->middleware('auth:api')->group(
-				  function () {
-						 Route::get('/', [CategoryController::class, 'index']
-						 );
-						 Route::get(
-							  '/{categoryId}',
-							  [CategoryController::class, 'show']
-						 );
-				  }
-			 );
 			 
 	  });

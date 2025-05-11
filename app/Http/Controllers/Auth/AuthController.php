@@ -169,6 +169,7 @@
 								'id' => $user->id,
 								'fullName' => $user->name,
 								'email' => $user->email,
+								'profileImage'=>$user->defaultProfile ?:'https://jobizaa.com/still_images/userDefault.jpg',
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
@@ -452,6 +453,9 @@
 						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong. Please try again later');
 					}
 			 }
+			 
+			 
+			 
 			 
 			 /**
 			  * Validate registration data.

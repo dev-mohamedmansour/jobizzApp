@@ -74,5 +74,14 @@
 			 {
 					return $this->type === 'portfolio';
 			 }
-
+			 
+			 public function favorites(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 {
+					return $this->hasMany(Favorite::class);
+			 }
+			 
+			 public function favoriteJobs()
+			 {
+					return $this->belongsToMany(JobListing::class, 'favorites', 'profile_id', 'job_id')->withTimestamps();
+			 }
 	  }

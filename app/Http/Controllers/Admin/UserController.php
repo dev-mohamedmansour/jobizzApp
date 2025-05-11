@@ -14,17 +14,17 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
-	  public function index(): JsonResponse
+	  public function index(Request $request): JsonResponse
 	  {
 			 try {
 					// Check if the user is authenticated
 					if (!auth('admin')->check()) {
 						  return responseJson(401, 'Unauthenticated','Unauthenticated');
 					}
-					
 					// Determine which guard the user is authenticated with
-					if (auth()->guard('admin')->check()) {
+					if (auth('admin')->check()) {
 						  $user = auth('admin')->user();
+//						  dd($user);
 						  if (!$this->isAdminAuthorized($user)) {
 								 return responseJson(
 									  403,
@@ -57,6 +57,7 @@ class UserController extends Controller
 	  }
 	  private function isAdminAuthorized($admin): bool
 	  {
+			 
 			 // Check if the user is a super-admin
 			 if ($admin->hasRole('super-admin')) {
 					return true;

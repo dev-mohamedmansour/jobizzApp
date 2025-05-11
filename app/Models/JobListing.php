@@ -46,4 +46,9 @@ class JobListing extends Model
 			 return $query->where('job_status', 'open');
 	  }
 	  
+	  public function favorites(): HasMany
+	  {
+			 return $this->hasMany(Favorite::class);
+	  }
+	  
 }
