@@ -121,31 +121,71 @@
 					
 					$trendingCompanies = Cache::remember(
 						 'trending_companies', now()->addHours(1),
-						 fn() => Company::with(
-							  ['jobs' => fn($query) => $query->where(
-									'job_status', '!=', 'cancelled'
-							  )->select('id', 'company_id', 'title', 'job_status')]
-						 )
+						 fn() => Company::with(['jobs' => fn($query) => $query->where(
+							  'job_status', '!=', 'cancelled'
+						 )->select('id', 'company_id', 'title', 'job_status')])
+							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
 							  ->get()
+							  ->map(function ($company) {
+									 return [
+										  'id' => $company->id,
+										  'name' => $company->name,
+										  'logo' => $company->logo,
+										  'description'=>$company->description,
+										  'location'=>$company->location,
+										  'website'=>$company->website,
+										  'size'=>$company->size,
+										  'hired_people'=>$company->hired_people,
+										  'created_at' => $company->created_at->toDateString(),
+										  'jobs_count' => $company->jobs_count,
+										  'jobs' => $company->jobs->map(function ($job) {
+												 return [
+													  'id' => $job->id,
+													  'title' => $job->title,
+													  'job_status' => $job->job_status,
+												 ];
+										  })
+									 ];
+							  })
 					);
 					
 					$popularCompanies = Cache::remember(
 						 'popular_companies', now()->addHours(1),
-						 fn() => Company::with(
-							  ['jobs' => fn($query) => $query->where(
-									'job_status', '!=', 'cancelled'
-							  )->select('id', 'company_id', 'title', 'job_status')]
-						 )
+						 fn() => Company::with(['jobs' => fn($query) => $query->where(
+							  'job_status', '!=', 'cancelled'
+						 )->select('id', 'company_id', 'title', 'job_status')])
+							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
 							  ->get()
+							  ->map(function ($company) {
+									 return [
+										  'id' => $company->id,
+										  'name' => $company->name,
+										  'logo' => $company->logo,
+										  'description'=>$company->description,
+										  'location'=>$company->location,
+										  'website'=>$company->website,
+										  'size'=>$company->size,
+										  'hired_people'=>$company->hired_people,
+										  'created_at' => $company->created_at->toDateString(),
+										  'jobs_count' => $company->jobs_count,
+										  'jobs' => $company->jobs->map(function ($job) {
+												 return [
+													  'id' => $job->id,
+													  'title' => $job->title,
+													  'job_status' => $job->job_status,
+												 ];
+										  })
+									 ];
+							  })
 					);
 					
 					return responseJson(200, 'Companies retrieved successfully', [
 						 'Trending' => $trendingCompanies,
-						 'Popular'  => $popularCompanies,
+						 'Popular' => $popularCompanies,
 					]);
 			 }
 			 

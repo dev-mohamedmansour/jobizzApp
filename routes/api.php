@@ -4,6 +4,7 @@
 	  use App\Http\Controllers\Admin\ApplicationController;
 	  use App\Http\Controllers\Admin\CompanyController;
 	  use App\Http\Controllers\Admin\JobController;
+	  use App\Http\Controllers\Admin\UserController;
 	  use App\Http\Controllers\Auth\AuthController;
 	  use App\Http\Controllers\Auth\FavoriteController;
 	  use App\Http\Controllers\Auth\ProfileController;
@@ -13,154 +14,141 @@
 	  
 	  Route::prefix('admin')->group(function () {
 			 // Public routes
-			 Route::post(
-				  '/AddSuperAdmin/{id}',
-				  [AdminAuthController::class, 'superAdminSignUp']
-			 );
-			 
-			 Route::post('/register', [AdminAuthController::class, 'register']);
-			 Route::post(
-				  '/verify-email', [AdminAuthController::class, 'verifyEmail']
-			 );
-			 Route::post('/login', [AdminAuthController::class, 'login'])
-				  ->withoutMiddleware('admin');
-			 
-			 //password Logic
-			 Route::post(
-				  '/password/reset-request',
-				  [AdminAuthController::class, 'requestPasswordReset']
-			 );
-			 Route::post(
-				  '/password/verify-pin',
-				  [AdminAuthController::class, 'checkResetPasswordPinCode']
-			 );
-			 Route::post(
-				  '/password/new-password',
-				  [AdminAuthController::class, 'newPassword']
-			 )->middleware(['auth:admin', 'check.reset.token']);
-			 
+			 Route::withoutMiddleware('admin')->group(function () {
+					Route::post(
+						 '/AddSuperAdmin/{id}',
+						 [AdminAuthController::class, 'superAdminSignUp']
+					);
+					Route::post('/register', [AdminAuthController::class, 'register']
+					);
+					Route::post(
+						 '/verify-email', [AdminAuthController::class, 'verifyEmail']
+					);
+					Route::post('/login', [AdminAuthController::class, 'login']);
+					//password Logic
+					Route::post(
+						 '/password/reset-request',
+						 [AdminAuthController::class, 'requestPasswordReset']
+					);
+					Route::post(
+						 '/password/verify-pin',
+						 [AdminAuthController::class, 'checkResetPasswordPinCode']
+					);
+			 });
 			 // Authenticated routes
-			 Route::middleware(['admin'])
-				  ->group(function () {
-						 Route::prefix('users')->group(function () {
-								Route::get(
-									 '/',
-									 [\App\Http\Controllers\Admin\UserController::class,
-									  'index']
-								);
-								Route::delete(
-									 '/{id}',
-									 [\App\Http\Controllers\Admin\UserController::class,
-									  'destroy']
-								);
-						 });
-						 // Auth routes
-						 Route::post('/logout', [AdminAuthController::class, 'logout']
-						 );
-						 
-						 // Company routes
-						 Route::prefix('companies')->group(function () {
-								Route::post(
-									 '/add-company', [CompanyController::class, 'store']
-								);
-								Route::get('/', [CompanyController::class, 'index']);
-								Route::get(
-									 '/{companyId}', [CompanyController::class, 'show']
-								);
-								Route::put(
-									 '/{companyId}', [CompanyController::class, 'update']
-								);
-								Route::delete(
-									 '/{companyId}',
-									 [CompanyController::class, 'destroy']
-								);
-						 });
-						 
-						 // Job routes
-						 Route::prefix('jobs')->group(function () {
-								Route::post(
-									 '/add-job', [JobController::class, 'store']
-								);
-								Route::get('/{jobId}', [JobController::class, 'show']
-								);
-								Route::get(
-									 '/company/{companyId}',
-									 [JobController::class, 'getAllJobsForCompany']
-								);
-								Route::get('/', [JobController::class, 'index']
-								);
-								Route::put(
-									 '/{jobId}', [JobController::class, 'update']
-								);
-								Route::delete(
-									 '/{jobId}', [JobController::class, 'destroy']
-								);
-								
-						 });
-						 
-						 Route::prefix('applications')->group(function () {
-								Route::get(
-									 '/',
-									 [ApplicationController::class,
-									  'index']
-								);
-								Route::put(
-									 '/{applicationId}/status',
-									 [ApplicationController::class,
-									  'updateStatus']
-								);
-								Route::get(
-									 '/cancelled',
-									 [ApplicationController::class,
-									  'cancelledApplicationsForAdmin']
-								);
-								Route::put(
-									 '/restore/{applicationId}',
-									 [ApplicationController::class,
-									  'restore']
-								);
-								Route::delete(
-									 '/{applicationId}',
-									 [ApplicationController::class,
-									  'destroy']
-								);
-						 });
-				  });
-			 
-			 // Admin management
-			 Route::post(
-				  '/approve/{pendingAdmin}',
-				  [AdminAuthController::class, 'approve']
-			 );
-			 Route::post(
-				  '/sub-admin',
-				  [AdminAuthController::class, 'createSubAdmin']
-			 );
-			 
-			 //categories route
-			 Route::prefix('categories')->middleware('auth:admin')
-				  ->group(
-						function () {
-							  Route::get('/', [CategoryController::class, 'index']
-							  );
-							  Route::get(
-									'/{categoryId}',
-									[CategoryController::class, 'show']
-							  );
-							  Route::post(
-									'/add-category',
-									[CategoryController::class, 'store']
-							  );
-							  Route::put(
-									'/{categoryId}',
-									[CategoryController::class, 'update']
-							  );
-							  Route::delete(
-									'/{categoryId}',
-									[CategoryController::class, 'destroy']
-							  );
-						}
-				  );
+			 Route::middleware('admin')->group(function () {
+					Route::post(
+						 '/password/new-password',
+						 [AdminAuthController::class, 'newPassword']
+					)->middleware('check.reset.token');
+					Route::prefix('users')->group(function () {
+						  Route::get(
+								'/',
+								[UserController::class,
+								 'index']
+						  );
+						  Route::delete(
+								'/{id}',
+								[UserController::class,
+								 'destroy']
+						  );
+					});
+					Route::post('/logout', [AdminAuthController::class, 'logout']);
+					// Company routes
+					Route::prefix('companies')->group(function () {
+						  Route::post(
+								'/add-company', [CompanyController::class, 'store']
+						  );
+						  Route::get('/', [CompanyController::class, 'index']);
+						  Route::get(
+								'/{companyId}', [CompanyController::class, 'show']
+						  );
+						  Route::put(
+								'/{companyId}', [CompanyController::class, 'update']
+						  );
+						  Route::delete(
+								'/{companyId}',
+								[CompanyController::class, 'destroy']
+						  );
+					});
+					// Job routes
+					Route::prefix('jobs')->group(function () {
+						  Route::post(
+								'/add-job', [JobController::class, 'store']
+						  );
+						  Route::get('/{jobId}', [JobController::class, 'show']
+						  );
+						  Route::get(
+								'/company/{companyId}',
+								[JobController::class, 'getAllJobsForCompany']
+						  );
+						  Route::get('/', [JobController::class, 'index']
+						  );
+						  Route::put(
+								'/{jobId}', [JobController::class, 'update']
+						  );
+						  Route::delete(
+								'/{jobId}', [JobController::class, 'destroy']
+						  );
+					});
+					Route::prefix('applications')->group(function () {
+						  Route::get(
+								'/',
+								[ApplicationController::class,
+								 'index']
+						  );
+						  Route::put(
+								'/{applicationId}/status',
+								[ApplicationController::class,
+								 'updateStatus']
+						  );
+						  Route::get(
+								'/cancelled',
+								[ApplicationController::class,
+								 'cancelledApplicationsForAdmin']
+						  );
+						  Route::put(
+								'/restore/{applicationId}',
+								[ApplicationController::class,
+								 'restore']
+						  );
+						  Route::delete(
+								'/{applicationId}',
+								[ApplicationController::class,
+								 'destroy']
+						  );
+					});
+					// Admin management
+					Route::post(
+						 '/approve/{pendingAdmin}',
+						 [AdminAuthController::class, 'approve']
+					);
+					Route::post(
+						 '/sub-admin',
+						 [AdminAuthController::class, 'createSubAdmin']
+					);
+					//categories route
+					Route::prefix('categories')->group(function () {
+						  Route::get('/', [CategoryController::class, 'index']
+						  );
+						  Route::get(
+								'/{categoryId}',
+								[CategoryController::class, 'show']
+						  );
+						  Route::post(
+								'/add-category',
+								[CategoryController::class, 'store']
+						  );
+						  Route::put(
+								'/{categoryId}',
+								[CategoryController::class, 'update']
+						  );
+						  Route::delete(
+								'/{categoryId}',
+								[CategoryController::class, 'destroy']
+						  );
+					});
+			 });
 			 
 	  });
 	  Route::prefix('auth')->group(function () {
@@ -281,8 +269,7 @@
 									 [ProfileController::class, 'deleteCV']
 								);
 								// Portfolio Routes
-								Route::prefix('{profileId}/portfolio')->group(
-									 function () {
+								Route::prefix('{profileId}/portfolio')->group(function () {
 											Route::post(
 												 '/images',
 												 [ProfileController::class,
@@ -323,13 +310,10 @@
 												 [ProfileController::class,
 												  'deletePortfolioImage']
 											);
-									 }
-								);
+								});
 						 }
 					);
-					
-					Route::prefix('/profile/{profileId}/applications')->group(
-						 function () {
+					Route::prefix('/profile/{profileId}/applications')->group(function () {
 								Route::get(
 									 '/',
 									 [ApplicationController::class,
@@ -346,9 +330,7 @@
 								);
 						 }
 					);
-					
-					Route::prefix('/profile/{profileId}/favorite')->group(
-						 function () {
+					Route::prefix('/profile/{profileId}/favorite')->group(function () {
 								Route::get(
 									 '/',
 									 [FavoriteController::class,
@@ -360,31 +342,22 @@
 								);
 						 }
 					);
-					
-					Route::prefix('companies')->group(
-						 function () {
+					Route::prefix('companies')->group(function () {
 								Route::get('/', [CompanyController::class, 'index']);
-								
 								Route::get(
 									 '/{companyId}', [CompanyController::class, 'show']
 								);
 						 }
 					);
-					
-					Route::prefix('jobs')->group(
-						 function () {
-								
+					Route::prefix('jobs')->group(function () {
 								Route::get('/', [JobController::class, 'index']
 								);
 								Route::get('/{jobId}', [JobController::class, 'show']
 								);
 						 }
 					);
-					
-					Route::prefix('categories')->group(
-						 function () {
-								Route::get('/', [CategoryController::class, 'index']
-								);
+					Route::prefix('categories')->group(function () {
+								Route::get('/', [CategoryController::class, 'index']);
 								Route::get(
 									 '/{categoryId}',
 									 [CategoryController::class, 'show']

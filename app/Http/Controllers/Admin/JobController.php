@@ -3,9 +3,12 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Jobs\DeleteJobAndApplications;
 	  use App\Models\JobListing;
 	  use App\Models\User;
 	  use App\Notifications\JobizzUserNotification;
+	  use Exception;
+	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Cache;
@@ -402,7 +405,6 @@
 						  $admin = auth('admin')->user();
 						  $job = JobListing::where('company_id', $admin->company_id)
 								->find($jobId);
-						  
 						  if (!$job) {
 								 return responseJson(
 									  404, 'Job not found', 'Job not found'
@@ -434,7 +436,7 @@
 								 ]);
 						  });
 						  
-						  \App\Jobs\DeleteJobAndApplications::dispatch($jobId)->delay(
+						  DeleteJobAndApplications::dispatch($jobId)->delay(
 								now()->addDays(15)
 						  );
 						  
@@ -446,11 +448,11 @@
 								200,
 								'Job marked as cancelled and applications rejected. Scheduled for deletion in 15 days'
 						  );
-					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+					} catch (ModelNotFoundException $e) {
 						  return responseJson(
 								404, 'Resource not found', 'Job not found'
 						  );
-					} catch (\Exception $e) {
+					} catch (Exception $e) {
 						  Log::error('Destroy error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',

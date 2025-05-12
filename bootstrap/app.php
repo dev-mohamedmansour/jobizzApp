@@ -6,6 +6,7 @@
 	  use Illuminate\Foundation\Application;
 	  use Illuminate\Foundation\Configuration\Exceptions;
 	  use Illuminate\Foundation\Configuration\Middleware;
+	  use Illuminate\Http\Middleware\HandleCors;
 	  
 	  return Application::configure(basePath: dirname(__DIR__))
 			->withRouting(
@@ -22,8 +23,7 @@
 				  ]);
 				  $middleware->appendToGroup('admin', [
 						JwtAuthentication::class,
-						RefreshJwtToken::class,
-						\Illuminate\Http\Middleware\HandleCors::class,
+						HandleCors::class,
 //						'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
 						 EnsureAdminEmailIsVerified::class,
 //						'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

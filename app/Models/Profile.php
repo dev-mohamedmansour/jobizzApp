@@ -5,6 +5,8 @@
 	  use App\Casts\DateCast;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
+	  use Illuminate\Database\Eloquent\Relations\BelongsTo;
+	  use Illuminate\Database\Eloquent\Relations\HasMany;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
 	  
@@ -26,7 +28,7 @@
 						'updated_at'        => 'date:Y-m-d',
 				  ];
 			 
-			 public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+			 public function user(): BelongsTo
 			 {
 					return $this->belongsTo(User::class);
 			 }
@@ -40,32 +42,32 @@
 					}
 					return 'https://jobizaa.com/still_images/userDefault.jpg'; // Default placeholder
 			 }
-			 public function educations(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function educations(): HasMany
 			 {
 					return $this->hasMany(Education::class);
 			 }
 			 
-			 public function experiences(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function experiences(): HasMany
 			 {
 					return $this->hasMany(Experience::class);
 			 }
 			 
-			 public function documents(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function documents(): HasMany
 			 {
 					return $this->hasMany(Document::class);
 			 }
 			 
-			 public function documentImages(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function documentImages(): HasMany
 			 {
 					return $this->hasMany(DocumentImage::class);
 			 }
 			 
-			 public function cvs(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function cvs(): HasMany
 			 {
 					return $this->hasMany(Document::class)->where('type', 'cv');
 			 }
 			 
-			 public function portfolios()
+			 public function portfolios(): HasMany
 			 {
 					return $this->documents()->where('type', 'portfolio');
 			 }
@@ -75,13 +77,13 @@
 					return $this->type === 'portfolio';
 			 }
 			 
-			 public function favorites(): \Illuminate\Database\Eloquent\Relations\HasMany
+			 public function favorites(): HasMany
 			 {
 					return $this->hasMany(Favorite::class);
 			 }
 			 
 			 public function favoriteJobs()
 			 {
-					return $this->belongsToMany(JobListing::class, 'favorites', 'profile_id', 'job_id')->withTimestamps();
+					return $this->belongsToMany(JobListing::class, 'favorites', 'profile_id', 'job_id')->with('company');
 			 }
 	  }

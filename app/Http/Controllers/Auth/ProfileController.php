@@ -183,7 +183,7 @@
 									 'name' => $doc->name,
 									 'type' => $doc->type,
 									 'format' => $doc->format,
-									 'url' => $doc->url ?? $doc->path, // Prefer url, fallback to path
+									 'url' => $doc->url ?? $doc->path, // Prefer url, fallback to a path
 								])->toArray(),
 						  ];
 						  
@@ -201,11 +201,8 @@
 						  ob_start();
 						  $response = responseJson(200, 'Profile retrieved successfully', $filteredData);
 						  ob_end_clean();
-						  
 						  return $response;
-//						  return responseJson(
-//								200, 'Profile retrieved successfully', $profile
-//						  );
+						  
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
@@ -282,6 +279,7 @@
 			  * @param Profile|null $profile
 			  *
 			  * @return array
+			  * @throws ValidationException
 			  */
 			 private function validateProfile(Request $request, ?Profile $profile
 			 ): array {

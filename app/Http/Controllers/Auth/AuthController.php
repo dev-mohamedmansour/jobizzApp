@@ -169,7 +169,9 @@
 								'id' => $user->id,
 								'fullName' => $user->name,
 								'email' => $user->email,
-								'profileImage'=>$user->defaultProfile ?:'https://jobizaa.com/still_images/userDefault.jpg',
+								'profileImage'=>$user->defaultProfile && $user->defaultProfile->profile_image
+									 ? $user->defaultProfile->profile_image
+									 : 'https://jobizaa.com/still_images/userDefault.jpg',
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
@@ -220,6 +222,9 @@
 								'id' => $user->id,
 								'fullName' => $user->name,
 								'email' => $user->email,
+								'profileImage'=>$user->defaultProfile && $user->defaultProfile->profile_image
+									 ? $user->defaultProfile->profile_image
+									 : 'https://jobizaa.com/still_images/userDefault.jpg',
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
@@ -428,19 +433,83 @@
 						  
 						  $number = max(1, (int) ($jobsNum / 3));
 						  
+						  // Cache trending jobs for 15 minutes
 						  $jobsTrending = Cache::remember('jobs_trending_' . $user->id, now()->addMinutes(15), fn() =>
-						  Job::inRandomOrder()->take($number)->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
+						  Job::inRandomOrder()
+								->select(['id', 'title', 'company_id', 'location', 'job_type', 'salary','position','category_name','description','requirement','benefits'])
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+								->take($number)
+								->get()
+								->map(function ($job) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'salary' => $job->salary,
+											'position'=>$job->position,
+											'category_name'=>$job->category_name,
+											'description'=>$job->description,
+											'requirement'=>$job->requirement,
+											'benefits'=>$job->benefits,
+											'companyName' => $job->company->name ,
+											'companyLogo' => $job->company->logo,
+									  ];
+								})
 						  );
 						  
+						  // Cache popular jobs for 15 minutes
 						  $jobsPopular = Cache::remember('jobs_popular_' . $user->id, now()->addMinutes(15), fn() =>
-						  Job::inRandomOrder()->take($number)->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
+						  Job::inRandomOrder()
+								->select(['id', 'title', 'company_id', 'location', 'job_type', 'salary','position','category_name','description','requirement','benefits'])
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+								->take($number)
+								->get()
+								->map(function ($job) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'salary' => $job->salary,
+											'position'=>$job->position,
+											'category_name'=>$job->category_name,
+											'description'=>$job->description,
+											'requirement'=>$job->requirement,
+											'benefits'=>$job->benefits,
+											'companyName' => $job->company->name ,
+											'companyLogo' => $job->company->logo,
+									  ];
+								})
 						  );
 						  
+						  // Cache recommended jobs for 15 minutes, based on profile job title
 						  $jobsRecommended = Cache::remember('jobs_recommended_' . $user->id . '_' . md5($profileJobTitle), now()->addMinutes(15), fn() =>
 						  Job::where('title', 'like', '%' . $profileJobTitle . '%')
 								->inRandomOrder()
+								->select(['id', 'title', 'company_id', 'location', 'job_type', 'salary','position','category_name','description','requirement','benefits'])
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
 								->take($number)
-								->get(['id', 'title', 'company_id', 'location', 'job_type', 'salary'])
+								->get()
+								->map(function ($job) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'salary' => $job->salary,
+											'position'=>$job->position,
+											'category_name'=>$job->category_name,
+											'description'=>$job->description,
+											'requirement'=>$job->requirement,
+											'benefits'=>$job->benefits,
+											'companyName' => $job->company->name ,
+											'companyLogo' => $job->company->logo,
+									  ];
+								})
 						  );
 						  
 						  return responseJson(200, 'Jobs retrieved successfully', [
@@ -453,9 +522,6 @@
 						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong. Please try again later');
 					}
 			 }
-			 
-			 
-			 
 			 
 			 /**
 			  * Validate registration data.

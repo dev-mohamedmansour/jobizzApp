@@ -17,14 +17,6 @@
 			 protected $jobId;
 			 
 			 /**
-			  * Create a new job instance.
-			  */
-			 public function __construct($jobId)
-			 {
-					$this->jobId = $jobId;
-			 }
-			 
-			 /**
 			  * Execute the job.
 			  */
 			 public function handle(): void

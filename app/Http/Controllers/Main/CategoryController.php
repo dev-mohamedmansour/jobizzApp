@@ -4,305 +4,364 @@
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Category;
+	  use App\Models\JobListing;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
+	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
+	  use Illuminate\Validation\ValidationException;
 	  
 	  class CategoryController extends Controller
 	  {
+			 /**
+			  * List categories for admin (paginated) or API users (trending/popular).
+			  *
+			  * @param Request $request
+			  * @return JsonResponse
+			  */
 			 public function index(Request $request): JsonResponse
 			 {
 					try {
-						  // Check if the user is authenticated
 						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
-						  // Determine which guard the user is authenticated with
 						  if (auth()->guard('admin')->check()) {
 								 $user = auth('admin')->user();
 								 if (!$user->hasRole('super-admin')) {
-										return responseJson(
-											 403,
-											 'Forbidden','You do not have permission to view this categories'
-										);
+										return responseJson(403, 'Forbidden', 'You do not have permission to view categories');
 								 }
-								 $categories = Category::withCount('jobs')->paginate(10);
+								 
+								 $cacheKey = 'categories_admin_' . md5($request->fullUrl());
+								 $categories = Cache::remember($cacheKey, now()->addMinutes(15), fn() =>
+								 Category::withCount('jobs')->paginate(10)
+								 );
 								 
 								 if ($categories->isEmpty()) {
-										return responseJson(404,'Not found','No companies found');
+										return responseJson(404, 'Not found', 'No categories found');
 								 }
 								 
-								 return responseJson(
-									  200, 'Companies retrieved successfully', $categories
-								 );
-						  } elseif (auth()->guard('api')->check()) {
-								 
-								 $categoryNum = Category::count();
-								 $number = $categoryNum / 2;
-								 // Get active jobs count using a subquery
-								 $categoryTrending = Category::with('jobs')
-									  ->inRandomOrder()
-									  ->take($number)
-									  ->get();
-								 $categoryPopular = Category::with('jobs')
-									  ->inRandomOrder()
-									  ->take($number)
-									  ->get();
-								 if ($categoryNum == 0) {
-										return responseJson(404,'Not found','No Categories found');
-								 }
-								 
-								 return responseJson(
-									  200, 'Categories retrieved successfully', [
-											'Trending' => $categoryTrending,
-											'Popular'  => $categoryPopular,
-									  ]
-								 );
+								 return responseJson(200, 'Categories retrieved successfully', $categories);
 						  }
 						  
-					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500,'Server error',$errorMessage);
-					}
-			 }
-			 
-			 public function show($categoryId): JsonResponse
-			 {
-					try {
-						  // Check authentication for both admin and regular users
-						  if (!auth()->check() && !auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+						  $user = auth('api')->user();
+						  $categoryNum = Cache::remember('category_count', now()->addHours(1), fn() => Category::count());
+						  
+						  if ($categoryNum === 0) {
+								 return responseJson(404, 'Not found', 'No categories found');
 						  }
 						  
-						  // Find the category
-						  $category = Category::with('jobs')->find($categoryId);
+						  $number = max(1, (int) ($categoryNum / 2));
+						  $cacheKeyTrending = 'categories_trending_' . $user->id;
+						  $cacheKeyPopular = 'categories_popular_' . $user->id;
 						  
-						  // Check if the category exists
-						  if (!$category) {
-								 return responseJson(404,'Not found','Category not found');
-						  }
-						  
-						  return responseJson(
-								200, 'Category details retrieved', $category
+						  $categoryTrending = Cache::remember($cacheKeyTrending, now()->addMinutes(15), fn() =>
+						  Category::with(['jobs' => fn($query) => $query->select([
+								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'job_status','position', 'category_name', 'description', 'requirement', 'benefits'
+						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
+								->inRandomOrder()
+								->take($number)
+								->get()
+								->map(function ($category) {
+									  return [
+											'id' => $category->id,
+											'name' => $category->name,
+											'description' => $category->slug,
+											'image' => $category->image,
+											'jobs' => $category->jobs->map(function ($job) {
+												  return [
+														'id' => $job->id,
+														'title' => $job->title,
+														'company_id' => $job->company_id,
+														'location' => $job->location,
+														'job_type' => $job->job_type,
+														'job_status' => $job->job_status,
+														'salary' => $job->salary,
+														'position' => $job->position,
+														'category_name' => $job->category_name,
+														'description' => $job->description,
+														'requirement' => $job->requirement,
+														'benefits' => $job->benefits,
+														'companyName' => $job->company->name ?? null,
+														'companyLogo' => $job->company->logo ?? null,
+												  ];
+											})
+									  ];
+								})
 						  );
 						  
+						  $categoryPopular = Cache::remember($cacheKeyPopular, now()->addMinutes(15), fn() =>
+						  Category::with(['jobs' => fn($query) => $query->select([
+								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'position', 'job_status','category_name', 'description', 'requirement', 'benefits'
+						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
+								->inRandomOrder()
+								->take($number)
+								->get()
+								->map(function ($category) {
+									  return [
+											'id' => $category->id,
+											'name' => $category->name,
+											'description' => $category->slug,
+											'image' => $category->image,
+											'jobs' => $category->jobs->map(function ($job) {
+												  return [
+														'id' => $job->id,
+														'title' => $job->title,
+														'company_id' => $job->company_id,
+														'location' => $job->location,
+														'job_type' => $job->job_type,
+														'job_status' => $job->job_status,
+														'salary' => $job->salary,
+														'position' => $job->position,
+														'category_name' => $job->category_name,
+														'description' => $job->description,
+														'requirement' => $job->requirement,
+														'benefits' => $job->benefits,
+														'companyName' => $job->company->name ?? null,
+														'companyLogo' => $job->company->logo ?? null,
+												  ];
+											})
+									  ];
+								})
+						  );
+						  
+						  return responseJson(200, 'Categories retrieved successfully', [
+								'Trending' => $categoryTrending,
+								'Popular' => $categoryPopular,
+						  ]);
 					} catch (\Exception $e) {
-						  // Handle exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500,'Server error',$errorMessage);
+						  Log::error('Category index error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
 			 
+			 /**
+			  * Show a specific category with its jobs.
+			  *
+			  * @param int $categoryId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function show(int $categoryId): JsonResponse
+			 {
+					try {
+						  if (!auth()->check() && !auth('admin')->check()) {
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
+						  }
+						  
+						  $cacheKey = 'category_' . $categoryId;
+						  $category = Cache::remember($cacheKey, now()->addMinutes(15), fn() =>
+						  Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])
+								->find($categoryId)
+						  );
+						  
+						  if (!$category) {
+								 return responseJson(404, 'Not found', 'Category not found');
+						  }
+						  
+						  // Fetch jobs where category_name matches the category's name
+						  $jobs = JobListing::select([
+								'id', 'title', 'company_id', 'location', 'job_type','job_status','salary', 'position',
+								'category_name', 'description', 'requirement', 'benefits'
+						  ])
+								->where('category_name', $category->name)
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+								->get();
+						  
+						  // Transform the response to match the desired structure
+						  $responseData = [
+								'id' => $category->id,
+								'name' => $category->name,
+								'description' => $category->slug, // Map slug to description as per snippet
+								'image' => $category->image,
+								'jobs' => $jobs->map(function ($job) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'job_status' => $job->job_status,
+											'salary' => $job->salary,
+											'position' => $job->position,
+											'category_name' => $job->category_name,
+											'description' => $job->description,
+											'requirement' => $job->requirement,
+											'benefits' => $job->benefits,
+											'companyName' => $job->company->name ?? null,
+											'companyLogo' => $job->company->logo ?? null,
+									  ];
+								})
+						  ];
+						  
+						  return responseJson(200, 'Category details retrieved', $responseData);
+					} catch (\Exception $e) {
+						  Log::error('Category show error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
+					}
+			 }
+			 
+			 /**
+			  * Create a new category.
+			  *
+			  * @param Request $request
+			  * @return JsonResponse
+			  */
 			 public function store(Request $request): JsonResponse
 			 {
 					try {
-						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
-						  
-						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403,'Forbidden', 'Unauthorized');
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Validate request data including image
 						  $validated = $request->validate([
-								'name'  => 'required|string|max:255|unique:categories,name',
+								'name' => 'required|string|max:255|unique:categories,name',
 								'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-								// Updated validation
 						  ]);
 						  
-						  // Generate slug
-						  $validated['slug'] = Str::slug($validated['name'], '-');
+						  $validated['slug'] = Str::slug($validated['name']);
 						  
-						  // Store the image
 						  if ($request->hasFile('image')) {
 								 $image = $request->file('image');
-								 $imageName = time() . '_' . Str::slug(
-											$validated['name']
-									  ) . '.' . $image->getClientOriginalExtension();
-								 $imagePath = $image->storeAs(
-									  'category_images', $imageName, 'public'
-								 );
-								 $urlPath =Storage::disk('public')->url($imagePath);
-								 
-								 $validated['image'] = $urlPath;
+								 $imageName = time() . '_' . $validated['slug'] . '.' . $image->getClientOriginalExtension();
+								 $imagePath = $image->storeAs('category_images', $imageName, 'public');
+								 $validated['image'] = Storage::disk('public')->url($imagePath);
 						  } else {
-								 // Set default image URL
-								 $validated['logo']
-									  = 'https://jobizaa.com/still_images/category.png';
+								 $validated['image'] = 'https://jobizaa.com/still_images/category.png';
 						  }
 						  
-						  // Create category
 						  $category = Category::create($validated);
 						  
-						  return responseJson(201, 'Category created successfully', [
-								'category' => $category,
-						  ]);
+						  // Invalidate caches
+						  Cache::forget('category_count');
+						  Cache::tags(['categories'])->flush();
 						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422, 'Validation error', $e->validator->errors()->all()
-						  );
+						  return responseJson(201, 'Category created successfully', ['category' => $category]);
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error', $e->errors());
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server error' ,$errorMessage);
+						  Log::error('Category store error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
 			 
-			 public function update(Request $request, $categoryId): JsonResponse
+			 /**
+			  * Update an existing category.
+			  *
+			  * @param Request $request
+			  * @param int     $categoryId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function update(Request $request, int $categoryId): JsonResponse
 			 {
 					try {
-						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
-						  
-						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403,'Forbidden', 'Unauthorized');
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Find the category
 						  $category = Category::find($categoryId);
-						  
-						  // Check if the category exists
 						  if (!$category) {
-								 return responseJson(404, 'Not found','Category not found');
+								 return responseJson(404, 'Not found', 'Category not found');
 						  }
-						  // Validate request data including image
+						  
 						  $validated = $request->validate([
-								'name'  => 'sometimes|string|max:255',
+								'name' => 'sometimes|string|max:255|unique:categories,name,' . $categoryId,
 								'image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-								// Updated validation
 						  ]);
 						  
-						  // Get original data before update
-						  $originalData = $category->only(['name', 'slug', 'image']
-						  ); // Include image in original data
-						  
-						  // Check if any data actually changed
-						  $changes = [];
-						  foreach ($validated as $key => $value) {
-								 if ($originalData[$key] !== $value) {
-										$changes[$key] = [
-											 'from' => $originalData[$key],
-											 'to'   => $value
-										];
-								 }
-						  }
+						  $originalData = $category->only(['name', 'slug', 'image']);
+						  $changes = array_filter($validated, fn($value, $key) => $originalData[$key] !== $value, ARRAY_FILTER_USE_BOTH);
 						  
 						  if (empty($changes)) {
-								 return responseJson(200, 'No changes detected', [
-									  'category'  => $category,
-									  'unchanged' => true
-								 ]);
+								 return responseJson(200, 'No changes detected', ['category' => $category, 'unchanged' => true]);
 						  }
 						  
-						  // Update slug if name changes
-						  if (isset($validated['name'])
-								&& $validated['name'] !== $category->name
-						  ) {
-								 $validated['slug'] = Str::slug(
-									  $validated['name'], '-'
-								 );
+						  if (isset($validated['name']) && $validated['name'] !== $category->name) {
+								 $validated['slug'] = Str::slug($validated['name']);
 						  }
 						  
-						  // Handle image upload and deletion
 						  if ($request->hasFile('image')) {
-								 // Delete the old image if it exists
-								 if ($category->image) {
-										Storage::disk('public')->delete($category->image);
+								 if ($category->image && !str_contains($category->image, 'still_images')) {
+										Storage::disk('public')->delete(str_replace(Storage::disk('public')->url(''), '', $category->image));
 								 }
-								 
 								 $image = $request->file('image');
-								 $imageName = time() . '_' . Str::slug(
-											$validated['name'] ?? $category->name
-									  ) . '.' . $image->getClientOriginalExtension();
-								 $imagePath = $image->storeAs(
-									  'category_images', $imageName, 'public'
-								 );
-								 $urlPath =Storage::disk('public')->url($imagePath);
-								 $validated['image'] = $urlPath;
-						  } elseif (isset($validated['image'])) {
-								 // If the image field is present but no file is uploaded, remove the image entry
-								 $validated['image'] = null;
+								 $imageName = time() . '_' . ($validated['slug'] ?? $category->slug) . '.' . $image->getClientOriginalExtension();
+								 $imagePath = $image->storeAs('category_images', $imageName, 'public');
+								 $validated['image'] = Storage::disk('public')->url($imagePath);
 						  }
 						  
-						  // Update category
 						  $category->update($validated);
 						  
-						  return responseJson(200, 'Category updated successfully', [
-								'category'  => $category,
-								'changes'   => $changes,
-								'unchanged' => false
-						  ]);
+						  // Invalidate caches
+						  Cache::forget('category_count');
+						  Cache::forget('category_' . $categoryId);
+						  Cache::tags(['categories'])->flush();
 						  
-					} catch (\Illuminate\Validation\ValidationException $e) {
-						  return responseJson(
-								422, 'Validation error', $e->validator->errors()->all()
-						  );
+						  return responseJson(200, 'Category updated successfully', [
+								'category' => $category,
+								'changes' => $changes,
+								'unchanged' => false,
+						  ]);
+					} catch (ValidationException $e) {
+						  return responseJson(422, 'Validation error', $e->errors());
 					} catch (\Exception $e) {
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server error',$errorMessage);
+						  Log::error('Category update error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
 			 
-			 public function destroy($categoryId): JsonResponse
+			 /**
+			  * Delete a category.
+			  *
+			  * @param int $categoryId
+			  *
+			  * @return JsonResponse
+			  */
+			 public function destroy(int $categoryId): JsonResponse
 			 {
 					try {
-						  // Check authentication
 						  if (!auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
 						  $admin = auth('admin')->user();
-						  
-						  // Check authorization
 						  if (!$admin->hasRole('super-admin')) {
-								 return responseJson(403, 'Forbidden','Unauthorized');
+								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  // Find the category
 						  $category = Category::find($categoryId);
-						  
-						  // Check if the category exists
 						  if (!$category) {
-								 return responseJson(404,'Not found', 'Category not found');
+								 return responseJson(404, 'Not found', 'Category not found');
 						  }
 						  
-						  // Delete the associated image if it exists
-						  if ($category->image) {
-								 Storage::disk('public')->delete($category->image);
+						  if ($category->image && !str_contains($category->image, 'still_images')) {
+								 Storage::disk('public')->delete(str_replace(Storage::disk('public')->url(''), '', $category->image));
 						  }
 						  
-						  // Delete category
 						  $category->delete();
 						  
-						  return responseJson(200, 'Category deleted successfully');
+						  // Invalidate caches
+						  Cache::forget('category_count');
+						  Cache::forget('category_' . $categoryId);
+						  Cache::tags(['categories'])->flush();
 						  
+						  return responseJson(200, 'Category deleted successfully');
 					} catch (\Exception $e) {
-						  // Handle exceptions
-						  Log::error('Server Error: ' . $e->getMessage());
-						  $errorMessage = config('app.debug') ? $e->getMessage()
-								: 'Server error: Something went wrong. Please try again later.';
-						  return responseJson(500, 'Server error',$errorMessage);
+						  Log::error('Category destroy error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
 	  }

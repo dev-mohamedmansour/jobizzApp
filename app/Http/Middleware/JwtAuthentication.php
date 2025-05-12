@@ -4,10 +4,10 @@
 	  
 	  use Closure;
 	  use Illuminate\Http\Request;
-	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
-	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
-	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
+	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
+	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
+	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  
 	  class JwtAuthentication
 	  {
@@ -21,29 +21,19 @@
 						  $user = JWTAuth::parseToken()->authenticate();
 						  
 						  if (!$user) {
-								 return response()->json([
-									  'status' => 'error1',
-									  'message' => 'Unauthenticated',
-								 ], 401);
+								 return responseJson(
+									  401, 'Unauthorized', 'Token is invalid or expired'
+								 );
 						  }
 					} catch (TokenExpiredException $e) {
-						  return response()->json([
-								'status' => 'error2',
-								'message' => 'Token has expired',
-						  ], 401);
+						  return responseJson(401,
+								'Token has expired',$e->getMessage());
 					} catch (TokenInvalidException $e) {
-						  return response()->json([
-								'status' => 'error3',
-								'message' => 'Invalid token',
-						  ], 401);
+						  return responseJson(401,'Invalid token', $e->getMessage());
 					} catch (JWTException $e) {
-						  return response()->json([
-								'status' => 'error4',
-								'message' => 'Unauthenticated',
-								$e->getMessage()
-						  ], 401);
+						  return responseJson(401,'Unauthenticated',
+								$e->getMessage());
 					}
-					
 					// Proceed to the next middleware and ensure JSON response
 					$response = $next($request);
 					return $response->header('Content-Type', 'application/json');
