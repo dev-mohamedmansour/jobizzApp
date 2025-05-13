@@ -19,7 +19,6 @@
 						  
 						  // Attempt to parse and authenticate the token
 						  $user = JWTAuth::parseToken()->authenticate();
-						  
 						  if (!$user) {
 								 return responseJson(
 									  401, 'Unauthorized', 'Token is invalid or expired'

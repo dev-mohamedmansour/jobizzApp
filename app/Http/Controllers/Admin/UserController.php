@@ -24,14 +24,13 @@ class UserController extends Controller
 					// Determine which guard the user is authenticated with
 					if (auth('admin')->check()) {
 						  $user = auth('admin')->user();
-//						  dd($user);
 						  if (!$this->isAdminAuthorized($user)) {
 								 return responseJson(
 									  403,
 									  'Forbidden','You do not have permission to view users '
 								 );
 						  }
-					} elseif (auth()->guard('api')->check()) {
+					} elseif (auth('api')->check()) {
 						  // Deny access if the user is authenticated with an unknown guard
 						  return responseJson(
 								403,

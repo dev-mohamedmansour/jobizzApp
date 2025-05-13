@@ -24,26 +24,28 @@
 			 public function index(Request $request): JsonResponse
 			 {
 					try {
-						  if (!auth()->check()) {
-								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
-						  }
-						  
-						  if (auth()->guard('admin')->check()) {
-								 $user = auth('admin')->user();
-								 if (!$user->hasRole('super-admin')) {
-										return responseJson(403, 'Forbidden', 'You do not have permission to view categories');
-								 }
-								 
+						  if (auth('admin')->check()) {
 								 $cacheKey = 'categories_admin_' . md5($request->fullUrl());
-								 $categories = Cache::remember($cacheKey, now()->addMinutes(15), fn() =>
-								 Category::withCount('jobs')->paginate(10)
+								 $categories = Cache::remember($cacheKey, now()->addMinutes(5), fn() =>
+								 Category::withCount('jobs')->get()
 								 );
-								 
 								 if ($categories->isEmpty()) {
 										return responseJson(404, 'Not found', 'No categories found');
 								 }
+								 // Transform categories into a clean array
+								 $responseData = $categories->map(function ($category) {
+										return [
+											 'id' => $category->id,
+											 'name' => $category->name,
+											 'description' => $category->slug,
+											 'image' => $category->image,
+											 'created_at' => $category->created_at,
+											 'updated_at' => $category->updated_at,
+											 'jobs_count' => $category->jobs_count,
+										];
+								 })->all();
 								 
-								 return responseJson(200, 'Categories retrieved successfully', $categories);
+								 return responseJson(200, 'Categories retrieved successfully', $responseData);
 						  }
 						  
 						  $user = auth('api')->user();
@@ -62,6 +64,7 @@
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'job_status','position', 'category_name', 'description', 'requirement', 'benefits'
 						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
 								->inRandomOrder()
+								->withCount('jobs')
 								->take($number)
 								->get()
 								->map(function ($category) {
@@ -70,6 +73,7 @@
 											'name' => $category->name,
 											'description' => $category->slug,
 											'image' => $category->image,
+											'jobs_count' => $category->jobs_count,
 											'jobs' => $category->jobs->map(function ($job) {
 												  return [
 														'id' => $job->id,
@@ -97,6 +101,7 @@
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'position', 'job_status','category_name', 'description', 'requirement', 'benefits'
 						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
 								->inRandomOrder()
+								->withCount('jobs')
 								->take($number)
 								->get()
 								->map(function ($category) {
@@ -105,6 +110,7 @@
 											'name' => $category->name,
 											'description' => $category->slug,
 											'image' => $category->image,
+											'jobs_count' => $category->jobs_count,
 											'jobs' => $category->jobs->map(function ($job) {
 												  return [
 														'id' => $job->id,
@@ -147,13 +153,13 @@
 			 public function show(int $categoryId): JsonResponse
 			 {
 					try {
-						  if (!auth()->check() && !auth('admin')->check()) {
+						  if (!auth('api')->check() && !auth('admin')->check()) {
 								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
 						  }
 						  
 						  $cacheKey = 'category_' . $categoryId;
 						  $category = Cache::remember($cacheKey, now()->addMinutes(15), fn() =>
-						  Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])
+						  Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])->withCount('jobs')
 								->find($categoryId)
 						  );
 						  
@@ -176,6 +182,7 @@
 								'name' => $category->name,
 								'description' => $category->slug, // Map slug to description as per snippet
 								'image' => $category->image,
+								'jobs_count' => $category->jobs_count,
 								'jobs' => $jobs->map(function ($job) {
 									  return [
 											'id' => $job->id,

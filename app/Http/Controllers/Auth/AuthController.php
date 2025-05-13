@@ -5,6 +5,7 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\JobListing as Job;
 	  use App\Models\PasswordResetPin;
+	  use App\Models\Profile;
 	  use App\Models\User;
 	  use App\Services\PinService;
 	  use Google\Client as GoogleClient;
@@ -55,8 +56,15 @@
 									  'email_verified_at' => now(),
 								 ]);
 						  });
-						  
 						  Cache::forget('user_' . $user->id);
+						  $user->profiles()->create(
+								[
+									 'title_job'=>'No Title',
+									 'job_position'=>'No position',
+									 'is_default'=>true,
+									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
+								]
+						  );
 						  
 						  return responseJson(201, 'Registration successful', [
 								'id'       => $user->id,
@@ -213,7 +221,7 @@
 								 if (!$user->hasVerifiedEmail()) {
 										$user->markEmailAsVerified();
 								 }
-								 
+								 $profiles = $user->profiles()->get();
 								 $token = JWTAuth::fromUser($user);
 								 
 								 Cache::forget('user_' . $user->id);
@@ -226,17 +234,7 @@
 											'id'       => $user->id,
 											'fullName' => $user->name,
 											'email'    => $user->email,
-											'profileImage'   => $user->defaultProfile
-											&& $user->defaultProfile->profile_image
-												 ? $user->defaultProfile->profile_image
-												 : 'https://jobizaa.com/still_images/userDefault.jpg',
-											'defaultProfile' => $user->defaultProfile
-											&& $user->defaultProfile->id
-												 ? $user->defaultProfile->id
-												 : 'Not found',
-											'secondProfile'  => $user->Profiles->where(
-													  'is_default', false
-												 )->first()?->id ?? 'Not found',
+											'profiles'   => $profiles,
 									  ]
 								 );
 						  }
@@ -321,23 +319,15 @@
 									  'Please verify your email address'
 								 );
 						  }
+						  $profiles=$user->profiles()->get();
 						  
 						  return responseJson(200, 'Login successful', [
 								'token'          => $token,
 								'id'             => $user->id,
 								'fullName'       => $user->name,
 								'email'          => $user->email,
-								'profileImage'   => $user->defaultProfile
-								&& $user->defaultProfile->profile_image
-									 ? $user->defaultProfile->profile_image
-									 : 'https://jobizaa.com/still_images/userDefault.jpg',
-								'defaultProfile' => $user->defaultProfile
-								&& $user->defaultProfile->id
-									 ? $user->defaultProfile->id
-									 : 'Not found',
-								'secondProfile'  => $user->Profiles->where(
-										  'is_default', false
-									 )->first()?->id ?? 'Not found',
+								'profiles'   => $profiles,
+
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(
@@ -431,23 +421,24 @@
 						  $token = JWTAuth::fromUser($user);
 						  
 						  Cache::forget('user_' . $user->id);
+						  $checkUserProfile = Profile::where('user_id','=',$user->id)->get();
+						  if(count($checkUserProfile) == 0){
+						  $user->profiles()->create(
+								[
+									 'title_job'=>'No Title',
+									 'job_position'=>'No position',
+									 'is_default'=>true,
+									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
+								]
+						  );
+						  }
 						  
 						  return responseJson(200, 'Login successful', [
 								'token'        => $token,
 								'id'           => $user->id,
 								'fullName'     => $user->name,
 								'email'        => $user->email,
-								'profileImage'   => $user->defaultProfile
-								&& $user->defaultProfile->profile_image
-									 ? $user->defaultProfile->profile_image
-									 : 'https://jobizaa.com/still_images/userDefault.jpg',
-								'defaultProfile' => $user->defaultProfile
-								&& $user->defaultProfile->id
-									 ? $user->defaultProfile->id
-									 : 'Not found',
-								'secondProfile'  => $user->Profiles->where(
-										  'is_default', false
-									 )->first()?->id ?? 'Not found',
+								'profiles'   => $user->profiles()->get(),
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(

@@ -24,17 +24,12 @@
 			 public function index(): JsonResponse
 			 {
 					try {
-						  if (!auth()->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
-								 );
-						  }
 						  
-						  if (auth()->guard('admin')->check()) {
+						  if (auth('admin')->check()) {
 								 return $this->handleAdminCompanies();
 						  }
 						  
-						  if (auth()->guard('api')->check()) {
+						  if (auth('api')->check()) {
 								 return $this->handleApiUserCompanies();
 						  }
 						  
@@ -223,12 +218,6 @@
 			 public function show(int $companyId): JsonResponse
 			 {
 					try {
-						  if (!auth()->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
-								 );
-						  }
-						  
 						  $company = Company::with(
 								['jobs' => fn($query) => $query->where(
 									 'job_status', '!=', 'cancelled'
@@ -242,7 +231,7 @@
 								 );
 						  }
 						  
-						  if (auth()->guard('admin')->check()) {
+						  if (auth('admin')->check()) {
 								 $admin = auth('admin')->user();
 								 if (!$this->isAdminAuthorizedToShow(
 									  $admin, $company
@@ -253,7 +242,7 @@
 											 'You do not have permission to view this company'
 										);
 								 }
-						  } elseif (!auth()->guard('api')->check()) {
+						  } elseif (!auth('api')->check()) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'You do not have permission to view this company'

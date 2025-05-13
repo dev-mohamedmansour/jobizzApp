@@ -127,7 +127,7 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function getApplicationsForUser(Request $request, $profileId
+			 public function getApplicationsForUser(Request $request, int $profileId
 			 ): JsonResponse {
 					try {
 						  if (!auth('api')->check()) {
@@ -223,9 +223,8 @@
 								 );
 						  }
 						  
-						  if (!$admin->hasPermissionTo('manage-applications')
-								&& !$admin->hasRole('super-admin')
-						  ) {
+						  if (!$admin->hasPermissionTo('manage-applications'))
+						  {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'Not authorized to access this resource'
@@ -585,8 +584,8 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function getStatusHistoryForUser(Request $request, $profileId,
-				  $applicationId
+			 public function getStatusHistoryForUser(Request $request, int $profileId,
+				  int $applicationId
 			 ): JsonResponse {
 					try {
 						  if (!auth('api')->check()) {
@@ -661,7 +660,7 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function destroy($applicationId): JsonResponse
+			 public function destroy(int $applicationId): JsonResponse
 			 {
 					try {
 						  if (!auth('admin')->check()) {

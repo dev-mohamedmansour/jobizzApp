@@ -24,17 +24,11 @@
 			 public function index(): JsonResponse
 			 {
 					try {
-						  if (!auth()->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
-								 );
-						  }
-						  
-						  if (auth()->guard('admin')->check()) {
+						  if (auth('admin')->check()) {
 								 return $this->handleAdminJobs();
 						  }
 						  
-						  if (auth()->guard('api')->check()) {
+						  if (auth('api')->check()) {
 								 return $this->handleApiUserJobs();
 						  }
 						  
@@ -165,6 +159,11 @@
 						  
 						  $admin = auth('admin')->user();
 						  
+						  if($admin->company_id != $companyId)
+						  {
+								 return responseJson(403, 'Forbidden', 'You are not authorized to access this resource');
+						  }
+						  
 						  $jobs = JobListing::with('company')
 								->where('job_status', '!=', 'cancelled')
 								->whereHas(
@@ -213,12 +212,6 @@
 			 public function show(int $jobId): JsonResponse
 			 {
 					try {
-						  if (!auth()->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
-								 );
-						  }
-						  
 						  $job = JobListing::with('company')
 								->where('job_status', '!=', 'cancelled')
 								->find($jobId);
@@ -229,7 +222,7 @@
 								 );
 						  }
 						  
-						  if (auth()->guard('admin')->check()) {
+						  if (auth('admin')->check()) {
 								 $admin = auth('admin')->user();
 								 if (!$this->isAdminAuthorizedToShow($admin, $job)) {
 										return responseJson(
@@ -237,7 +230,7 @@
 											 'You do not have permission to view this job'
 										);
 								 }
-						  } elseif (!auth()->guard('api')->check()) {
+						  } elseif (!auth('api')->check()) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'You do not have permission to view this job'
