@@ -230,6 +230,13 @@
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
+						  // Check if user already has two profiles
+						  if ($user->profiles()->count() >= 2) {
+								 return responseJson(
+									  422, 'Validation error',
+									  'You cannot add more than two profiles'
+								 );
+						  }
 						  
 						  $validated = $this->validateProfile($request, null);
 						  

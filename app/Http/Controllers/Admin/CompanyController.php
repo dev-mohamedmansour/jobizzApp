@@ -66,27 +66,51 @@
 						  );
 					}
 					
-					$companies = Cache::remember(
-						 'admin_companies_page_' . request()->get('page', 1),
-						 now()->addMinutes(15), fn() => Company::withCount(
-						 ['jobs' => fn($query) => $query->where(
-							  'job_status', '!=', 'cancelled'
-						 )]
-					)
-						 ->paginate(10)
-					);
-					
-					if ($companies->isEmpty()) {
+					try {
+						  $companies = Cache::remember(
+								'admin_companies',
+								now()->addMinutes(15),
+								fn() => Company::withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
+									 ->get()
+									 ->map(function ($company) {
+											return [
+												 'id' => $company->id,
+												 'name' => $company->name,
+												 'logo' => $company->logo,
+												 'description' => $company->description,
+												 'location' => $company->location,
+												 'website' => $company->website,
+												 'size' => $company->size,
+												 'hired_people' => $company->hired_people,
+												 'created_at' => $company->created_at->toDateTimeString(),
+												 'updated_at' => $company->updated_at->toDateTimeString(),
+												 'jobs_count' => $company->jobs_count,
+											];
+									 })->values()->toArray()
+						  );
+						  
+						  Log::debug('Admin companies data', ['companies' => $companies]);
+						  
+						  if (empty($companies)) {
+								 return responseJson(
+									  404, 'No companies found',
+									  'No companies found'
+								 );
+						  }
+						  
 						  return responseJson(
-								404, 'No companies found', 'No companies found'
+								200,
+								'Companies retrieved successfully',
+								$companies
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Handle admin companies error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : 'Unable to retrieve companies'
 						  );
 					}
-					
-					return responseJson(
-						 200, 'Companies retrieved successfully', $companies
-					);
 			 }
-			 
 			 /**
 			  * Check if an admin is authorized to view all companies.
 			  *

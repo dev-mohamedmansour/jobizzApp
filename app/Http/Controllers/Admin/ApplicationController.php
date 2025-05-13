@@ -157,7 +157,7 @@
 						  
 						  $applications = Cache::remember(
 								"applications_profile_{$profileId}",
-								now()->addMinutes(15),
+								now()->addMinutes(5),
 								fn() => Application::with([
 									 'job'          => fn($query) => $query->select(
 										  'id', 'title', 'salary', 'company_id'
@@ -178,20 +178,18 @@
 								 $apps = $applications->where('status', $status);
 								 $formattedApplications = $apps->map(
 									  fn($application) => [
-											'id'          => $application->id,
+											'id' => $application->id,
 											'resume_path' => $application->resume_path,
-											'status'      => $application->status,
-											'created_at'  => $application->created_at->format(
-												 'Y-m-d'
-											),
-											'job'         => $application->job,
-											'user'        => $application->profile->user,
+											'status' => $application->status,
+											'created_at' => $application->created_at->format('Y-m-d'),
+											'job' => $application->job,
+											'user' => $application->profile->user,
 									  ]
-								 );
+								 )->values(); // Reset keys to ensure sequential array
 								 
 								 $applicationsByStatus[$status] = [
 									  'applications' => $formattedApplications,
-									  'count'        => $formattedApplications->count(),
+									  'count' => $formattedApplications->count(),
 								 ];
 						  }
 						  
@@ -458,7 +456,7 @@
 						  $application->update(['status' => $validated['status']]);
 						  $application->statuses()->create([
 								'status'   => $validated['status'],
-								'feedback' => $validated['feedback'],
+								'feedback' => $validated['feedback']??'No feedback provided',
 						  ]);
 						  
 						  $user = $application->profile->user;
