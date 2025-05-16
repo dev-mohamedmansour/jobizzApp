@@ -60,7 +60,10 @@
 									 )->select(
 										  'id', 'profile_id', 'name', 'type', 'format',
 										  'image_count', 'path', 'url'
-									 )
+									 ),
+									 'applications' => fn($query) => $query->select(
+										  'id', 'profile_id', 'status'
+									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
 								])->get()
 						  );
 						  
@@ -85,17 +88,68 @@
 								 if ($profile->portfolios->isEmpty()) {
 										$messages[] = 'No portfolios uploaded yet';
 								 }
+								 // Calculate application counts by status
+								 $appliedApplications = $profile->applications->where('status', 'submitted')->count();
+								 $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
+								 $reviewedApplications = $profile->applications->where('status', 'reviewed')->count();
 								 return [
-									  'profile'  => $profile,
+											'id' => $profile->id,
+											'user_id' => $profile->user_id,
+											'title_job' => $profile->title_job,
+											'job_position' => $profile->job_position,
+											'is_default' => $profile->is_default,
+											'profile_image' => $profile->profile_image,
+											'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
+											'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
+											'applied_applications' => $appliedApplications,
+											'interview_applications' => $interviewApplications,
+											'reviewed_applications' => $reviewedApplications,
+											'educations' => $profile->educations->map(fn ($edu) => [
+												 'id' => $edu->id,
+												 'college' => $edu->college,
+												 'degree' => $edu->degree,
+												 'field_of_study' => $edu->field_of_study,
+												 'start_date' => $edu->start_date,
+												 'end_date' => $edu->end_date,
+												 'is_current' => (bool) $edu->is_current,
+												 'description' => $edu->description,
+												 'location' => $edu->location,
+											])->toArray(),
+											'experiences' => $profile->experiences->map(fn ($exp) => [
+												 'id' => $exp->id,
+												 'company' => $exp->company,
+												 'position' => $exp->position,
+												 'start_date' => $exp->start_date,
+												 'end_date' => $exp->end_date,
+												 'is_current' => (bool) $exp->is_current,
+												 'description' => $exp->description,
+												 'location' => $exp->location,
+											])->toArray(),
+											'cvs' => $profile->cvs->map(fn ($cv) => [
+												 'id' => $cv->id,
+												 'name' => $cv->name,
+												 'type' => $cv->type,
+												 'path' => $cv->path,
+											])->toArray(),
+											'portfolios' => $profile->portfolios->map(fn ($portfolio) => [
+												 'id' => $portfolio->id,
+												 'name' => $portfolio->name,
+												 'type' => $portfolio->type,
+												 'format' => $portfolio->format,
+												 'image_count' => $portfolio->image_count,
+												 'path' => $portfolio->path,
+												 'url' => $portfolio->url,
+											])->toArray(),
+											
 									  'messages' => $messages
 								 ];
 						  });
 						  
 						  return responseJson(
 								200, 'Profiles retrieved successfully', [
-								'profiles'      => $transformedProfiles,
-								'profile_count' => $profiles->count()
-						  ]
+									 'profiles' => $transformedProfiles,
+									 'profile_count' => $profiles->count()
+								]
 						  );
 					} catch (\Exception $e) {
 						  Log::error('Get all profiles error: ' . $e->getMessage());
@@ -123,8 +177,9 @@
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
+						  $checkProfile=Profile::find($profileId);
 						  
-						  if ($user->id !== $profileId) {
+						  if ($user->id !== $checkProfile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
@@ -144,9 +199,16 @@
 									 'documents'   => fn($query) => $query->select(
 										  'id', 'profile_id', 'name', 'type', 'format',
 										  'path', 'url'
-									 )
+									 ),
+									 'applications' => fn($query) => $query->select(
+										  'id', 'profile_id', 'status'
+									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
 								])->findOrFail($profileId)
 						  );
+						  // Calculate application counts by status
+						  $appliedApplications = $profile->applications->where('status', 'submitted')->count();
+						  $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
+						  $reviewedApplications = $profile->applications->where('status', 'reviewed')->count();
 						  // Filter profile data to include only relevant fields
 						  $filteredData = [
 								'id' => $profile->id,
@@ -155,6 +217,9 @@
 								'job_position' => $profile->job_position,
 								'is_default' => $profile->is_default,
 								'profile_image' => $profile->profile_image,
+								'applied_applications' => $appliedApplications,
+								'interview_applications' => $interviewApplications,
+								'reviewed_applications' => $reviewedApplications,
 								'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
 								'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
 								'educations' => $profile->educations->map(fn ($edu) => [

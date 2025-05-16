@@ -77,6 +77,11 @@
 					return $this->type === 'portfolio';
 			 }
 			 
+			 public function applications(): HasMany
+			 {
+					return $this->hasMany(Application::class);
+			 }
+			 
 			 public function favorites(): HasMany
 			 {
 					return $this->hasMany(Favorite::class);

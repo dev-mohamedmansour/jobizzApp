@@ -34,6 +34,9 @@
 								 }
 								 // Transform categories into a clean array
 								 $responseData = $categories->map(function ($category) {
+										$companiesCount = JobListing::where('category_name', $category->name)
+											 ->distinct('company_id')
+											 ->count('company_id');
 										return [
 											 'id' => $category->id,
 											 'name' => $category->name,
@@ -42,14 +45,14 @@
 											 'created_at' => $category->created_at,
 											 'updated_at' => $category->updated_at,
 											 'jobs_count' => $category->jobs_count,
+											 'companies_count' => $companiesCount,
 										];
 								 })->all();
-								 
 								 return responseJson(200, 'Categories retrieved successfully', $responseData);
 						  }
 						  
 						  $user = auth('api')->user();
-						  $categoryNum = Cache::remember('category_count', now()->addHours(1), fn() => Category::count());
+						  $categoryNum = Cache::remember('category_count', now()->addMinutes(10), fn() => Category::count());
 						  
 						  if ($categoryNum === 0) {
 								 return responseJson(404, 'Not found', 'No categories found');
@@ -68,11 +71,15 @@
 								->take($number)
 								->get()
 								->map(function ($category) {
+									  $companiesCount = JobListing::where('category_name', $category->name)
+											->distinct('company_id')
+											->count('company_id');
 									  return [
 											'id' => $category->id,
 											'name' => $category->name,
 											'description' => $category->slug,
 											'image' => $category->image,
+											'companies_count' => $companiesCount,
 											'jobs_count' => $category->jobs_count,
 											'jobs' => $category->jobs->map(function ($job) {
 												  return [
@@ -105,11 +112,15 @@
 								->take($number)
 								->get()
 								->map(function ($category) {
+									  $companiesCount = JobListing::where('category_name', $category->name)
+											->distinct('company_id')
+											->count('company_id');
 									  return [
 											'id' => $category->id,
 											'name' => $category->name,
 											'description' => $category->slug,
 											'image' => $category->image,
+											'companies_count' => $companiesCount,
 											'jobs_count' => $category->jobs_count,
 											'jobs' => $category->jobs->map(function ($job) {
 												  return [
@@ -175,13 +186,17 @@
 								->where('category_name', $category->name)
 								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
 								->get();
-						  
+						  // Count distinct companies for this category
+						  $companiesCount = JobListing::where('category_name', $category->name)
+								->distinct('company_id')
+								->count('company_id');
 						  // Transform the response to match the desired structure
 						  $responseData = [
 								'id' => $category->id,
 								'name' => $category->name,
 								'description' => $category->slug, // Map slug to description as per snippet
 								'image' => $category->image,
+								'companies_count' => $companiesCount,
 								'jobs_count' => $category->jobs_count,
 								'jobs' => $jobs->map(function ($job) {
 									  return [
