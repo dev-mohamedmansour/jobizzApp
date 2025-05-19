@@ -826,7 +826,7 @@
 						  
 						  // Cache trending jobs for 15 minutes
 						  $jobsTrending = Cache::remember(
-								'jobs_trending_' . $user->id, now()->addMinutes(15),
+								'jobs_trending_' . $user->id, now()->addMinutes(5),
 								fn() => Job::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
@@ -862,7 +862,7 @@
 						  
 						  // Cache popular jobs for 15 minutes
 						  $jobsPopular = Cache::remember(
-								'jobs_popular_' . $user->id, now()->addMinutes(15),
+								'jobs_popular_' . $user->id, now()->addMinutes(5),
 								fn() => Job::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
@@ -900,7 +900,7 @@
 						  $jobsRecommended = Cache::remember(
 								'jobs_recommended_' . $user->id . '_' . md5(
 									 $profileJobTitle
-								), now()->addMinutes(15), fn() => Job::where(
+								), now()->addMinutes(3), fn() => Job::where(
 								'title', 'like', '%' . $profileJobTitle . '%'
 						  )
 								->inRandomOrder()

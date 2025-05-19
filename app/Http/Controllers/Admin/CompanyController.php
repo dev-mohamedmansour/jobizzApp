@@ -142,7 +142,7 @@
 						 'trending_companies', now()->addHours(1),
 						 fn() => Company::with(['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
-						 )->select('id', 'company_id', 'title', 'job_status')])
+						 )->select('id', 'company_id', 'title', 'job_status','salary')])
 							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
@@ -164,6 +164,7 @@
 													  'id' => $job->id,
 													  'title' => $job->title,
 													  'job_status' => $job->job_status,
+													  'job_salary' => $job->salary,
 												 ];
 										  })
 									 ];
@@ -174,7 +175,7 @@
 						 'popular_companies', now()->addHours(1),
 						 fn() => Company::with(['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
-						 )->select('id', 'company_id', 'title', 'job_status')])
+						 )->select('id', 'company_id', 'title', 'job_status','salary')])
 							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
@@ -196,6 +197,7 @@
 													  'id' => $job->id,
 													  'title' => $job->title,
 													  'job_status' => $job->job_status,
+													  'job_salary' => $job->salary,
 												 ];
 										  })
 									 ];
@@ -222,8 +224,7 @@
 								['jobs' => fn($query) => $query->where(
 									 'job_status', '!=', 'cancelled'
 								)]
-						  )
-								->find($companyId);
+						  )->find($companyId);
 						  
 						  if (!$company) {
 								 return responseJson(
@@ -252,11 +253,10 @@
 						  $activeJobsCount = $company->jobs()->where(
 								'job_status', '!=', 'cancelled'
 						  )->count();
-						  
 						  return responseJson(200, 'Company details retrieved', [
 								'company'     => $company,
 								'active_jobs' => $activeJobsCount,
-						  ]);
+								]);
 					} catch (\Exception $e) {
 						  Log::error('Show company error: ' . $e->getMessage());
 						  return responseJson(

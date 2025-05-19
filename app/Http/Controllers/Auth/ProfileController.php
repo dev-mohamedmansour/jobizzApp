@@ -38,7 +38,7 @@
 						  }
 						  
 						  $profiles = Cache::remember(
-								'user_profiles_' . $user->id, now()->addMinutes(15),
+								'user_profiles_' . $user->id, now()->addMinutes(1),
 								fn() => $user->profiles()->with([
 									 'educations'  => fn($query) => $query->select(
 										  'id', 'profile_id', 'college', 'degree',
@@ -205,6 +205,18 @@
 									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
 								])->findOrFail($profileId)
 						  );
+						  
+						  // Update is_default for profiles
+						  DB::transaction(function () use ($user, $profile) {
+								 Profile::where('user_id', $user->id)->update(['is_default' => 0]);
+								 $profile->is_default = 1;
+								 $profile->save();
+						  });
+						  // Invalidate cache for all profiles of the user
+						  $profileIds = $user->profiles()->pluck('id');
+						  foreach ($profileIds as $id) {
+								 Cache::forget('profile_' . $id);
+						  }
 						  // Calculate application counts by status
 						  $appliedApplications = $profile->applications->where('status', 'submitted')->count();
 						  $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
