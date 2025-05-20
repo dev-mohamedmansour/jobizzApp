@@ -61,7 +61,7 @@
 								[
 									 'title_job'=>'No Title',
 									 'job_position'=>'No position',
-									 'is_default'=>true,
+									 'is_default'=>1,
 									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
 								]
 						  );
@@ -221,7 +221,7 @@
 								 if (!$user->hasVerifiedEmail()) {
 										$user->markEmailAsVerified();
 								 }
-								 $profiles = $user->profiles()->get();
+								 $profile = $user->defaultProfile()->first();
 								 $token = JWTAuth::fromUser($user);
 								 
 								 Cache::forget('user_' . $user->id);
@@ -234,7 +234,7 @@
 											'id'       => $user->id,
 											'fullName' => $user->name,
 											'email'    => $user->email,
-											'profiles'   => $profiles,
+											'profile'   => $profile,
 									  ]
 								 );
 						  }
@@ -319,14 +319,14 @@
 									  'Please verify your email address'
 								 );
 						  }
-						  $profiles=$user->profiles()->get();
+						  $profile=$user->defaultProfile()->first();
 						  
 						  return responseJson(200, 'Login successful', [
 								'token'          => $token,
 								'id'             => $user->id,
 								'fullName'       => $user->name,
 								'email'          => $user->email,
-								'profiles'   => $profiles,
+								'profile'   => $profile,
 
 						  ]);
 					} catch (ValidationException $e) {
@@ -427,7 +427,7 @@
 								[
 									 'title_job'=>'No Title',
 									 'job_position'=>'No position',
-									 'is_default'=>true,
+									 'is_default'=>1,
 									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
 								]
 						  );
@@ -438,7 +438,7 @@
 								'id'           => $user->id,
 								'fullName'     => $user->name,
 								'email'        => $user->email,
-								'profiles'   => $user->profiles()->get(),
+								'profile'   => $user->defaultProfile()->first(),
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(
@@ -805,15 +805,14 @@
 								 );
 						  }
 						  
-						  if (!$user->defaultProfile) {
-								 return responseJson(
-									  404, 'Not found', 'Profile not found'
-								 );
+						  $profile = $user->defaultProfile()->first();
+						  if (!$profile) {
+								 return responseJson(404, 'Not found', 'Profile not found');
 						  }
 						  
-						  $profileJobTitle = $user->defaultProfile->title_job;
+						  $profileJobTitle = $profile->title_job;
 						  $jobsNum = Cache::remember(
-								'job_count', now()->addHours(1), fn() => Job::count()
+								'job_count', now()->addMinutes(3), fn() => Job::count()
 						  );
 						  
 						  if ($jobsNum === 0) {
@@ -826,7 +825,7 @@
 						  
 						  // Cache trending jobs for 15 minutes
 						  $jobsTrending = Cache::remember(
-								'jobs_trending_' . $user->id, now()->addMinutes(5),
+								'jobs_trending_' . $user->id, now()->addMinutes(3),
 								fn() => Job::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
@@ -862,7 +861,7 @@
 						  
 						  // Cache popular jobs for 15 minutes
 						  $jobsPopular = Cache::remember(
-								'jobs_popular_' . $user->id, now()->addMinutes(5),
+								'jobs_popular_' . $user->id, now()->addMinutes(3),
 								fn() => Job::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',

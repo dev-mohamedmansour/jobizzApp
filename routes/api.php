@@ -207,6 +207,9 @@
 											'/',
 											[ProfileController::class, 'getAllProfiles']
 									  );
+									  Route::get('/details',
+											[ProfileController::class,
+											 'getSomeDataOfProfiles']);
 									  Route::post(
 											'/add-profile',
 											[ProfileController::class, 'addProfile']

@@ -160,6 +160,55 @@
 					}
 			 }
 			 
+			 public function getSomeDataOfProfiles(Request $request) :JsonResponse
+			 {
+					try {
+						  $user = $request->user();
+						  if (!$user) {
+								 return responseJson(
+									  401, 'Unauthenticated', 'Unauthenticated'
+								 );
+						  }
+						  
+						  $profiles = Cache::remember(
+								'user_profiles_' . $user->id, now()->addMinutes(2),
+								fn() => $user->profiles()->get()
+						  );
+						  
+						  if ($profiles->isEmpty()) {
+								 return responseJson(
+									  404, 'No profiles found',
+									  'You don\'t have any profiles yet. Please add a profile.'
+								 );
+						  }
+						  
+						  $transformedProfiles = $profiles->map(function ($profile) {
+								 return [
+									  'id' => $profile->id,
+									  'title_job' => $profile->title_job,
+									  'job_position' => $profile->job_position,
+									  'is_default' => $profile->is_default,
+									  'profile_image' => $profile->profile_image,
+									  'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
+									  'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
+								 ];
+						  });
+						  
+						  return responseJson(
+								200, 'Profiles retrieved successfully', [
+									 'profiles' => $transformedProfiles,
+									 'profile_count' => $profiles->count()
+								]
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Get all profiles error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
 			 /**
 			  * Retrieve a specific profile by ID.
 			  *

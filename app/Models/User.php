@@ -90,12 +90,7 @@
 			 
 			 public function defaultProfile(): HasOne
 			 {
-					return $this->hasOne(Profile::class)->where('is_default', true);
-			 }
-
-			 public function setting(): HasOne
-			 {
-					return $this->hasOne('App\Models\Setting');
+					return $this->hasOne(Profile::class)->where('is_default', 1);
 			 }
 			 
 			 // Generate PIN for email verification
