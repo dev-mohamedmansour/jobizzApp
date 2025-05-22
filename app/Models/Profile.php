@@ -6,6 +6,7 @@
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
 	  use Illuminate\Database\Eloquent\Relations\BelongsTo;
+	  use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 	  use Illuminate\Database\Eloquent\Relations\HasMany;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
@@ -82,13 +83,13 @@
 					return $this->hasMany(Application::class);
 			 }
 			 
-			 public function favorites(): HasMany
+			 public function favorites(): BelongsToMany
 			 {
-					return $this->hasMany(Favorite::class);
+					return $this->belongsToMany(JobListing::class)->withTimestamps();
 			 }
 			 
 			 public function favoriteJobs()
 			 {
-					return $this->belongsToMany(JobListing::class, 'favorites', 'profile_id', 'job_id')->with('company');
+					return $this->belongsToMany(JobListing::class, 'job_listing_profile', 'profile_id', 'job_listing_id')->with('company');
 			 }
 	  }

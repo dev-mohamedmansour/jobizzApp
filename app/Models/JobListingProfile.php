@@ -5,12 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Favorite extends Model
+class JobListingProfile extends Model
 {
-	  protected $table = 'job_listing_profile';
-	  protected $fillable = ['id','profile_id', 'job_listing_id'];
-	  public $timestamps = true;
-	  
+	  protected $fillable = ['profile_id', 'job_listing_id'];
 	  /**
 		* Get the profile that marked this favorite.
 		*/

@@ -35,17 +35,12 @@
 								[AdminAuthController::class, 'requestPasswordReset']
 						  );
 						  Route::post(
-								'/password/verify-pin',
-								[AdminAuthController::class,
-								 'checkResetPasswordPinCode']
+								'/password/new-password',
+								[AdminAuthController::class, 'newPassword']
 						  );
 					});
 					// Authenticated routes
 					Route::middleware('admin')->group(function () {
-						  Route::post(
-								'/password/new-password',
-								[AdminAuthController::class, 'newPassword']
-						  )->middleware('check.reset.token');
 						  Route::prefix('users')->group(function () {
 								 Route::get(
 									  '/',
@@ -157,7 +152,6 @@
 								 );
 						  });
 					});
-					
 			 });
 			 Route::prefix('auth')->group(function () {
 					Route::withoutMiddleware('api')->group(function () {
@@ -347,7 +341,7 @@
 									  );
 								}
 						  );
-						  Route::prefix('/profile/{profileId}/favorite')->group(
+						  Route::prefix('/profile/{profileId}/favorites')->group(
 								function () {
 									  Route::get(
 											'/',
@@ -355,7 +349,7 @@
 											 'index']
 									  );
 									  Route::post(
-											'/{jobId}',
+											'control/{jobId?}',
 											[FavoriteController::class, 'store']
 									  );
 								}
