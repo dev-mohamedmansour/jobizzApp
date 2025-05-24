@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Http\Resources\JobListingResource;
 	  use App\Models\JobListing;
 	  use App\Models\Profile;
 	  use Carbon\Carbon;
@@ -11,195 +12,115 @@
 	  use Illuminate\Http\Request;
 	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
-	  use Illuminate\Validation\ValidationException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  
 	  class FavoriteController extends Controller
 	  {
 			 /**
-			  * Store a job as a favorite for the authenticated user.
-			  *
-			  * @param Request  $request
-			  * @param int      $profileId
-			  * @param int|null $jobId
-			  *
-			  * @return JsonResponse
+			  * Store or remove a job as a favorite for the authenticated user's profile.
 			  */
-			 public function store(Request $request, int $profileId,
-				  int $jobId = null
-			 ): JsonResponse {
+			 public function store(Request $request, int $profileId, int $jobId = null): JsonResponse
+			 {
 					try {
-						  // Get the authenticated user
 						  $user = JWTAuth::user();
 						  if (!$user) {
-								 return responseJson(
-									  401, 'Unauthorized', 'Unauthorized'
-								 );
+								 return responseJson(401, 'Unauthorized', 'Unauthorized');
 						  }
 						  
-						  // Check if the profile belongs to the user
-						  $profile = Profile::findOrFail($profileId);
-						  if ($profile->user_id !== $user->id) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'This profile does not belong to the authenticated user'
-								 );
-						  }
+						  $profile = Profile::where('user_id', $user->id)->findOrFail($profileId);
+						  
+						  // Clear all favorites if no jobId is provided
 						  if ($jobId === null) {
 								 $profile->favorites()->detach();
-								 return responseJson(
-									  200, 'Jobs removed from favorites',
-									  'All jobs removed from favorites successfully'
-								 );
+								 $this->invalidateCaches($user->id, $profileId, $profile->title_job);
+								 return responseJson(200, 'All jobs removed from favorites', 'Success');
 						  }
-						  // Check if the job exists
+						  
 						  $job = JobListing::findOrFail($jobId);
 						  
-						  if (!$job) {
-								 return responseJson(404, 'Not Found', 'Job not found');
-						  }
-						  
-						  // Toggle favorite
 						  $response = $profile->favorites()->toggle($jobId);
-						  Cache::forget("profile_favorites_{$profileId}");
-						  Cache::forget('jobs_trending_' . $user->id);
-						  Cache::forget('jobs_popular_' . $user->id);
-						  Cache::forget('jobs_recommended_' . $user->id . '_' . md5($profile->title_job));
-						  $isAdded = !empty($response['attached']);
-						  $message = $isAdded ? 'Job added to favorites'
-								: 'Job removed from favorites';
-						  $status = $isAdded ? 201 : 200;
-						  $data = $isAdded ? $profile->favorites()->find(
-								$jobId
-						  )->pivot : $message;
-						  if ($data == $message) {
-								 return responseJson($status, $message, $data);
-						  }
-						  // Clean up response to remove model metadata
-						  $data = $data->toArray();
+						  $this->invalidateCaches($user->id, $profileId, $profile->title_job);
 						  
-						  $castData = [
-								'profile_id' => $data['profile_id'],
-								'job_id'     => $data['job_listing_id'],
-								'created_at' => Carbon::parse($data['created_at'])
-									 ->format('Y-m-d'),
-								'updated_at' => Carbon::parse($data['updated_at'])
-									 ->format('Y-m-d'),
-						  ];
-						  return responseJson(
-								$status, $message, $castData
-						  );
-//						  $responses = $profile->favorites()->toggle($jobId);
-//
-//						  // Invalidate cache for this profile's favorites
-//						  Cache::forget("profile_favorites_$profileId");
-//						  if ($responses['detached'] == null) {
-//								 $favorite = JobListingProfile::where(
-//									  'profile_id', $profileId
-//								 )->where('job_listing_id', $jobId)->first();
-//								 return responseJson(
-//									  201, 'Job added to favorites', $favorite
-//								 );
-//						  }
-//						  return responseJson(
-//								200, 'Job removed from favorites',
-//								'Job removed from favorites'
-//						  );
-					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation error', $e->errors());
+						  $isAdded = !empty($response['attached']);
+						  $message = $isAdded ? 'Job added to favorites' : 'Job removed from favorites';
+						  $status = $isAdded ? 201 : 200;
+						  
+						  $data = $isAdded ? [
+								'profile_id' => $profileId,
+								'job_id' => $jobId,
+								'created_at' => Carbon::now()->format('Y-m-d'),
+								'updated_at' => Carbon::now()->format('Y-m-d'),
+						  ] : $message;
+						  
+						  return responseJson($status, $message, $data);
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile or job not found');
 					} catch (Exception $e) {
 						  Log::error('Error storing favorite: ' . $e->getMessage());
-						  return responseJson(
-								500,
-								'Server error',
-								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
-						  );
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
 			 
 			 /**
-			  * List all favorite jobs for the authenticated user’s profile.
-			  *
-			  * @param Request $request
-			  * @param int     $profileId
-			  *
-			  * @return JsonResponse
+			  * List all favorite jobs for the authenticated user's profile.
 			  */
 			 public function index(Request $request, int $profileId): JsonResponse
 			 {
 					try {
-						  // Get the authenticated user
 						  $user = JWTAuth::user();
 						  if (!$user) {
-								 return responseJson(
-									  401, 'Unauthorized', 'Unauthorized'
-								 );
+								 return responseJson(401, 'Unauthorized', 'Unauthorized');
 						  }
 						  
-						  // Check if the profile belongs to the user
-						  $profile = Profile::findOrFail($profileId);
-						  if ($profile->user_id !== $user->id) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'This profile does not belong to the authenticated user'
-								 );
-						  }
-						  if ($profile->favoriteJobs()->count() === 0) {
-								 return responseJson(
-									  404, 'Not Found',
-									  'No favorite jobs found for the profile'
-								 );
-						  }
-						  // Cache the favorite jobs for 10 minutes
-						  $cacheKey = "profile_favorites_$profileId";
-						  $favorites = Cache::remember(
-								$cacheKey, now()->addMinutes
-						  (
-								10
-						  ), function () use ($profile) {
-								 return $profile->favoriteJobs()
-									  ->select([
-											'job_listings.id',
-											'job_listings.company_id',
-											'job_listings.title',
-											'job_listings.job_type',
-											'job_listings.salary',
-											'job_listings.description',
-											'job_listings.requirement',
-											'job_listings.job_status',
-											'job_listings.location',
-											'job_listings.position',
-											'job_listings.benefits',
-											'job_listings.category_name',
-									  ])
-									  ->with(['company' => function ($query) {
-											 $query->select(['id', 'name', 'logo']);
-									  }])
-									  ->get();
-						  }
-						  );
+						  $profile = Profile::where('user_id', $user->id)->findOrFail($profileId);
 						  
-						  // Explicitly convert to array to ensure clean serialization
-						  $responseData = $favorites;
+						  $cacheKey = "profile_favorites_{$profileId}";
+						  $favorites = Cache::store('redis')->remember($cacheKey, now()->addMinutes(10), function () use ($profile) {
+								 return JobListingResource::collection(
+									  $profile->favorites()
+											->select([
+												 'job_listings.id',
+												 'job_listings.company_id',
+												 'job_listings.title',
+												 'job_listings.job_type',
+												 'job_listings.salary',
+												 'job_listings.description',
+												 'job_listings.requirement',
+												 'job_listings.job_status',
+												 'job_listings.location',
+												 'job_listings.position',
+												 'job_listings.benefits',
+												 'job_listings.category_name',
+											])
+											->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+											->get()
+								 );
+						  });
 						  
-						  return responseJson(
-								200, 'Favorites jobs retrieved',
-								['favorites'       => $responseData,
-								 'countFavourites' => count($favorites)]
-						  );
-					} catch (ValidationException $e) {
-						  return responseJson(422, 'Validation error', $e->errors());
+						  if ($favorites->isEmpty()) {
+								 return responseJson(404, 'Not found', 'No favorite jobs found for the profile');
+						  }
+						  
+						  return responseJson(200, 'Favorite jobs retrieved', [
+								'favorites' => $favorites,
+								'countFavourites' => $favorites->count(),
+						  ]);
+					} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (Exception $e) {
-						  Log::error(
-								'Error retrieving favorite jobs: ' . $e->getMessage()
-						  );
-						  return responseJson(
-								500,
-								'Server error',
-								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
-						  );
+						  Log::error('Error retrieving favorite jobs: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
+			 }
+			 
+			 /**
+			  * Invalidate relevant caches.
+			  */
+			 private function invalidateCaches(int $userId, int $profileId, string $profileJobTitle): void
+			 {
+					Cache::store('redis')->forget("profile_favorites_{$profileId}");
+					Cache::store('redis')->forget("jobs_trending_{$userId}");
+					Cache::store('redis')->forget("jobs_popular_{$userId}");
+					Cache::store('redis')->forget("jobs_recommended_{$userId}_" . md5($profileJobTitle));
 			 }
 	  }

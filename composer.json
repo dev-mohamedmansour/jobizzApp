@@ -14,6 +14,7 @@
         "laravel/socialite": "^5.19",
         "laravel/tinker": "^2.9",
         "php-open-source-saver/jwt-auth": "^2.8",
+        "predis/predis": "^3.0",
         "spatie/laravel-permission": "^6.17"
     },
     "require-dev": {

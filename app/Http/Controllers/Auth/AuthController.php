@@ -3,12 +3,13 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Http\Resources\UserResource;
 	  use App\Models\JobListing;
 	  use App\Models\PasswordResetPin;
-	  use App\Models\Profile;
 	  use App\Models\User;
 	  use App\Services\PinService;
 	  use Google\Client as GoogleClient;
+	  use Illuminate\Contracts\Auth\MustVerifyEmail;
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
@@ -35,10 +36,6 @@
 			 
 			 /**
 			  * Register a new user.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function register(Request $request): JsonResponse
 			 {
@@ -46,7 +43,7 @@
 						  $validated = $this->validateRegistration($request);
 						  
 						  $user = DB::transaction(function () use ($validated) {
-								 return User::create([
+								 $user = User::create([
 									  'name'              => $validated['fullName'],
 									  'email'             => $validated['email'],
 									  'password'          => Hash::make(
@@ -55,22 +52,23 @@
 									  'confirmed_email'   => true,
 									  'email_verified_at' => now(),
 								 ]);
+								 
+								 $user->profiles()->create([
+									  'title_job'     => 'No Title',
+									  'job_position'  => 'No position',
+									  'is_default'    => 1,
+									  'profile_image' => 'https://jobizaa.com/still_images/userDefault.jpg',
+								 ]);
+								 
+								 return $user;
 						  });
-						  Cache::forget('user_' . $user->id);
-						  $user->profiles()->create(
-								[
-									 'title_job'=>'No Title',
-									 'job_position'=>'No position',
-									 'is_default'=>1,
-									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
-								]
-						  );
 						  
-						  return responseJson(201, 'Registration successful', [
-								'id'       => $user->id,
-								'fullName' => $user->name,
-								'email'    => $user->email,
-						  ]);
+						  Cache::store('redis')->forget("user_{$user->id}");
+						  
+						  return responseJson(
+								201, 'Registration successful',
+								new UserResource($user->load('defaultProfile'))
+						  );
 					} catch (ValidationException $e) {
 						  return responseJson(
 								422, 'Validation error', $e->validator->errors()->all()
@@ -80,32 +78,23 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Validate registration data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
 			  */
 			 private function validateRegistration(Request $request): array
 			 {
 					return Validator::make($request->all(), [
 						 'fullName' => ['required', 'string', 'max:255',
 											 'regex:/^[a-zA-Z\s]+$/'],
-						 'email'    => [
-							  'required',
-							  'string',
-							  'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-							  'unique:users,email',
-							  'unique:admins,email',
-							  'ascii',
-						 ],
+						 'email'    => ['required', 'string',
+											 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+											 'unique:users,email', 'unique:admins,email',
+											 'ascii'],
 						 'password' => ['required', 'string', 'min:8', 'confirmed',
 											 'regex:/^[a-zA-Z0-9@#$%^&*!]+$/'],
 					], [
@@ -124,10 +113,6 @@
 			 
 			 /**
 			  * Resend verification email with PIN.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function resendEmail(Request $request): JsonResponse
 			 {
@@ -168,48 +153,49 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
-			  * Validate email for resend and password reset.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
+			  * Consolidated email validation.
 			  */
-			 private function validateEmail(Request $request): array
-			 {
-					return Validator::make($request->all(), [
+			 private function validateEmail(Request $request,
+				  bool $checkExists = true
+			 ): array {
+					$rules = [
 						 'email' => [
 							  'required',
 							  'string',
 							  'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-							  'exists:users,email',
 							  'ascii',
 						 ],
-					], [
+					];
+					
+					if ($checkExists) {
+						  $rules['email'][] = 'exists:users,email';
+					} else {
+						  $rules['email'][] = 'unique:users,email';
+						  $rules['email'][] = 'unique:admins,email';
+					}
+					
+					return Validator::make($request->all(), $rules, [
 						 'email.required' => 'The email field is required.',
 						 'email.regex'    => 'Invalid email format.',
 						 'email.ascii'    => 'Email must contain only ASCII characters.',
 						 'email.exists'   => 'Email not found.',
+						 'email.unique'   => 'This email is already registered.',
 					])->validate();
 			 }
 			 
 			 /**
 			  * Verify email with PIN and log in the user.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function verifyEmail(Request $request): JsonResponse
 			 {
 					try {
-						  $validated = $this->validateEmailVerification($request);
+						  $validated = $this->validatePin($request);
 						  
 						  $user = User::where('email', $validated['email'])
 								->firstOrFail();
@@ -221,20 +207,18 @@
 								 if (!$user->hasVerifiedEmail()) {
 										$user->markEmailAsVerified();
 								 }
-								 $profile = $user->defaultProfile()->first();
 								 $token = JWTAuth::fromUser($user);
 								 
-								 Cache::forget('user_' . $user->id);
+								 Cache::store('redis')->forget("user_{$user->id}");
 								 
 								 return responseJson(
 									  200,
 									  'Email verified successfully and login successful',
 									  [
-											'token'    => $token,
-											'id'       => $user->id,
-											'fullName' => $user->name,
-											'email'    => $user->email,
-											'profile'   => $profile,
+											'token' => $token,
+											'user'  => new UserResource(
+												 $user->load('defaultProfile')
+											),
 									  ]
 								 );
 						  }
@@ -253,20 +237,15 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
-			  * Validate email verification data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
+			  * Validate email verification and PIN.
 			  */
-			 private function validateEmailVerification(Request $request): array
+			 private function validatePin(Request $request): array
 			 {
 					return Validator::make($request->all(), [
 						 'email'   => [
@@ -292,10 +271,6 @@
 			 
 			 /**
 			  * Log in a user with email and password.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function login(Request $request): JsonResponse
 			 {
@@ -310,8 +285,7 @@
 						  
 						  $user = auth()->user();
 						  
-						  if ($user instanceof
-								\Illuminate\Contracts\Auth\MustVerifyEmail
+						  if ($user instanceof MustVerifyEmail
 								&& !$user->hasVerifiedEmail()
 						  ) {
 								 return responseJson(
@@ -319,15 +293,12 @@
 									  'Please verify your email address'
 								 );
 						  }
-						  $profile=$user->defaultProfile()->first();
 						  
 						  return responseJson(200, 'Login successful', [
-								'token'          => $token,
-								'id'             => $user->id,
-								'fullName'       => $user->name,
-								'email'          => $user->email,
-								'profile'   => $profile,
-
+								'token' => $token,
+								'user'  => new UserResource(
+									 $user->load('defaultProfile')
+								),
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(
@@ -338,18 +309,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Validate login data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
 			  */
 			 private function validateLogin(Request $request): array
 			 {
@@ -376,10 +342,6 @@
 			 
 			 /**
 			  * Handle social login with Google.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function socialLogin(Request $request): JsonResponse
 			 {
@@ -402,7 +364,7 @@
 						  }
 						  
 						  $user = DB::transaction(function () use ($payload) {
-								 return User::firstOrCreate(
+								 $user = User::firstOrCreate(
 									  ['email' => $payload['email']],
 									  [
 											'name'              => $payload['name'] ??
@@ -416,29 +378,27 @@
 											'email_verified_at' => now(),
 									  ]
 								 );
+								 
+								 if (!$user->profiles()->exists()) {
+										$user->profiles()->create([
+											 'title_job'     => 'No Title',
+											 'job_position'  => 'No position',
+											 'is_default'    => 1,
+											 'profile_image' => 'https://jobizaa.com/still_images/userDefault.jpg',
+										]);
+								 }
+								 
+								 return $user;
 						  });
 						  
 						  $token = JWTAuth::fromUser($user);
-						  
-						  Cache::forget('user_' . $user->id);
-						  $checkUserProfile = Profile::where('user_id','=',$user->id)->get();
-						  if(count($checkUserProfile) == 0){
-						  $user->profiles()->create(
-								[
-									 'title_job'=>'No Title',
-									 'job_position'=>'No position',
-									 'is_default'=>1,
-									 'profile_image'=>'https://jobizaa.com/still_images/userDefault.jpg',
-								]
-						  );
-						  }
+						  Cache::store('redis')->forget("user_{$user->id}");
 						  
 						  return responseJson(200, 'Login successful', [
-								'token'        => $token,
-								'id'           => $user->id,
-								'fullName'     => $user->name,
-								'email'        => $user->email,
-								'profile'   => $user->defaultProfile()->first(),
+								'token' => $token,
+								'user'  => new UserResource(
+									 $user->load('defaultProfile')
+								),
 						  ]);
 					} catch (ValidationException $e) {
 						  return responseJson(
@@ -449,18 +409,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Validate social login data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
 			  */
 			 private function validateSocialLogin(Request $request): array
 			 {
@@ -473,10 +428,6 @@
 			 
 			 /**
 			  * Request a password reset PIN.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function requestPasswordReset(Request $request): JsonResponse
 			 {
@@ -515,17 +466,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Verify password reset PIN.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function checkResetPasswordPinCode(Request $request
 			 ): JsonResponse {
@@ -569,49 +516,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
-			  * Validate PIN for password reset.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
-			  */
-			 private function validatePin(Request $request): array
-			 {
-					return Validator::make($request->all(), [
-						 'email'   => [
-							  'required',
-							  'string',
-							  'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-							  'exists:users,email',
-							  'ascii',
-						 ],
-						 'pinCode' => ['required', 'digits:6', 'numeric',
-											'not_in:000000,111111,123456,654321'],
-					], [
-						 'email.required'   => 'The email field is required.',
-						 'email.regex'      => 'Invalid email format.',
-						 'email.ascii'      => 'Email must contain only ASCII characters.',
-						 'email.exists'     => 'Email not found.',
-						 'pinCode.required' => 'PIN code is required.',
-						 'pinCode.digits'   => 'PIN must be exactly 6 digits.',
-						 'pinCode.numeric'  => 'PIN must contain only numbers.',
-						 'pinCode.not_in'   => 'This PIN is too common and insecure.',
-					])->validate();
-			 }
-			 
-			 /**
 			  * Set a new password after PIN verification.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function newPassword(Request $request): JsonResponse
 			 {
@@ -633,7 +544,7 @@
 						  auth()->logout();
 						  session()->flush();
 						  
-						  Cache::forget('user_' . $user->id);
+						  Cache::store('redis')->forget("user_{$user->id}");
 						  
 						  return responseJson(200, 'Password updated successfully');
 					} catch (ValidationException $e) {
@@ -649,18 +560,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Validate new password data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
 			  */
 			 private function validateNewPassword(Request $request): array
 			 {
@@ -677,8 +583,6 @@
 			 
 			 /**
 			  * Log out the authenticated user.
-			  *
-			  * @return JsonResponse
 			  */
 			 public function logout(): JsonResponse
 			 {
@@ -694,7 +598,7 @@
 						  auth()->logout();
 						  session()->flush();
 						  
-						  Cache::forget('user_' . $user->id);
+						  Cache::store('redis')->forget("user_{$user->id}");
 						  
 						  return responseJson(200, 'Successfully logged out');
 					} catch (TokenInvalidException $e) {
@@ -710,17 +614,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Change the authenticated user's password.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function changePassword(Request $request): JsonResponse
 			 {
@@ -746,7 +646,7 @@
 						  $user->password = Hash::make($validated['newPassword']);
 						  $user->save();
 						  
-						  Cache::forget('user_' . $user->id);
+						  Cache::store('redis')->forget("user_{$user->id}");
 						  
 						  return responseJson(200, 'Password changed successfully');
 					} catch (ValidationException $e) {
@@ -758,18 +658,13 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
 			 
 			 /**
 			  * Validate change password data.
-			  *
-			  * @param Request $request
-			  *
-			  * @return array
-			  * @throws ValidationException
 			  */
 			 private function validateChangePassword(Request $request): array
 			 {
@@ -790,10 +685,6 @@
 			 
 			 /**
 			  * Retrieve job recommendations for the authenticated user.
-			  *
-			  * @param Request $request
-			  *
-			  * @return JsonResponse
 			  */
 			 public function home(Request $request): JsonResponse
 			 {
@@ -807,12 +698,15 @@
 						  
 						  $profile = $user->defaultProfile()->first();
 						  if (!$profile) {
-								 return responseJson(404, 'Not found', 'Profile not found');
+								 return responseJson(
+									  404, 'Not found', 'Profile not found'
+								 );
 						  }
 						  
 						  $profileJobTitle = $profile->title_job;
-						  $jobsNum = Cache::remember(
-								'job_count', now()->addMinutes(3), fn() => JobListing::count()
+						  $jobsNum = Cache::store('redis')->remember(
+								'job_count', now()->addMinutes(5),
+								fn() => JobListing::count()
 						  );
 						  
 						  if ($jobsNum === 0) {
@@ -821,102 +715,27 @@
 								 );
 						  }
 						  
-						  $number = max(1, (int)($jobsNum / 3));
+						  $number = max(
+								10, min((int)($jobsNum / 10), 50)
+						  ); // Limit to 10-50 items
 						  
-						  // Cache trending jobs for 15 minutes
-						  $jobsTrending = Cache::remember(
-								'jobs_trending_' . $user->id, now()->addMinutes(5),
-								fn() => JobListing::inRandomOrder()
-									 ->select(
-										  ['id', 'title', 'company_id', 'location',
-											'job_type', 'salary', 'position',
-											'category_name', 'description', 'requirement',
-											'benefits']
-									 )
-									 ->with(
-										  ['company' => fn($query) => $query->select(
-												['id', 'name', 'logo']
-										  )]
-									 )
-									 ->take($number)
-									 ->get()
-									 ->map(function ($job) use ($profile){
-											return [
-												 'id'            => $job->id,
-												 'title'         => $job->title,
-												 'company_id'    => $job->company_id,
-												 'location'      => $job->location,
-												 'job_type'      => $job->job_type,
-												 'salary'        => $job->salary,
-												 'position'      => $job->position,
-												 'category_name' => $job->category_name,
-												 'description'   => $job->description,
-												 'requirement'   => $job->requirement,
-												 'benefits'      => $job->benefits,
-												 'companyName'   => $job->company->name,
-												 'companyLogo'   => $job->company->logo,
-												 'isFavorite'   => $job->isFavoritedByProfile($profile->id),
-											];
-									 })
-						  );
-						  // Cache popular jobs for 15 minutes
-						  $jobsPopular = Cache::remember(
-								'jobs_popular_' . $user->id, now()->addMinutes(5),
-								fn() => JobListing::inRandomOrder()
-									 ->select(
-										  ['id', 'title', 'company_id', 'location',
-											'job_type', 'salary', 'position',
-											'category_name', 'description', 'requirement',
-											'benefits']
-									 )
-									 ->with(
-										  ['company' => fn($query) => $query->select(
-												['id', 'name', 'logo']
-										  )]
-									 )
-									 ->take($number)
-									 ->get()
-									 ->map(function ($job) use ($profile){
-											return [
-												 'id'            => $job->id,
-												 'title'         => $job->title,
-												 'company_id'    => $job->company_id,
-												 'location'      => $job->location,
-												 'job_type'      => $job->job_type,
-												 'salary'        => $job->salary,
-												 'position'      => $job->position,
-												 'category_name' => $job->category_name,
-												 'description'   => $job->description,
-												 'requirement'   => $job->requirement,
-												 'benefits'      => $job->benefits,
-												 'companyName'   => $job->company->name,
-												 'companyLogo'   => $job->company->logo,
-												 'isFavorite'   => $job->isFavoritedByProfile($profile->id)
-											];
-									 })
+						  $jobQuery = JobListing::select([
+								'id', 'title', 'company_id', 'location', 'job_type',
+								'salary',
+								'position', 'category_name', 'description',
+								'requirement', 'benefits'
+						  ])->with(
+								['company' => fn($query) => $query->select(
+									 ['id', 'name', 'logo']
+								)]
 						  );
 						  
-						  // Cache recommended jobs for 15 minutes, based on profile job title
-						  $jobsRecommended = Cache::remember(
-								'jobs_recommended_' . $user->id . '_' . md5(
-									 $profileJobTitle
-								), now()->addMinutes(5), fn() => JobListing::where(
-								'title', 'like', '%' . $profileJobTitle . '%'
-						  )
-								->inRandomOrder()
-								->select(
-									 ['id', 'title', 'company_id', 'location',
-									  'job_type', 'salary', 'position', 'category_name',
-									  'description', 'requirement', 'benefits']
-								)
-								->with(
-									 ['company' => fn($query) => $query->select(
-										  ['id', 'name', 'logo']
-									 )]
-								)
-								->take($number)
-								->get()
-								->map(function ($job) use ($profile){
+						  $jobsTrending = Cache::store('redis')->remember(
+								"jobs_trending_{$user->id}",
+								now()->addMinutes(5),
+								fn() => (clone $jobQuery)->inRandomOrder()->take(
+									 $number
+								)->get()->map(function ($job) use ($profile) {
 									  return [
 											'id'            => $job->id,
 											'title'         => $job->title,
@@ -931,9 +750,69 @@
 											'benefits'      => $job->benefits,
 											'companyName'   => $job->company->name,
 											'companyLogo'   => $job->company->logo,
-											'isFavorite'   => $job->isFavoritedByProfile($profile->id),
+											'isFavorite'    => $job->isFavoritedByProfile(
+												 $profile->id
+											),
 									  ];
 								})
+						  );
+						  
+						  $jobsPopular = Cache::store('redis')->remember(
+								"jobs_popular_{$user->id}",
+								now()->addMinutes(5),
+								fn() => (clone $jobQuery)->inRandomOrder()->take(
+									 $number
+								)->get()->map(function ($job) use ($profile) {
+									  return [
+											'id'            => $job->id,
+											'title'         => $job->title,
+											'company_id'    => $job->company_id,
+											'location'      => $job->location,
+											'job_type'      => $job->job_type,
+											'salary'        => $job->salary,
+											'position'      => $job->position,
+											'category_name' => $job->category_name,
+											'description'   => $job->description,
+											'requirement'   => $job->requirement,
+											'benefits'      => $job->benefits,
+											'companyName'   => $job->company->name,
+											'companyLogo'   => $job->company->logo,
+											'isFavorite'    => $job->isFavoritedByProfile(
+												 $profile->id
+											),
+									  ];
+								})
+						  );
+						  
+						  $jobsRecommended = Cache::store('redis')->remember(
+								"jobs_recommended_{$user->id}_" . md5($profileJobTitle),
+								now()->addMinutes(5),
+								fn() => (clone $jobQuery)->where(
+									 'title', 'like', '%' . $profileJobTitle . '%'
+								)
+									 ->inRandomOrder()
+									 ->take($number)
+									 ->get()
+									 ->map(function ($job) use ($profile) {
+											return [
+												 'id'            => $job->id,
+												 'title'         => $job->title,
+												 'company_id'    => $job->company_id,
+												 'location'      => $job->location,
+												 'job_type'      => $job->job_type,
+												 'salary'        => $job->salary,
+												 'position'      => $job->position,
+												 'category_name' => $job->category_name,
+												 'description'   => $job->description,
+												 'requirement'   => $job->requirement,
+												 'benefits'      => $job->benefits,
+												 'companyName'   => $job->company->name,
+												 'companyLogo'   => $job->company->logo,
+												 'isFavorite'    => $job->isFavoritedByProfile(
+													  $profile->id
+												 ),
+											];
+									 })
 						  );
 						  
 						  return responseJson(200, 'Jobs retrieved successfully', [
@@ -946,9 +825,8 @@
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong. Please try again later'
+									 : 'Something went wrong'
 						  );
 					}
 			 }
-			 
 	  }
