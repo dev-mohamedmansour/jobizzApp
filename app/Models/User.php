@@ -90,7 +90,7 @@
 			 
 			 public function defaultProfile(): HasOne
 			 {
-					return $this->hasOne(Profile::class)->where('is_default', 1);
+					return $this->hasOne(Profile::class)->where('is_default', '=',1);
 			 }
 			 
 			 // Generate PIN for email verification

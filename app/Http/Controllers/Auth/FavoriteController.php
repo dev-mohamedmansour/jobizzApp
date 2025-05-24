@@ -62,7 +62,9 @@
 						  // Toggle favorite
 						  $response = $profile->favorites()->toggle($jobId);
 						  Cache::forget("profile_favorites_{$profileId}");
-						  
+						  Cache::forget('jobs_trending_' . $user->id);
+						  Cache::forget('jobs_popular_' . $user->id);
+						  Cache::forget('jobs_recommended_' . $user->id . '_' . md5($profile->title_job));
 						  $isAdded = !empty($response['attached']);
 						  $message = $isAdded ? 'Job added to favorites'
 								: 'Job removed from favorites';

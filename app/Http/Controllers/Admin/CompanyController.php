@@ -5,6 +5,7 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\Company;
+	  use App\Models\Profile;
 	  use App\Models\User;
 	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;
@@ -30,7 +31,8 @@
 						  }
 						  
 						  if (auth('api')->check()) {
-								 return $this->handleApiUserCompanies();
+								 $user = auth('api')->user();
+								 return $this->handleApiUserCompanies($user);
 						  }
 						  
 						  return responseJson(
@@ -123,10 +125,11 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 private function handleApiUserCompanies(): JsonResponse
+			 private function handleApiUserCompanies($user): JsonResponse
 			 {
+					$profile = $user->defaultProfile()->first();
 					$totalCompanies = Cache::remember(
-						 'total_companies_count', now()->addHours(1),
+						 'total_companies_count', now()->addMinutes(5),
 						 fn() => Company::count()
 					);
 					
@@ -139,7 +142,7 @@
 					$companiesPerCategory = (int)($totalCompanies / 2);
 					
 					$trendingCompanies = Cache::remember(
-						 'trending_companies', now()->addHours(1),
+						 'trending_companies', now()->addMinutes(5),
 						 fn() => Company::with(['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
 						 )->select('id', 'company_id', 'title', 'job_status','salary')])
@@ -147,7 +150,7 @@
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
 							  ->get()
-							  ->map(function ($company) {
+							  ->map(function ($company) use ($profile) {
 									 return [
 										  'id' => $company->id,
 										  'name' => $company->name,
@@ -159,12 +162,13 @@
 										  'hired_people'=>$company->hired_people,
 										  'created_at' => $company->created_at->toDateString(),
 										  'jobs_count' => $company->jobs_count,
-										  'jobs' => $company->jobs->map(function ($job) {
+										  'jobs' => $company->jobs->map(function ($job) use ($profile) {
 												 return [
 													  'id' => $job->id,
 													  'title' => $job->title,
 													  'job_status' => $job->job_status,
 													  'job_salary' => $job->salary,
+													  'isFavorite'   => $job->isFavoritedByProfile($profile->id)
 												 ];
 										  })
 									 ];
@@ -172,7 +176,7 @@
 					);
 					
 					$popularCompanies = Cache::remember(
-						 'popular_companies', now()->addHours(1),
+						 'popular_companies', now()->addMinutes(5),
 						 fn() => Company::with(['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
 						 )->select('id', 'company_id', 'title', 'job_status','salary')])
@@ -180,7 +184,7 @@
 							  ->inRandomOrder()
 							  ->take($companiesPerCategory)
 							  ->get()
-							  ->map(function ($company) {
+							  ->map(function ($company) use ($profile){
 									 return [
 										  'id' => $company->id,
 										  'name' => $company->name,
@@ -192,12 +196,13 @@
 										  'hired_people'=>$company->hired_people,
 										  'created_at' => $company->created_at->toDateString(),
 										  'jobs_count' => $company->jobs_count,
-										  'jobs' => $company->jobs->map(function ($job) {
+										  'jobs' => $company->jobs->map(function ($job) use($profile) {
 												 return [
 													  'id' => $job->id,
 													  'title' => $job->title,
 													  'job_status' => $job->job_status,
 													  'job_salary' => $job->salary,
+													  'isFavorite'   => $job->isFavoritedByProfile($profile->id)
 												 ];
 										  })
 									 ];

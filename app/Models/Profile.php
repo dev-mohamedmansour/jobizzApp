@@ -85,8 +85,11 @@
 			 
 			 public function favorites(): BelongsToMany
 			 {
-					return $this->belongsToMany(JobListing::class)->withTimestamps();
+					return $this->belongsToMany(JobListing::class, 'job_listing_profile', 'profile_id', 'job_listing_id')
+						 ->withTimestamps()
+						 ->withPivot('created_at', 'updated_at');
 			 }
+    
 			 
 			 public function favoriteJobs()
 			 {

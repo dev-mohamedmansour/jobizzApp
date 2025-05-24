@@ -3,7 +3,7 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
-	  use App\Models\JobListing as Job;
+	  use App\Models\JobListing;
 	  use App\Models\PasswordResetPin;
 	  use App\Models\Profile;
 	  use App\Models\User;
@@ -812,7 +812,7 @@
 						  
 						  $profileJobTitle = $profile->title_job;
 						  $jobsNum = Cache::remember(
-								'job_count', now()->addMinutes(3), fn() => Job::count()
+								'job_count', now()->addMinutes(3), fn() => JobListing::count()
 						  );
 						  
 						  if ($jobsNum === 0) {
@@ -825,8 +825,8 @@
 						  
 						  // Cache trending jobs for 15 minutes
 						  $jobsTrending = Cache::remember(
-								'jobs_trending_' . $user->id, now()->addMinutes(3),
-								fn() => Job::inRandomOrder()
+								'jobs_trending_' . $user->id, now()->addMinutes(5),
+								fn() => JobListing::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
@@ -840,7 +840,7 @@
 									 )
 									 ->take($number)
 									 ->get()
-									 ->map(function ($job) {
+									 ->map(function ($job) use ($profile){
 											return [
 												 'id'            => $job->id,
 												 'title'         => $job->title,
@@ -855,14 +855,14 @@
 												 'benefits'      => $job->benefits,
 												 'companyName'   => $job->company->name,
 												 'companyLogo'   => $job->company->logo,
+												 'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 											];
 									 })
 						  );
-						  
 						  // Cache popular jobs for 15 minutes
 						  $jobsPopular = Cache::remember(
-								'jobs_popular_' . $user->id, now()->addMinutes(3),
-								fn() => Job::inRandomOrder()
+								'jobs_popular_' . $user->id, now()->addMinutes(5),
+								fn() => JobListing::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
@@ -876,7 +876,7 @@
 									 )
 									 ->take($number)
 									 ->get()
-									 ->map(function ($job) {
+									 ->map(function ($job) use ($profile){
 											return [
 												 'id'            => $job->id,
 												 'title'         => $job->title,
@@ -891,6 +891,7 @@
 												 'benefits'      => $job->benefits,
 												 'companyName'   => $job->company->name,
 												 'companyLogo'   => $job->company->logo,
+												 'isFavorite'   => $job->isFavoritedByProfile($profile->id)
 											];
 									 })
 						  );
@@ -899,7 +900,7 @@
 						  $jobsRecommended = Cache::remember(
 								'jobs_recommended_' . $user->id . '_' . md5(
 									 $profileJobTitle
-								), now()->addMinutes(3), fn() => Job::where(
+								), now()->addMinutes(5), fn() => JobListing::where(
 								'title', 'like', '%' . $profileJobTitle . '%'
 						  )
 								->inRandomOrder()
@@ -915,7 +916,7 @@
 								)
 								->take($number)
 								->get()
-								->map(function ($job) {
+								->map(function ($job) use ($profile){
 									  return [
 											'id'            => $job->id,
 											'title'         => $job->title,
@@ -930,6 +931,7 @@
 											'benefits'      => $job->benefits,
 											'companyName'   => $job->company->name,
 											'companyLogo'   => $job->company->logo,
+											'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 									  ];
 								})
 						  );
@@ -948,4 +950,5 @@
 						  );
 					}
 			 }
+			 
 	  }

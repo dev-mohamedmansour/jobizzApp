@@ -52,4 +52,9 @@ class JobListing extends Model
 			 return $this->belongsToMany(Profile::class);
 	  }
 	  
+	  public function isFavoritedByProfile($profileId): bool
+	  {
+			 return $this->favoritesJob()->where('profile_id', $profileId)->exists();
+	  }
+	  
 }

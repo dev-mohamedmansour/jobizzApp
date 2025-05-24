@@ -170,10 +170,7 @@
 								 );
 						  }
 						  
-						  $profiles = Cache::remember(
-								'user_profiles_' . $user->id, now()->addMinutes(2),
-								fn() => $user->profiles()->get()
-						  );
+						  $profiles =$user->profiles()->get();
 						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
@@ -232,9 +229,7 @@
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  $profile = Cache::remember(
-								'profile_' . $profileId, now()->addMinutes(15),
-								fn() => Profile::with([
+						  $profile = Profile::with([
 									 'educations'  => fn($query) => $query->select(
 										  'id', 'profile_id', 'college', 'degree',
 										  'field_of_study', 'start_date', 'end_date',
@@ -252,8 +247,7 @@
 									 'applications' => fn($query) => $query->select(
 										  'id', 'profile_id', 'status'
 									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
-								])->findOrFail($profileId)
-						  );
+								])->findOrFail($profileId);
 						  
 						  // Update is_default for profiles
 						  DB::transaction(function () use ($user, $profile) {
@@ -261,11 +255,7 @@
 								 $profile->is_default = 1;
 								 $profile->save();
 						  });
-						  // Invalidate cache for all profiles of the user
-						  $profileIds = $user->profiles()->pluck('id');
-						  foreach ($profileIds as $id) {
-								 Cache::forget('profile_' . $id);
-						  }
+						  
 						  // Calculate application counts by status
 						  $appliedApplications = $profile->applications->where('status', 'submitted')->count();
 						  $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
@@ -419,7 +409,7 @@
 					$rules = [
 						 'title_job'     => ['required', 'string', 'max:255'],
 						 'job_position'  => ['required', 'string', 'max:255'],
-						 'is_default'    => ['sometimes', 'boolean'],
+						 'is_default'    => ['required', 'boolean'],
 						 'profile_image' => ['nullable', 'image',
 													'mimes:jpeg,png,jpg,gif', 'max:2048']
 					];
@@ -488,7 +478,31 @@
 			 {
 					return str_replace(Storage::disk('public')->url(''), '', $path);
 			 }
-			 
+			 private function validateUpdateProfile(Request $request, ?Profile $profile
+			 ): array {
+					$rules = [
+						 'title_job'     => ['sometimes', 'string', 'max:255'],
+						 'job_position'  => ['sometimes', 'string', 'max:255'],
+						 'is_default'    => ['required', 'string','max:1'],
+						 'profile_image' => ['nullable', 'image',
+													'mimes:jpeg,png,jpg,gif', 'max:2048']
+					];
+					
+//					if ($profile) {
+//						  $rules = array_map(
+//								fn($rule) => str_replace(
+//									 'required', 'sometimes', $rule
+//								), $rules
+//						  );
+//					}
+					
+					return Validator::make($request->all(), $rules, [
+						 'is_default.required'=>'The is_default mut be 1 or 0',
+						 'profile_image.image' => 'The profile image must be an image',
+						 'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif',
+						 'profile_image.max'   => 'The profile image cannot exceed 2MB in size'
+					])->validate();
+			 }
 			 /**
 			  * Update an existing profile.
 			  *
@@ -514,20 +528,48 @@
 								 );
 						  }
 						  
-						  $validated = $this->validateProfile($request, $profile);
+						  $validated = $this->validateUpdateProfile($request, $profile);
 						  
 						  $validated = $this->handleProfileImageUpload(
 								$request, $validated, $profile
 						  );
 						  
-						  if ($validated['is_default'] ?? false) {
-								 $user->profiles()->where('id', '!=', $profile->id)
-									  ->update(['is_default' => false]);
-						  }
-						  
+								 // Check the number of profiles and handle is_default logic
+								 $profileCount = $user->profiles()->count();
+								 if ($profileCount === 1
+									  && $profile->id === $profileId
+								 ) {
+										// Single profile: Force is_default = 1
+										$validated['is_default'] = 1;
+								 } elseif ($profileCount === 2) {
+										// Two profiles: Ensure only one has is_default = 1
+										$otherProfile = $user->profiles()->where(
+											 'id', '!=', $profileId
+										)->first();
+										if ($otherProfile
+											 && $otherProfile->is_default == 1
+											 && ($validated['is_default'] ?? false)
+										) {
+											  $otherProfile->update([
+													'is_default' => 0,
+											  ]);
+											  // If another profile is default and current is requested as default, set other to 0
+											  $validated['is_default'] = 1;
+										} elseif ($otherProfile
+											 && $validated['is_default'] == 0
+											 && $otherProfile->is_default == 0
+										) {
+											  // If current is set to 0 and other is 0,
+											  //force current to 1 to ensure one default
+											  $otherProfile->update([
+													'is_default' => 1,
+											  ]);
+											  $validated['is_default'] = 0;
+										}
+								 }
 						  $originalData = $profile->only(array_keys($validated));
 						  $changes = array_diff_assoc($validated, $originalData);
-						  
+
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
 									  'profile'   => $profile,
@@ -535,8 +577,17 @@
 								 ]);
 						  }
 						  
-						  $profile->update($validated);
+						  // Update profile and is_default in a transaction
+						  DB::transaction(function () use ($user, $profile, $validated) {
+								 // Update is_default for other profiles if necessary
+								 if ($validated['is_default'] ?? false) {
+										$user->profiles()->where('id', '!=', $profile->id)->update(['is_default' => 0]);
+								 }
+								 // Update the profile
+								 $profile->update($validated);
+						  });
 						  
+						  // Clear cache
 						  Cache::forget('user_profiles_' . $user->id);
 						  Cache::forget('profile_' . $profileId);
 						  
