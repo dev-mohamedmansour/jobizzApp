@@ -5,12 +5,11 @@
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\Company;
-	  use App\Models\Profile;
+	  use App\Models\JobListing;
 	  use App\Models\User;
 	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Validation\ValidationException;
@@ -64,29 +63,33 @@
 					}
 					
 					try {
-						  $companies = Cache::remember(
-								'admin_companies',
-								now()->addMinutes(15),
-								fn() => Company::withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
-									 ->get()
-									 ->map(function ($company) {
-											return [
-												 'id' => $company->id,
-												 'name' => $company->name,
-												 'logo' => $company->logo,
-												 'description' => $company->description,
-												 'location' => $company->location,
-												 'website' => $company->website,
-												 'size' => $company->size,
-												 'hired_people' => $company->hired_people,
-												 'created_at' => $company->created_at->toDateTimeString(),
-												 'updated_at' => $company->updated_at->toDateTimeString(),
-												 'jobs_count' => $company->jobs_count,
-											];
-									 })->values()->toArray()
-						  );
+						  $companies = Company::withCount(
+								['jobs' => fn($query) => $query->where(
+									 'job_status', '!=', 'cancelled'
+								)]
+						  )
+								->get()
+								->map(function ($company) {
+									  return [
+											'id'           => $company->id,
+											'name'         => $company->name,
+											'logo'         => $company->logo,
+											'description'  => $company->description,
+											'location'     => $company->location,
+											'website'      => $company->website,
+											'size'         => $company->size,
+											'hired_people' => $company->hired_people,
+											'created_at'   => $company->created_at->toDateTimeString(
+											),
+											'updated_at'   => $company->updated_at->toDateTimeString(
+											),
+											'jobs_count'   => $company->jobs_count,
+									  ];
+								})->values()->toArray();
 						  
-						  Log::debug('Admin companies data', ['companies' => $companies]);
+						  Log::debug(
+								'Admin companies data', ['companies' => $companies]
+						  );
 						  
 						  if (empty($companies)) {
 								 return responseJson(
@@ -101,13 +104,17 @@
 								$companies
 						  );
 					} catch (\Exception $e) {
-						  Log::error('Handle admin companies error: ' . $e->getMessage());
+						  Log::error(
+								'Handle admin companies error: ' . $e->getMessage()
+						  );
 						  return responseJson(
 								500, 'Server error',
-								config('app.debug') ? $e->getMessage() : 'Unable to retrieve companies'
+								config('app.debug') ? $e->getMessage()
+									 : 'Unable to retrieve companies'
 						  );
 					}
 			 }
+			 
 			 /**
 			  * Check if an admin is authorized to view all companies.
 			  *
@@ -128,10 +135,7 @@
 			 private function handleApiUserCompanies($user): JsonResponse
 			 {
 					$profile = $user->defaultProfile()->first();
-					$totalCompanies = Cache::remember(
-						 'total_companies_count', now()->addMinutes(5),
-						 fn() => Company::count()
-					);
+					$totalCompanies = Company::count();
 					
 					if ($totalCompanies === 0) {
 						  return responseJson(
@@ -141,77 +145,97 @@
 					
 					$companiesPerCategory = (int)($totalCompanies / 2);
 					
-					$trendingCompanies = Cache::remember(
-						 'trending_companies', now()->addMinutes(5),
-						 fn() => Company::with(['jobs' => fn($query) => $query->where(
+					$trendingCompanies = Company::with(
+						 ['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
-						 )->select('id', 'company_id', 'title', 'job_status','salary')])
-							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
-							  ->inRandomOrder()
-							  ->take($companiesPerCategory)
-							  ->get()
-							  ->map(function ($company) use ($profile) {
-									 return [
-										  'id' => $company->id,
-										  'name' => $company->name,
-										  'logo' => $company->logo,
-										  'description'=>$company->description,
-										  'location'=>$company->location,
-										  'website'=>$company->website,
-										  'size'=>$company->size,
-										  'hired_people'=>$company->hired_people,
-										  'created_at' => $company->created_at->toDateString(),
-										  'jobs_count' => $company->jobs_count,
-										  'jobs' => $company->jobs->map(function ($job) use ($profile) {
+						 )->select(
+							  'id', 'company_id', 'title', 'job_status', 'salary'
+						 )]
+					)
+						 ->withCount(
+							  ['jobs' => fn($query) => $query->where(
+									'job_status', '!=', 'cancelled'
+							  )]
+						 )
+						 ->inRandomOrder()
+						 ->take($companiesPerCategory)
+						 ->get()
+						 ->map(function ($company) use ($profile) {
+								return [
+									 'id'           => $company->id,
+									 'name'         => $company->name,
+									 'logo'         => $company->logo,
+									 'description'  => $company->description,
+									 'location'     => $company->location,
+									 'website'      => $company->website,
+									 'size'         => $company->size,
+									 'hired_people' => $company->hired_people,
+									 'created_at'   => $company->created_at->toDateString(
+									 ),
+									 'jobs_count'   => $company->jobs_count,
+									 'jobs'         => $company->jobs->map(
+										  function ($job) use ($profile) {
 												 return [
-													  'id' => $job->id,
-													  'title' => $job->title,
+													  'id'         => $job->id,
+													  'title'      => $job->title,
 													  'job_status' => $job->job_status,
 													  'job_salary' => $job->salary,
-													  'isFavorite'   => $job->isFavoritedByProfile($profile->id)
+													  'isFavorite' => $job->isFavoritedByProfile(
+															$profile->id
+													  )
 												 ];
-										  })
-									 ];
-							  })
-					);
+										  }
+									 )
+								];
+						 });
 					
-					$popularCompanies = Cache::remember(
-						 'popular_companies', now()->addMinutes(5),
-						 fn() => Company::with(['jobs' => fn($query) => $query->where(
+					$popularCompanies = Company::with(
+						 ['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
-						 )->select('id', 'company_id', 'title', 'job_status','salary')])
-							  ->withCount(['jobs' => fn($query) => $query->where('job_status', '!=', 'cancelled')])
-							  ->inRandomOrder()
-							  ->take($companiesPerCategory)
-							  ->get()
-							  ->map(function ($company) use ($profile){
-									 return [
-										  'id' => $company->id,
-										  'name' => $company->name,
-										  'logo' => $company->logo,
-										  'description'=>$company->description,
-										  'location'=>$company->location,
-										  'website'=>$company->website,
-										  'size'=>$company->size,
-										  'hired_people'=>$company->hired_people,
-										  'created_at' => $company->created_at->toDateString(),
-										  'jobs_count' => $company->jobs_count,
-										  'jobs' => $company->jobs->map(function ($job) use($profile) {
+						 )->select(
+							  'id', 'company_id', 'title', 'job_status', 'salary'
+						 )]
+					)
+						 ->withCount(
+							  ['jobs' => fn($query) => $query->where(
+									'job_status', '!=', 'cancelled'
+							  )]
+						 )
+						 ->inRandomOrder()
+						 ->take($companiesPerCategory)
+						 ->get()
+						 ->map(function ($company) use ($profile) {
+								return [
+									 'id'           => $company->id,
+									 'name'         => $company->name,
+									 'logo'         => $company->logo,
+									 'description'  => $company->description,
+									 'location'     => $company->location,
+									 'website'      => $company->website,
+									 'size'         => $company->size,
+									 'hired_people' => $company->hired_people,
+									 'created_at'   => $company->created_at->toDateString(
+									 ),
+									 'jobs_count'   => $company->jobs_count,
+									 'jobs'         => $company->jobs->map(
+										  function ($job) use ($profile) {
 												 return [
-													  'id' => $job->id,
-													  'title' => $job->title,
+													  'id'         => $job->id,
+													  'title'      => $job->title,
 													  'job_status' => $job->job_status,
 													  'job_salary' => $job->salary,
-													  'isFavorite'   => $job->isFavoritedByProfile($profile->id)
+													  'isFavorite' => $job->isFavoritedByProfile(
+															$profile->id
+													  )
 												 ];
-										  })
-									 ];
-							  })
-					);
+										  }
+									 )
+								];
+						 });
 					
 					return responseJson(200, 'Companies retrieved successfully', [
 						 'Trending' => $trendingCompanies,
-						 'Popular' => $popularCompanies,
+						 'Popular'  => $popularCompanies,
 					]);
 			 }
 			 
@@ -225,12 +249,7 @@
 			 public function show(int $companyId): JsonResponse
 			 {
 					try {
-						  $company = Company::with(
-								['jobs' => fn($query) => $query->where(
-									 'job_status', '!=', 'cancelled'
-								)]
-						  )->find($companyId);
-						  
+						  $company = Company::find($companyId);
 						  if (!$company) {
 								 return responseJson(
 									  404, 'Company not found', 'Company not found'
@@ -248,20 +267,18 @@
 											 'You do not have permission to view this company'
 										);
 								 }
-						  } elseif (!auth('api')->check()) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'You do not have permission to view this company'
-								 );
+								 return $this->handleAdminCompany($companyId);
 						  }
 						  
-						  $activeJobsCount = $company->jobs()->where(
-								'job_status', '!=', 'cancelled'
-						  )->count();
-						  return responseJson(200, 'Company details retrieved', [
-								'company'     => $company,
-								'active_jobs' => $activeJobsCount,
-								]);
+						  if (auth('api')->check()) {
+								 $user = auth('api')->user();
+								 return $this->handleApiUserCompany($user, $companyId);
+						  }
+						  
+						  return responseJson(
+								403, 'Forbidden', 'Invalid authentication guard'
+						  );
+						  
 					} catch (\Exception $e) {
 						  Log::error('Show company error: ' . $e->getMessage());
 						  return responseJson(
@@ -279,7 +296,8 @@
 			  *
 			  * @return bool
 			  */
-			 private function isAdminAuthorizedToShow(mixed $admin, Company $company
+			 private function isAdminAuthorizedToShow(mixed $admin,
+				  Company $company
 			 ): bool {
 					if ($admin->hasRole('super-admin')) {
 						  return true;
@@ -293,6 +311,102 @@
 						  return true;
 					}
 					return false;
+			 }
+			 
+			 private function handleAdminCompany(int $companyId): JsonResponse
+			 {
+					$company = Company::with(['jobs' => fn($query) => $query->where(
+						 'job_status', '!=', 'cancelled'
+					)])->find($companyId);
+					$activeJobsCount = $company->jobs()->where(
+						 'job_status', '!=', 'cancelled'
+					)->count();
+					return responseJson(200, 'Company details retrieved', [
+						 'company'     => $company,
+						 'active_jobs' => $activeJobsCount,
+					]);
+			 }
+			 
+			 private function handleApiUserCompany($user,
+				  int $companyId
+			 ): JsonResponse {
+					try {
+						  $profile = $user->defaultProfile->first();
+						  
+						  $company = Company::select(
+								['id', 'name', 'admin_id', 'logo', 'description',
+								 'location', 'website', 'size', 'hired_people',
+								 'created_at', 'updated_at']
+						  )->find($companyId);
+						  
+						  if (!$company) {
+								 return responseJson(
+									  404, 'Not found', 'Company not found'
+								 );
+						  }
+						  $activeJobsCount = $company->jobs()->where(
+								'job_status', '!=', 'cancelled'
+						  )->count();
+						  // Fetch jobs where category_name matches the category's name
+						  $jobs = JobListing::select([
+								'id', 'title', 'company_id', 'location', 'job_type',
+								'job_status', 'salary', 'position',
+								'category_name', 'description', 'requirement',
+								'benefits'
+						  ])
+								->where('company_id', $company->id)
+								->get();
+						  // Transform the response to match the desired structure
+						  $responseData = [
+								'id'           => $company->id,
+								'name'         => $company->name,
+								'logo'         => $company->logo,
+								'description'  => $company->description,
+								'location'     => $company->location,
+								'website'      => $company->website,
+								'size'         => $company->size,
+								'hired_people' => $company->hired_people,
+								'created_at'   => $company->created_at,
+								'updated_at'   => $company->created_at,
+								'active_jobs'  => $activeJobsCount,
+								'jobs'         => $jobs->map(
+									 function ($job) use ($profile) {
+											return [
+												 'id'            => $job->id,
+												 'title'         => $job->title,
+												 'company_id'    => $job->company_id,
+												 'location'      => $job->location,
+												 'job_type'      => $job->job_type,
+												 'job_status'    => $job->job_status,
+												 'salary'        => $job->salary,
+												 'position'      => $job->position,
+												 'category_name' => $job->category_name,
+												 'description'   => $job->description,
+												 'requirement'   => $job->requirement,
+												 'benefits'      => $job->benefits,
+												 'isFavorite'    => $job->isFavoritedByProfile(
+													  $profile->id
+												 ),
+												 'companyName'   => $job->company->name ??
+													  null,
+												 'companyLogo'   => $job->company->logo ??
+													  null,
+											];
+									 }
+								)
+						  ];
+						  return responseJson(
+								200, 'Company details retrieved',
+								$responseData
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Category show error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage()
+									 : 'Something went wrong'
+						  );
+					}
 			 }
 			 
 			 /**
@@ -533,13 +647,6 @@
 								 $company->update($validated);
 						  }
 						  
-						  Cache::forget(
-								'admin_companies_page_' . request()->get('page', 1)
-						  );
-						  Cache::forget('total_companies_count');
-						  Cache::forget('trending_companies');
-						  Cache::forget('popular_companies');
-						  
 						  return responseJson(200, 'Company updated successfully', [
 								'company'      => $company->fresh(),
 								'hired_people' => $company->hired_people,
@@ -566,7 +673,8 @@
 			  * @return array
 			  * @throws \Exception
 			  */
-			 private function getUpdateValidationRules(mixed $admin, Company $company
+			 private function getUpdateValidationRules(mixed $admin,
+				  Company $company
 			 ): array {
 					$rules = [
 						 'logo'         => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -676,13 +784,6 @@
 						  }
 						  
 						  $company->delete();
-						  
-						  Cache::forget(
-								'admin_companies_page_' . request()->get('page', 1)
-						  );
-						  Cache::forget('total_companies_count');
-						  Cache::forget('trending_companies');
-						  Cache::forget('popular_companies');
 						  
 						  return responseJson(
 								200,

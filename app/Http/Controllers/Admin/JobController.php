@@ -11,7 +11,6 @@
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  
 	  class JobController extends Controller
@@ -27,9 +26,9 @@
 						  if (auth('admin')->check()) {
 								 return $this->handleAdminJobs();
 						  }
-						  
 						  if (auth('api')->check()) {
-								 return $this->handleApiUserJobs();
+								 $user = auth('api')->user();
+								 return $this->handleApiUserJobs($user);
 						  }
 						  
 						  return responseJson(
@@ -39,7 +38,7 @@
 						  Log::error('Index error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',
-								config('app.debug') ? $e->getMessage() : null
+								config('app.debug') ? $e->getMessage() : 'server'
 						  );
 					}
 			 }
@@ -93,45 +92,45 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 private function handleApiUserJobs(): JsonResponse
+			 private function handleApiUserJobs($user): JsonResponse
 			 {
-					$user = auth('api')->user();
+//					$profile = $user->defaultProfile->first();
 					$profileJobTitle = $user->defaultProfile->title_job;
-					$totalJobsCount = Cache::remember(
-						 'open_jobs_count', now()->addMinutes(30),
-						 fn() => JobListing::where('job_status', 'open')->count()
+					$profileId = $user->defaultProfile->id;
+					$totalJobsCount = JobListing::where('job_status', 'open')->count(
 					);
-					
 					if ($totalJobsCount === 0) {
 						  return responseJson(404, 'No Jobs found', 'No Jobs found');
 					}
 					
 					$jobsPerCategory = (int)($totalJobsCount / 3);
+					$jobsTrending = JobListing::with('company')
+						 ->where('job_status', 'open')
+						 ->inRandomOrder()
+						 ->take($jobsPerCategory)
+						 ->get();
+					$jobsTrending->each(function ($job) use ($profileId) {
+						  $job->isFavorite = $job->isFavoritedByProfile($profileId);
+					});
 					
-					$jobsTrending = Cache::remember(
-						 'trending_jobs', now()->addHours(1),
-						 fn() => JobListing::with('company')
-							  ->where('job_status', 'open')
-							  ->inRandomOrder()
-							  ->take($jobsPerCategory)
-							  ->get()
-					);
-					
-					$jobsPopular = Cache::remember(
-						 'popular_jobs', now()->addHours(1),
-						 fn() => JobListing::with('company')
-							  ->where('job_status', 'open')
-							  ->inRandomOrder()
-							  ->take($jobsPerCategory)
-							  ->get()
-					);
-					
+					$jobsPopular = JobListing::with('company')
+						 ->where('job_status', 'open')
+						 ->inRandomOrder()
+						 ->take($jobsPerCategory)
+						 ->get();
+					$jobsPopular->each(function ($job) use ($profileId) {
+						  $job->isFavorite = $job->isFavoritedByProfile($profileId);
+					});
+
 					$jobsRecommended = JobListing::with('company')
 						 ->where('title', 'like', '%' . $profileJobTitle . '%')
 						 ->where('job_status', 'open')
 						 ->inRandomOrder()
 						 ->take($jobsPerCategory)
 						 ->get();
+					$jobsRecommended->each(function ($job) use ($profileId) {
+						  $job->isFavorite = $job->isFavoritedByProfile($profileId);
+					});
 					
 					return responseJson(200, 'Jobs retrieved successfully', [
 						 'Trending'    => $jobsTrending,
@@ -159,9 +158,11 @@
 						  
 						  $admin = auth('admin')->user();
 						  
-						  if($admin->company_id != $companyId)
-						  {
-								 return responseJson(403, 'Forbidden', 'You are not authorized to access this resource');
+						  if ($admin->company_id != $companyId) {
+								 return responseJson(
+									  403, 'Forbidden',
+									  'You are not authorized to access this resource'
+								 );
 						  }
 						  
 						  $jobs = JobListing::with('company')
@@ -212,40 +213,23 @@
 			 public function show(int $jobId): JsonResponse
 			 {
 					try {
-						  $job = JobListing::with('company')
-								->where('job_status', '!=', 'cancelled')
-								->find($jobId);
-						  
-						  if (!$job) {
-								 return responseJson(
-									  404, 'Job not found', 'Job not found'
-								 );
-						  }
-						  
 						  if (auth('admin')->check()) {
-								 $admin = auth('admin')->user();
-								 if (!$this->isAdminAuthorizedToShow($admin, $job)) {
-										return responseJson(
-											 403, 'Forbidden',
-											 'You do not have permission to view this job'
-										);
-								 }
-						  } elseif (!auth('api')->check()) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'You do not have permission to view this job'
-								 );
+								 return $this->handleAdminJob($jobId);
 						  }
 						  
-						  return responseJson(200, 'Job details retrieved', [
-								'job'  => $job,
-								'logo' => url($job->company->logo),
-						  ]);
+						  if (auth('api')->check()) {
+								 $user = auth('api')->user();
+								 return $this->handleApiUserJob($user,$jobId);
+						  }
+						  
+						  return responseJson(
+								403, 'Forbidden', 'Invalid authentication guard'
+						  );
 					} catch (\Exception $e) {
-						  Log::error('Show error: ' . $e->getMessage());
+						  Log::error('Index error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',
-								config('app.debug') ? $e->getMessage() : null
+								config('app.debug') ? $e->getMessage() : 'Server error'
 						  );
 					}
 			 }
@@ -462,8 +446,8 @@
 			  *
 			  * @return bool
 			  */
-			 private function isAuthorizedToDelete(mixed $admin, JobListing $job): bool
-			 {
+			 private function isAuthorizedToDelete(mixed $admin, JobListing $job
+			 ): bool {
 					return $admin->hasPermissionTo('manage-company-jobs')
 						 && $admin->company_id === $job->company_id;
 			 }
@@ -549,6 +533,67 @@
 						  );
 					} catch (\Exception $e) {
 						  Log::error('Update error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
+					}
+			 }
+			 
+			 private function handleAdminJob($jobId):JsonResponse
+			 {
+					try {
+						  $job = JobListing::with('company')
+								->where('job_status', '!=', 'cancelled')
+								->find($jobId);
+						  
+						  if (!$job) {
+								 return responseJson(
+									  404, 'Job not found', 'Job not found'
+								 );
+						  }
+								 $admin = auth('admin')->user();
+								 if (!$this->isAdminAuthorizedToShow($admin, $job)) {
+										return responseJson(
+											 403, 'Forbidden',
+											 'You do not have permission to view this job'
+										);
+								 }
+						  return responseJson(200, 'Job details retrieved', [
+								'job'  => $job,
+								'logo' => url($job->company->logo),
+						  ]);
+					} catch (\Exception $e) {
+						  Log::error('Show error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : 'Server error'
+						  );
+					}
+			 }
+			 
+			 private function handleApiUserJob( $user,$jobId
+			 ):JsonResponse
+			 {
+					try {
+						  $profile = $user->defaultProfile->first();
+						  
+						  $job = JobListing::with('company')
+								->where('job_status', '!=', 'cancelled')
+								->find($jobId);
+						  $job['isFavorite']=$job->isFavoritedByProfile($profile->id);
+						  
+						  if (!$job) {
+								 return responseJson(
+									  404, 'Job not found', 'Job not found'
+								 );
+						  }
+						  return responseJson(200, 'Job details retrieved', [
+								'job'  => $job,
+								'logo' => url($job->company->logo),
+						  ]);
+					} catch (\Exception $e) {
+						  Log::error('Show error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage() : null

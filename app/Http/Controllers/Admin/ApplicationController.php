@@ -11,7 +11,6 @@
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Validation\ValidationException;
 	  
@@ -155,10 +154,7 @@
 								'technical-interview', 'screening-interview'
 						  ];
 						  
-						  $applications = Cache::remember(
-								"applications_profile_{$profileId}",
-								now()->addMinutes(5),
-								fn() => Application::with([
+						  $applications = Application::with([
 									 'job'          => fn($query) => $query->select(
 										  'id', 'title', 'salary', 'company_id'
 									 ),
@@ -170,8 +166,7 @@
 									 ),
 								])
 									 ->where('profile_id', $profile->id)
-									 ->get()
-						  );
+									 ->get();
 						  
 						  $applicationsByStatus = [];
 						  foreach ($statuses as $status) {

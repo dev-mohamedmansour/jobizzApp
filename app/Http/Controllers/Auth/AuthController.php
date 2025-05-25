@@ -12,7 +12,6 @@
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
@@ -56,7 +55,6 @@
 									  'email_verified_at' => now(),
 								 ]);
 						  });
-						  Cache::forget('user_' . $user->id);
 						  $user->profiles()->create(
 								[
 									 'title_job'=>'No Title',
@@ -223,8 +221,6 @@
 								 }
 								 $profile = $user->defaultProfile()->first();
 								 $token = JWTAuth::fromUser($user);
-								 
-								 Cache::forget('user_' . $user->id);
 								 
 								 return responseJson(
 									  200,
@@ -420,7 +416,6 @@
 						  
 						  $token = JWTAuth::fromUser($user);
 						  
-						  Cache::forget('user_' . $user->id);
 						  $checkUserProfile = Profile::where('user_id','=',$user->id)->get();
 						  if(count($checkUserProfile) == 0){
 						  $user->profiles()->create(
@@ -632,9 +627,6 @@
 						  JWTAuth::invalidate(JWTAuth::getToken());
 						  auth()->logout();
 						  session()->flush();
-						  
-						  Cache::forget('user_' . $user->id);
-						  
 						  return responseJson(200, 'Password updated successfully');
 					} catch (ValidationException $e) {
 						  return responseJson(
@@ -693,9 +685,6 @@
 						  JWTAuth::invalidate(JWTAuth::getToken());
 						  auth()->logout();
 						  session()->flush();
-						  
-						  Cache::forget('user_' . $user->id);
-						  
 						  return responseJson(200, 'Successfully logged out');
 					} catch (TokenInvalidException $e) {
 						  return responseJson(
@@ -745,8 +734,6 @@
 						  
 						  $user->password = Hash::make($validated['newPassword']);
 						  $user->save();
-						  
-						  Cache::forget('user_' . $user->id);
 						  
 						  return responseJson(200, 'Password changed successfully');
 					} catch (ValidationException $e) {
@@ -811,9 +798,8 @@
 						  }
 						  
 						  $profileJobTitle = $profile->title_job;
-						  $jobsNum = Cache::remember(
-								'job_count', now()->addMinutes(3), fn() => JobListing::count()
-						  );
+						  $jobsNum = JobListing::count();
+						  
 						  
 						  if ($jobsNum === 0) {
 								 return responseJson(
@@ -823,10 +809,7 @@
 						  
 						  $number = max(1, (int)($jobsNum / 3));
 						  
-						  // Cache trending jobs for 15 minutes
-						  $jobsTrending = Cache::remember(
-								'jobs_trending_' . $user->id, now()->addMinutes(5),
-								fn() => JobListing::inRandomOrder()
+						  $jobsTrending = JobListing::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
@@ -857,12 +840,9 @@
 												 'companyLogo'   => $job->company->logo,
 												 'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 											];
-									 })
-						  );
-						  // Cache popular jobs for 15 minutes
-						  $jobsPopular = Cache::remember(
-								'jobs_popular_' . $user->id, now()->addMinutes(5),
-								fn() => JobListing::inRandomOrder()
+									 });
+						  
+						  $jobsPopular = JobListing::inRandomOrder()
 									 ->select(
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
@@ -893,14 +873,10 @@
 												 'companyLogo'   => $job->company->logo,
 												 'isFavorite'   => $job->isFavoritedByProfile($profile->id)
 											];
-									 })
-						  );
+									 });
 						  
-						  // Cache recommended jobs for 15 minutes, based on profile job title
-						  $jobsRecommended = Cache::remember(
-								'jobs_recommended_' . $user->id . '_' . md5(
-									 $profileJobTitle
-								), now()->addMinutes(5), fn() => JobListing::where(
+						  
+						  $jobsRecommended = JobListing::where(
 								'title', 'like', '%' . $profileJobTitle . '%'
 						  )
 								->inRandomOrder()
@@ -933,8 +909,7 @@
 											'companyLogo'   => $job->company->logo,
 											'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 									  ];
-								})
-						  );
+								});
 						  
 						  return responseJson(200, 'Jobs retrieved successfully', [
 								'Trending'    => $jobsTrending,

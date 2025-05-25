@@ -89,10 +89,10 @@
 						 ->withTimestamps()
 						 ->withPivot('created_at', 'updated_at');
 			 }
-    
 			 
 			 public function favoriteJobs()
 			 {
 					return $this->belongsToMany(JobListing::class, 'job_listing_profile', 'profile_id', 'job_listing_id')->with('company');
 			 }
+			 
 	  }

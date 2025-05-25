@@ -11,7 +11,6 @@
 	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
@@ -37,25 +36,23 @@
 								 );
 						  }
 						  
-						  $profiles = Cache::remember(
-								'user_profiles_' . $user->id, now()->addMinutes(1),
-								fn() => $user->profiles()->with([
-									 'educations'  => fn($query) => $query->select(
+						  $profiles = $user->profiles()->with([
+									 'educations'   => fn($query) => $query->select(
 										  'id', 'profile_id', 'college', 'degree',
 										  'field_of_study', 'start_date', 'end_date',
 										  'is_current', 'description', 'location'
 									 ),
-									 'experiences' => fn($query) => $query->select(
+									 'experiences'  => fn($query) => $query->select(
 										  'id', 'profile_id', 'company', 'position',
 										  'start_date', 'end_date', 'is_current',
 										  'description', 'location'
 									 ),
-									 'cvs'         => fn($query) => $query->where(
+									 'cvs'          => fn($query) => $query->where(
 										  'type', 'cv'
 									 )->select(
 										  'id', 'profile_id', 'name', 'type', 'path'
 									 ),
-									 'portfolios'  => fn($query) => $query->where(
+									 'portfolios'   => fn($query) => $query->where(
 										  'type', 'portfolio'
 									 )->select(
 										  'id', 'profile_id', 'name', 'type', 'format',
@@ -63,9 +60,11 @@
 									 ),
 									 'applications' => fn($query) => $query->select(
 										  'id', 'profile_id', 'status'
-									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
-								])->get()
-						  );
+									 )->whereIn(
+										  'status',
+										  ['submitted', 'technical-interview', 'reviewed']
+									 )
+								])->get();
 						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
@@ -89,65 +88,81 @@
 										$messages[] = 'No portfolios uploaded yet';
 								 }
 								 // Calculate application counts by status
-								 $appliedApplications = $profile->applications->where('status', 'submitted')->count();
-								 $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
-								 $reviewedApplications = $profile->applications->where('status', 'reviewed')->count();
+								 $appliedApplications = $profile->applications->where(
+									  'status', 'submitted'
+								 )->count();
+								 $interviewApplications = $profile->applications->where(
+									  'status', 'technical-interview'
+								 )->count();
+								 $reviewedApplications = $profile->applications->where(
+									  'status', 'reviewed'
+								 )->count();
 								 return [
-											'id' => $profile->id,
-											'user_id' => $profile->user_id,
-											'title_job' => $profile->title_job,
-											'job_position' => $profile->job_position,
-											'is_default' => $profile->is_default,
-											'profile_image' => $profile->profile_image,
-											'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
-											'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
-											'applied_applications' => $appliedApplications,
-											'interview_applications' => $interviewApplications,
-											'reviewed_applications' => $reviewedApplications,
-											'educations' => $profile->educations->map(fn ($edu) => [
-												 'id' => $edu->id,
-												 'college' => $edu->college,
-												 'degree' => $edu->degree,
+									  'id'                     => $profile->id,
+									  'user_id'                => $profile->user_id,
+									  'title_job'              => $profile->title_job,
+									  'job_position'           => $profile->job_position,
+									  'is_default'             => $profile->is_default,
+									  'profile_image'          => $profile->profile_image,
+									  'created_at'             => $profile->created_at
+											? $profile->created_at->format('Y-m-d') : null,
+									  'updated_at'             => $profile->updated_at
+											? $profile->updated_at->format('Y-m-d') : null,
+									  'applied_applications'   => $appliedApplications,
+									  'interview_applications' => $interviewApplications,
+									  'reviewed_applications'  => $reviewedApplications,
+									  'educations'             => $profile->educations->map(
+											fn($edu) => [
+												 'id'             => $edu->id,
+												 'college'        => $edu->college,
+												 'degree'         => $edu->degree,
 												 'field_of_study' => $edu->field_of_study,
-												 'start_date' => $edu->start_date,
-												 'end_date' => $edu->end_date,
-												 'is_current' => (bool) $edu->is_current,
-												 'description' => $edu->description,
-												 'location' => $edu->location,
-											])->toArray(),
-											'experiences' => $profile->experiences->map(fn ($exp) => [
-												 'id' => $exp->id,
-												 'company' => $exp->company,
-												 'position' => $exp->position,
-												 'start_date' => $exp->start_date,
-												 'end_date' => $exp->end_date,
-												 'is_current' => (bool) $exp->is_current,
+												 'start_date'     => $edu->start_date,
+												 'end_date'       => $edu->end_date,
+												 'is_current'     => (bool)$edu->is_current,
+												 'description'    => $edu->description,
+												 'location'       => $edu->location,
+											]
+									  )->toArray(),
+									  'experiences'            => $profile->experiences->map(
+											fn($exp) => [
+												 'id'          => $exp->id,
+												 'company'     => $exp->company,
+												 'position'    => $exp->position,
+												 'start_date'  => $exp->start_date,
+												 'end_date'    => $exp->end_date,
+												 'is_current'  => (bool)$exp->is_current,
 												 'description' => $exp->description,
-												 'location' => $exp->location,
-											])->toArray(),
-											'cvs' => $profile->cvs->map(fn ($cv) => [
-												 'id' => $cv->id,
+												 'location'    => $exp->location,
+											]
+									  )->toArray(),
+									  'cvs'                    => $profile->cvs->map(
+											fn($cv) => [
+												 'id'   => $cv->id,
 												 'name' => $cv->name,
 												 'type' => $cv->type,
 												 'path' => $cv->path,
-											])->toArray(),
-											'portfolios' => $profile->portfolios->map(fn ($portfolio) => [
-												 'id' => $portfolio->id,
-												 'name' => $portfolio->name,
-												 'type' => $portfolio->type,
-												 'format' => $portfolio->format,
+											]
+									  )->toArray(),
+									  'portfolios'             => $profile->portfolios->map(
+											fn($portfolio) => [
+												 'id'          => $portfolio->id,
+												 'name'        => $portfolio->name,
+												 'type'        => $portfolio->type,
+												 'format'      => $portfolio->format,
 												 'image_count' => $portfolio->image_count,
-												 'path' => $portfolio->path,
-												 'url' => $portfolio->url,
-											])->toArray(),
-											
+												 'path'        => $portfolio->path,
+												 'url'         => $portfolio->url,
+											]
+									  )->toArray(),
+									  
 									  'messages' => $messages
 								 ];
 						  });
 						  
 						  return responseJson(
 								200, 'Profiles retrieved successfully', [
-									 'profiles' => $transformedProfiles,
+									 'profiles'      => $transformedProfiles,
 									 'profile_count' => $profiles->count()
 								]
 						  );
@@ -160,7 +175,7 @@
 					}
 			 }
 			 
-			 public function getSomeDataOfProfiles(Request $request) :JsonResponse
+			 public function getSomeDataOfProfiles(Request $request): JsonResponse
 			 {
 					try {
 						  $user = $request->user();
@@ -170,7 +185,7 @@
 								 );
 						  }
 						  
-						  $profiles =$user->profiles()->get();
+						  $profiles = $user->profiles()->get();
 						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
@@ -181,19 +196,21 @@
 						  
 						  $transformedProfiles = $profiles->map(function ($profile) {
 								 return [
-									  'id' => $profile->id,
-									  'title_job' => $profile->title_job,
-									  'job_position' => $profile->job_position,
-									  'is_default' => $profile->is_default,
+									  'id'            => $profile->id,
+									  'title_job'     => $profile->title_job,
+									  'job_position'  => $profile->job_position,
+									  'is_default'    => $profile->is_default,
 									  'profile_image' => $profile->profile_image,
-									  'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
-									  'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
+									  'created_at'    => $profile->created_at
+											? $profile->created_at->format('Y-m-d') : null,
+									  'updated_at'    => $profile->updated_at
+											? $profile->updated_at->format('Y-m-d') : null,
 								 ];
 						  });
 						  
 						  return responseJson(
 								200, 'Profiles retrieved successfully', [
-									 'profiles' => $transformedProfiles,
+									 'profiles'      => $transformedProfiles,
 									 'profile_count' => $profiles->count()
 								]
 						  );
@@ -223,90 +240,137 @@
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
-						  $checkProfile=Profile::find($profileId);
+						  $checkProfile = Profile::find($profileId);
 						  
 						  if ($user->id !== $checkProfile->user_id) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
 						  $profile = Profile::with([
-									 'educations'  => fn($query) => $query->select(
-										  'id', 'profile_id', 'college', 'degree',
-										  'field_of_study', 'start_date', 'end_date',
-										  'is_current', 'description', 'location'
-									 ),
-									 'experiences' => fn($query) => $query->select(
-										  'id', 'profile_id', 'company', 'position',
-										  'start_date', 'end_date', 'is_current',
-										  'description', 'location'
-									 ),
-									 'documents'   => fn($query) => $query->select(
-										  'id', 'profile_id', 'name', 'type', 'format',
-										  'path', 'url'
-									 ),
-									 'applications' => fn($query) => $query->select(
-										  'id', 'profile_id', 'status'
-									 )->whereIn('status', ['submitted', 'technical-interview', 'reviewed'])
-								])->findOrFail($profileId);
+								'educations'   => fn($query) => $query->select(
+									 'id', 'profile_id', 'college', 'degree',
+									 'field_of_study', 'start_date', 'end_date',
+									 'is_current', 'description', 'location'
+								),
+								'experiences'  => fn($query) => $query->select(
+									 'id', 'profile_id', 'company', 'position',
+									 'start_date', 'end_date', 'is_current',
+									 'description', 'location'
+								),
+								'documents'    => fn($query) => $query->select(
+									 'id', 'profile_id', 'name', 'type', 'format',
+									 'path', 'url'
+								),
+								'applications' => fn($query) => $query->select(
+									 'id', 'profile_id', 'status'
+								)->whereIn(
+									 'status',
+									 ['submitted', 'technical-interview', 'reviewed']
+								)
+						  ])->findOrFail($profileId);
 						  
-						  // Update is_default for profiles
-						  DB::transaction(function () use ($user, $profile) {
-								 Profile::where('user_id', $user->id)->update(['is_default' => 0]);
+						  // Check the number of profiles and handle is_default logic
+						  $profileCount = $user->profiles()->count();
+						  if ($profileCount === 1
+								&& $profile->id === $profileId
+						  ) {
+								 // Single profile: Force is_default = 1
 								 $profile->is_default = 1;
 								 $profile->save();
-						  });
+						  } elseif ($profileCount == 2) {
+								 $otherProfile = $user->profiles()->where(
+									  'id', '!=', $profileId
+								 )->first();
+								 if ($otherProfile
+									  && $otherProfile->is_default == 1
+								 ) {
+										$otherProfile->update([
+											 'is_default' => 0,
+										]);
+										$profile->update([
+											 'is_default' => 1,
+										]);
+								 } elseif ($otherProfile
+									  && $otherProfile->is_default == 0
+								 ) {
+										$profile->update([
+											 'is_default' => 1,
+										]);
+								 }
+						  }
 						  
 						  // Calculate application counts by status
-						  $appliedApplications = $profile->applications->where('status', 'submitted')->count();
-						  $interviewApplications = $profile->applications->where('status', 'technical-interview')->count();
-						  $reviewedApplications = $profile->applications->where('status', 'reviewed')->count();
+						  $appliedApplications = $profile->applications->where(
+								'status', 'submitted'
+						  )->count();
+						  $interviewApplications = $profile->applications->where(
+								'status', 'technical-interview'
+						  )->count();
+						  $reviewedApplications = $profile->applications->where(
+								'status', 'reviewed'
+						  )->count();
 						  // Filter profile data to include only relevant fields
 						  $filteredData = [
-								'id' => $profile->id,
-								'user_id' => $profile->user_id,
-								'title_job' => $profile->title_job,
-								'job_position' => $profile->job_position,
-								'is_default' => $profile->is_default,
-								'profile_image' => $profile->profile_image,
-								'applied_applications' => $appliedApplications,
+								'id'                     => $profile->id,
+								'user_id'                => $profile->user_id,
+								'title_job'              => $profile->title_job,
+								'job_position'           => $profile->job_position,
+								'is_default'             => $profile->is_default,
+								'profile_image'          => $profile->profile_image,
+								'applied_applications'   => $appliedApplications,
 								'interview_applications' => $interviewApplications,
-								'reviewed_applications' => $reviewedApplications,
-								'created_at' => $profile->created_at ? $profile->created_at->format('Y-m-d') : null,
-								'updated_at' => $profile->updated_at ? $profile->updated_at->format('Y-m-d') : null,
-								'educations' => $profile->educations->map(fn ($edu) => [
-									 'id' => $edu->id,
-									 'college' => $edu->college,
-									 'degree' => $edu->degree,
-									 'field_of_study' => $edu->field_of_study,
-									 'start_date' => $edu->start_date,
-									 'end_date' => $edu->end_date,
-									 'is_current' => (bool) $edu->is_current,
-									 'description' => $edu->description,
-									 'location' => $edu->location,
-								])->toArray(),
-								'experiences' => $profile->experiences->map(fn ($exp) => [
-									 'id' => $exp->id,
-									 'company' => $exp->company,
-									 'position' => $exp->position,
-									 'start_date' => $exp->start_date,
-									 'end_date' => $exp->end_date,
-									 'is_current' => (bool) $exp->is_current,
-									 'description' => $exp->description,
-									 'location' => $exp->location,
-								])->toArray(),
-								'documents' => $profile->documents->map(fn ($doc) => [
-									 'id' => $doc->id,
-									 'name' => $doc->name,
-									 'type' => $doc->type,
-									 'format' => $doc->format,
-									 'url' => $doc->url ?? $doc->path, // Prefer url, fallback to a path
-								])->toArray(),
+								'reviewed_applications'  => $reviewedApplications,
+								'created_at'             => $profile->created_at
+									 ? $profile->created_at->format('Y-m-d') : null,
+								'updated_at'             => $profile->updated_at
+									 ? $profile->updated_at->format('Y-m-d') : null,
+								'educations'             => $profile->educations->map(
+									 fn($edu) => [
+										  'id'             => $edu->id,
+										  'college'        => $edu->college,
+										  'degree'         => $edu->degree,
+										  'field_of_study' => $edu->field_of_study,
+										  'start_date'     => $edu->start_date,
+										  'end_date'       => $edu->end_date,
+										  'is_current'     => (bool)$edu->is_current,
+										  'description'    => $edu->description,
+										  'location'       => $edu->location,
+									 ]
+								)->toArray(),
+								'experiences'            => $profile->experiences->map(
+									 fn($exp) => [
+										  'id'          => $exp->id,
+										  'company'     => $exp->company,
+										  'position'    => $exp->position,
+										  'start_date'  => $exp->start_date,
+										  'end_date'    => $exp->end_date,
+										  'is_current'  => (bool)$exp->is_current,
+										  'description' => $exp->description,
+										  'location'    => $exp->location,
+									 ]
+								)->toArray(),
+								'documents'              => $profile->documents->map(
+									 fn($doc) => [
+										  'id'     => $doc->id,
+										  'name'   => $doc->name,
+										  'type'   => $doc->type,
+										  'format' => $doc->format,
+										  'url'    => $doc->url ?? $doc->path,
+										  // Prefer url, fallback to a path
+									 ]
+								)->toArray(),
 						  ];
 						  
 						  // Sanitize strings for JSON encoding
 						  array_walk_recursive($filteredData, function (&$item) {
-								 if (is_string($item) && !mb_check_encoding($item, 'UTF-8')) {
-										$item = mb_convert_encoding($item, 'UTF-8', 'auto');
+								 if (is_string($item)
+									  && !mb_check_encoding(
+											$item, 'UTF-8'
+									  )
+								 ) {
+										$item = mb_convert_encoding(
+											 $item, 'UTF-8', 'auto'
+										);
 								 }
 						  });
 						  
@@ -315,7 +379,9 @@
 						  
 						  // Clean any stray output
 						  ob_start();
-						  $response = responseJson(200, 'Profile retrieved successfully', $filteredData);
+						  $response = responseJson(
+								200, 'Profile retrieved successfully', $filteredData
+						  );
 						  ob_end_clean();
 						  return $response;
 						  
@@ -349,7 +415,7 @@
 						  // Check if user already has two profiles
 						  if ($user->profiles()->count() >= 2) {
 								 return responseJson(
-									  422, 'Validation error',
+									  403, 'Forbidden',
 									  'You cannot add more than two profiles'
 								 );
 						  }
@@ -370,13 +436,16 @@
 								$request, $validated
 						  );
 						  
-						  if ($validated['is_default'] ?? false) {
-								 $user->profiles()->update(['is_default' => false]);
+						  if ($validated['is_default'] == 1) {
+								 $user->profiles()->update(
+									  ['is_default' => 0]
+								 );
+						  } elseif ($validated['is_default'] == 0) {
+								 $user->profiles()->update(
+									  ['is_default' => 1]
+								 );
 						  }
-						  
 						  $profile = $user->profiles()->create($validated);
-						  
-						  Cache::forget('user_profiles_' . $user->id);
 						  
 						  return responseJson(201, 'Profile created successfully', [
 								'user_name' => $user->name,
@@ -478,31 +547,7 @@
 			 {
 					return str_replace(Storage::disk('public')->url(''), '', $path);
 			 }
-			 private function validateUpdateProfile(Request $request, ?Profile $profile
-			 ): array {
-					$rules = [
-						 'title_job'     => ['sometimes', 'string', 'max:255'],
-						 'job_position'  => ['sometimes', 'string', 'max:255'],
-						 'is_default'    => ['required', 'string','max:1'],
-						 'profile_image' => ['nullable', 'image',
-													'mimes:jpeg,png,jpg,gif', 'max:2048']
-					];
-					
-//					if ($profile) {
-//						  $rules = array_map(
-//								fn($rule) => str_replace(
-//									 'required', 'sometimes', $rule
-//								), $rules
-//						  );
-//					}
-					
-					return Validator::make($request->all(), $rules, [
-						 'is_default.required'=>'The is_default mut be 1 or 0',
-						 'profile_image.image' => 'The profile image must be an image',
-						 'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif',
-						 'profile_image.max'   => 'The profile image cannot exceed 2MB in size'
-					])->validate();
-			 }
+			 
 			 /**
 			  * Update an existing profile.
 			  *
@@ -528,48 +573,43 @@
 								 );
 						  }
 						  
-						  $validated = $this->validateUpdateProfile($request, $profile);
+						  $validated = $this->validateUpdateProfile(
+								$request, $profile
+						  );
 						  
 						  $validated = $this->handleProfileImageUpload(
 								$request, $validated, $profile
 						  );
-						  
-								 // Check the number of profiles and handle is_default logic
-								 $profileCount = $user->profiles()->count();
-								 if ($profileCount === 1
-									  && $profile->id === $profileId
+						  $profileCount = $user->profiles()->count();
+						  if ($profileCount === 1
+								&& $profile->id === $profileId
+						  ) {
+								 $validated['is_default'] = 1;
+						  } elseif ($profileCount === 2) {
+								 $otherProfile = $user->profiles()->where(
+									  'id', '!=', $profileId
+								 )->first();
+								 if ($otherProfile
+									  && $otherProfile->is_default == 1
+									  && ($validated['is_default'] ?? false)
 								 ) {
-										// Single profile: Force is_default = 1
+										$otherProfile->update([
+											 'is_default' => 0,
+										]);
 										$validated['is_default'] = 1;
-								 } elseif ($profileCount === 2) {
-										// Two profiles: Ensure only one has is_default = 1
-										$otherProfile = $user->profiles()->where(
-											 'id', '!=', $profileId
-										)->first();
-										if ($otherProfile
-											 && $otherProfile->is_default == 1
-											 && ($validated['is_default'] ?? false)
-										) {
-											  $otherProfile->update([
-													'is_default' => 0,
-											  ]);
-											  // If another profile is default and current is requested as default, set other to 0
-											  $validated['is_default'] = 1;
-										} elseif ($otherProfile
-											 && $validated['is_default'] == 0
-											 && $otherProfile->is_default == 0
-										) {
-											  // If current is set to 0 and other is 0,
-											  //force current to 1 to ensure one default
-											  $otherProfile->update([
-													'is_default' => 1,
-											  ]);
-											  $validated['is_default'] = 0;
-										}
+								 } elseif ($otherProfile
+									  && $validated['is_default'] == 0
+									  && $otherProfile->is_default == 0
+								 ) {
+										$otherProfile->update([
+											 'is_default' => 1,
+										]);
+										$validated['is_default'] = 0;
 								 }
+						  }
 						  $originalData = $profile->only(array_keys($validated));
 						  $changes = array_diff_assoc($validated, $originalData);
-
+						  
 						  if (empty($changes)) {
 								 return responseJson(200, 'No changes detected', [
 									  'profile'   => $profile,
@@ -577,20 +617,7 @@
 								 ]);
 						  }
 						  
-						  // Update profile and is_default in a transaction
-						  DB::transaction(function () use ($user, $profile, $validated) {
-								 // Update is_default for other profiles if necessary
-								 if ($validated['is_default'] ?? false) {
-										$user->profiles()->where('id', '!=', $profile->id)->update(['is_default' => 0]);
-								 }
-								 // Update the profile
-								 $profile->update($validated);
-						  });
-						  
-						  // Clear cache
-						  Cache::forget('user_profiles_' . $user->id);
-						  Cache::forget('profile_' . $profileId);
-						  
+						  $profile->update($validated);
 						  return responseJson(200, 'Profile updated successfully', [
 								'profile' => $profile->fresh(),
 								'changes' => $changes
@@ -608,6 +635,25 @@
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
+			 }
+			 
+			 private function validateUpdateProfile(Request $request,
+				  ?Profile $profile
+			 ): array {
+					$rules = [
+						 'title_job'     => ['sometimes', 'string', 'max:255'],
+						 'job_position'  => ['sometimes', 'string', 'max:255'],
+						 'is_default'    => ['required', 'string', 'max:1'],
+						 'profile_image' => ['nullable', 'image',
+													'mimes:jpeg,png,jpg,gif', 'max:2048']
+					];
+					
+					return Validator::make($request->all(), $rules, [
+						 'is_default.required' => 'The is_default mut be 1 or 0',
+						 'profile_image.image' => 'The profile image must be an image',
+						 'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif',
+						 'profile_image.max'   => 'The profile image cannot exceed 2MB in size'
+					])->validate();
 			 }
 			 
 			 /**
@@ -630,74 +676,42 @@
 						  
 						  $profile = Profile::findOrFail($profileId);
 						  if ($user->id !== $profile->user_id) {
+								 
 								 return responseJson(
 									  403, 'Forbidden', 'You cannot delete this profile'
 								 );
 						  }
-						  
-						  DB::transaction(function () use ($profile) {
-								 foreach ($profile->educations as $education) {
-										if ($education->image
-											 && Storage::disk('public')->exists(
-												  $this->normalizePath(
-														$education->image
-												  )
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$this->normalizePath($education->image)
-											  );
-										}
-								 }
-								 $profile->educations()->delete();
-								 
-								 foreach ($profile->experiences as $experience) {
-										if ($experience->image
-											 && Storage::disk('public')->exists(
-												  $this->normalizePath(
-														$experience->image
-												  )
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$this->normalizePath($experience->image)
-											  );
-										}
-								 }
-								 $profile->experiences()->delete();
-								 
-								 foreach ($profile->documents as $document) {
-										if ($document->path
-											 && Storage::disk('public')->exists(
-												  $this->normalizePath($document->path)
-											 )
-										) {
-											  Storage::disk('public')->delete(
-													$this->normalizePath($document->path)
-											  );
-										}
-								 }
-								 $profile->documents()->delete();
-								 
-								 if ($profile->profile_image
-									  && Storage::disk('public')->exists(
-											$this->normalizePath(
-												 $profile->profile_image
-											)
-									  )
+						  // Check the number of profiles and handle is_default logic
+						  $profileCount = $user->profiles()->count();
+						  if ($profileCount === 1
+								&& $profile->id == $profileId
+						  ) {
+								 return responseJson(
+									  400, 'Bad request',
+									  'You cannot delete your only profile'
+								 );
+						  } elseif ($profileCount === 2) {
+								 $otherProfile = $user->profiles()->where(
+									  'id', '!=', $profileId
+								 )->first();
+								 if ($otherProfile
+									  && $otherProfile->is_default == 1
 								 ) {
-										Storage::disk('public')->delete(
-											 $this->normalizePath($profile->profile_image)
+										return $this->handelDeleteProfile(
+											 $profile, $user
+										);
+								 } elseif ($otherProfile
+									  && $otherProfile->is_default == 0
+								 ) {
+										$otherProfile->update([
+											 'is_default' => 1,
+										]);
+										return $this->handelDeleteProfile(
+											 $profile, $user
 										);
 								 }
-								 
-								 $profile->delete();
-						  });
+						  }
 						  
-						  Cache::forget('user_profiles_' . $user->id);
-						  Cache::forget('profile_' . $profileId);
-						  
-						  return responseJson(200, 'Profile deleted successfully');
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
@@ -707,6 +721,69 @@
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
+			 }
+			 
+			 private function handelDeleteProfile($profile, $user): JsonResponse
+			 {
+					
+					foreach ($profile->educations as $education) {
+						  if ($education->image
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath(
+										  $education->image
+									 )
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($education->image)
+								 );
+						  }
+					}
+					$profile->educations()->delete();
+					
+					foreach ($profile->experiences as $experience) {
+						  if ($experience->image
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath(
+										  $experience->image
+									 )
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($experience->image)
+								 );
+						  }
+					}
+					$profile->experiences()->delete();
+					
+					foreach ($profile->documents as $document) {
+						  if ($document->path
+								&& Storage::disk('public')->exists(
+									 $this->normalizePath($document->path)
+								)
+						  ) {
+								 Storage::disk('public')->delete(
+									  $this->normalizePath($document->path)
+								 );
+						  }
+					}
+					$profile->documents()->delete();
+					
+					if ($profile->profile_image
+						 && Storage::disk('public')->exists(
+							  $this->normalizePath(
+									$profile->profile_image
+							  )
+						 )
+					) {
+						  Storage::disk('public')->delete(
+								$this->normalizePath($profile->profile_image)
+						  );
+					}
+					
+					$profile->delete();
+					
+					return responseJson(200, 'Profile deleted successfully');
 			 }
 			 
 			 /**
@@ -732,11 +809,7 @@
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  $educations = Cache::remember(
-								'profile_educations_' . $profileId,
-								now()->addMinutes(15),
-								fn() => $profile->educations()->get()
-						  );
+						  $educations =$profile->educations()->get();
 						  
 						  if ($educations->isEmpty()) {
 								 return responseJson(
@@ -756,8 +829,8 @@
 						  
 						  return responseJson(
 								200, 'Educations retrieved successfully', [
-								'educations' => $educations
-						  ]
+									 'educations' => $educations
+								]
 						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
@@ -807,8 +880,8 @@
 						  
 						  return responseJson(
 								200, 'Education retrieved successfully', [
-								'education' => $education
-						  ]
+									 'education' => $education
+								]
 						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(
@@ -869,8 +942,6 @@
 						  }
 						  
 						  $education = $profile->educations()->create($validated);
-						  
-						  Cache::forget('profile_educations_' . $profileId);
 						  
 						  return responseJson(201, 'Education added successfully', [
 								'education' => $education
@@ -1031,9 +1102,6 @@
 						  }
 						  
 						  $education->update($validated);
-						  
-						  Cache::forget('profile_educations_' . $profileId);
-						  
 						  return responseJson(200, 'Education updated successfully', [
 								'education' => $education->fresh(),
 								'changes'   => $changes
@@ -1098,9 +1166,6 @@
 						  }
 						  
 						  $education->delete();
-						  
-						  Cache::forget('profile_educations_' . $profileId);
-						  
 						  return responseJson(200, 'Education deleted successfully');
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(
@@ -1138,11 +1203,7 @@
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  $experiences = Cache::remember(
-								'profile_experiences_' . $profileId,
-								now()->addMinutes(15),
-								fn() => $profile->experiences()->get()
-						  );
+						  $experiences =$profile->experiences()->get();
 						  
 						  if ($experiences->isEmpty()) {
 								 return responseJson(
@@ -1162,8 +1223,8 @@
 						  
 						  return responseJson(
 								200, 'Experiences retrieved successfully', [
-								'experiences' => $experiences
-						  ]
+									 'experiences' => $experiences
+								]
 						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
@@ -1215,8 +1276,8 @@
 						  
 						  return responseJson(
 								200, 'Experience retrieved successfully', [
-								'experience' => $experience
-						  ]
+									 'experience' => $experience
+								]
 						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(
@@ -1277,8 +1338,6 @@
 						  }
 						  
 						  $experience = $profile->experiences()->create($validated);
-						  
-						  Cache::forget('profile_experiences_' . $profileId);
 						  
 						  return responseJson(201, 'Experience added successfully', [
 								'experience' => $experience
@@ -1430,14 +1489,11 @@
 						  }
 						  
 						  $experience->update($validated);
-						  
-						  Cache::forget('profile_experiences_' . $profileId);
-						  
 						  return responseJson(
 								200, 'Experience updated successfully', [
-								'experience' => $experience->fresh(),
-								'changes'    => $changes
-						  ]
+									 'experience' => $experience->fresh(),
+									 'changes'    => $changes
+								]
 						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(
@@ -1500,8 +1556,6 @@
 						  
 						  $experience->delete();
 						  
-						  Cache::forget('profile_experiences_' . $profileId);
-						  
 						  return responseJson(200, 'Experience deleted successfully');
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(
@@ -1524,8 +1578,8 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function uploadCV(Request $request, int $profileId): JsonResponse
-			 {
+			 public function uploadCV(Request $request, int $profileId
+			 ): JsonResponse {
 					try {
 						  $user = $request->user();
 						  if (!$user) {
@@ -1559,8 +1613,6 @@
 								'format' => 'cv',
 								'path'   => $urlPath
 						  ]);
-						  
-						  Cache::forget('user_profiles_' . $user->id);
 						  
 						  return responseJson(201, 'CV uploaded successfully', [
 								'cv'        => $cv,
@@ -1674,9 +1726,6 @@
 									  $this->normalizePath($originalPath)
 								 );
 						  }
-						  
-						  Cache::forget('user_profiles_' . $user->id);
-						  
 						  return responseJson(200, 'CV updated successfully', [
 								'cv'      => $cv,
 								'changes' => $changes
@@ -1736,8 +1785,6 @@
 						  
 						  $cv->delete();
 						  
-						  Cache::forget('user_profiles_' . $user->id);
-						  
 						  return responseJson(200, 'CV deleted successfully');
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'CV not found');
@@ -1758,7 +1805,8 @@
 			  *
 			  * @return JsonResponse
 			  */
-			 public function addPortfolioTypeImages(Request $request, int $profileId
+			 public function addPortfolioTypeImages(Request $request,
+				  int $profileId
 			 ): JsonResponse {
 					try {
 						  $user = $request->user();
@@ -1805,10 +1853,6 @@
 									  
 									  $this->handleImageUpload(
 											$validated['images'] ?? [], $portfolio
-									  );
-									  
-									  Cache::forget(
-											'user_profiles_' . $profile->user_id
 									  );
 									  
 									  return responseJson(
@@ -1887,9 +1931,6 @@
 					}
 					
 					$this->handleImageUpload($newImages, $portfolio);
-					
-					Cache::forget('user_profiles_' . $portfolio->profile->user_id);
-					
 					return responseJson(
 						 200, 'Images added to existing portfolio',
 						 $portfolio->fresh(['images'])
@@ -1974,10 +2015,6 @@
 											$request->file('pdf'), $portfolio
 									  );
 									  
-									  Cache::forget(
-											'user_profiles_' . $profile->user_id
-									  );
-									  
 									  return responseJson(
 											201, 'PDF portfolio created successfully',
 											$portfolio
@@ -2037,8 +2074,8 @@
 			  *
 			  * @return void
 			  */
-			 private function handlePdfUpload(mixed $file, Document $portfolio): void
-			 {
+			 private function handlePdfUpload(mixed $file, Document $portfolio
+			 ): void {
 					$path = $file->store('portfolios/pdfs', 'public');
 					$portfolio->update(
 						 ['path' => Storage::disk('public')->url($path)]
@@ -2096,10 +2133,6 @@
 											'image_count' => 0,
 											'url'         => $validated['url']
 									  ]);
-									  
-									  Cache::forget(
-											'user_profiles_' . $profile->user_id
-									  );
 									  
 									  return responseJson(
 											201, 'Link portfolio created successfully',
@@ -2243,10 +2276,6 @@
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
-											 Cache::forget(
-												  'user_profiles_'
-												  . $portfolio->profile->user_id
-											 );
 											 return responseJson(
 												  200, 'Portfolio updated successfully',
 												  $portfolio->fresh(['images'])
@@ -2350,10 +2379,6 @@
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
-											 Cache::forget(
-												  'user_profiles_'
-												  . $portfolio->profile->user_id
-											 );
 											 return responseJson(
 												  200, 'PDF portfolio updated successfully',
 												  $portfolio->fresh()
@@ -2439,10 +2464,6 @@
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
-											 Cache::forget(
-												  'user_profiles_'
-												  . $portfolio->profile->user_id
-											 );
 											 return responseJson(
 												  200,
 												  'Link portfolio updated successfully',
@@ -2519,11 +2540,6 @@
 									  
 									  $image->delete();
 									  $portfolio->decrement('image_count');
-									  
-									  Cache::forget(
-											'user_profiles_' . $portfolio->profile->user_id
-									  );
-									  
 									  return responseJson(
 											200, 'Image deleted successfully'
 									  );
@@ -2599,11 +2615,6 @@
 								 }
 								 
 								 $portfolio->delete();
-								 
-								 Cache::forget(
-									  'user_profiles_' . $portfolio->profile->user_id
-								 );
-								 
 								 return responseJson(
 									  200, 'Portfolio deleted successfully'
 								 );

@@ -7,7 +7,6 @@
 	  use App\Models\JobListing;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Http\Request;
-	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\Log;
 	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Str;
@@ -25,10 +24,8 @@
 			 {
 					try {
 						  if (auth('admin')->check()) {
-								 $cacheKey = 'categories_admin_' . md5($request->fullUrl());
-								 $categories = Cache::remember($cacheKey, now()->addMinutes(5), fn() =>
-								 Category::withCount('jobs')->get()
-								 );
+								 $categories =
+								 Category::withCount('jobs')->get();
 								 if ($categories->isEmpty()) {
 										return responseJson(404, 'Not found', 'No categories found');
 								 }
@@ -52,25 +49,23 @@
 						  }
 						  
 						  $user = auth('api')->user();
-						  $categoryNum = Cache::remember('category_count', now()->addMinutes(10), fn() => Category::count());
+						  $profile = $user->defaultProfile->first();
+						  $categoryNum = Category::count();
 						  
 						  if ($categoryNum === 0) {
 								 return responseJson(404, 'Not found', 'No categories found');
 						  }
 						  
 						  $number = max(1, (int) ($categoryNum / 2));
-						  $cacheKeyTrending = 'categories_trending_' . $user->id;
-						  $cacheKeyPopular = 'categories_popular_' . $user->id;
 						  
-						  $categoryTrending = Cache::remember($cacheKeyTrending, now()->addMinutes(15), fn() =>
-						  Category::with(['jobs' => fn($query) => $query->select([
+						  $categoryTrending = Category::with(['jobs' => fn($query)  => $query->select([
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'job_status','position', 'category_name', 'description', 'requirement', 'benefits'
 						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
 								->inRandomOrder()
 								->withCount('jobs')
 								->take($number)
 								->get()
-								->map(function ($category) {
+								->map(function ($category) use ($profile) {
 									  $companiesCount = JobListing::where('category_name', $category->name)
 											->distinct('company_id')
 											->count('company_id');
@@ -81,7 +76,7 @@
 											'image' => $category->image,
 											'companies_count' => $companiesCount,
 											'jobs_count' => $category->jobs_count,
-											'jobs' => $category->jobs->map(function ($job) {
+											'jobs' => $category->jobs->map(function ($job) use($profile) {
 												  return [
 														'id' => $job->id,
 														'title' => $job->title,
@@ -95,23 +90,23 @@
 														'description' => $job->description,
 														'requirement' => $job->requirement,
 														'benefits' => $job->benefits,
+														'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 														'companyName' => $job->company->name ?? null,
 														'companyLogo' => $job->company->logo ?? null,
 												  ];
 											})
 									  ];
-								})
+								}
 						  );
 						  
-						  $categoryPopular = Cache::remember($cacheKeyPopular, now()->addMinutes(15), fn() =>
-						  Category::with(['jobs' => fn($query) => $query->select([
+						  $categoryPopular = Category::with(['jobs' => fn($query) => $query->select([
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'position', 'job_status','category_name', 'description', 'requirement', 'benefits'
 						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
 								->inRandomOrder()
 								->withCount('jobs')
 								->take($number)
 								->get()
-								->map(function ($category) {
+								->map(function ($category) use ($profile){
 									  $companiesCount = JobListing::where('category_name', $category->name)
 											->distinct('company_id')
 											->count('company_id');
@@ -122,7 +117,7 @@
 											'image' => $category->image,
 											'companies_count' => $companiesCount,
 											'jobs_count' => $category->jobs_count,
-											'jobs' => $category->jobs->map(function ($job) {
+											'jobs' => $category->jobs->map(function ($job) use ($profile) {
 												  return [
 														'id' => $job->id,
 														'title' => $job->title,
@@ -136,12 +131,13 @@
 														'description' => $job->description,
 														'requirement' => $job->requirement,
 														'benefits' => $job->benefits,
+														'isFavorite'   => $job->isFavoritedByProfile($profile->id),
 														'companyName' => $job->company->name ?? null,
 														'companyLogo' => $job->company->logo ?? null,
 												  ];
 											})
 									  ];
-								})
+								}
 						  );
 						  
 						  return responseJson(200, 'Categories retrieved successfully', [
@@ -161,67 +157,28 @@
 			  *
 			  * @return JsonResponse
 			  */
+			 
+			 
 			 public function show(int $categoryId): JsonResponse
 			 {
 					try {
-						  if (!auth('api')->check() && !auth('admin')->check()) {
-								 return responseJson(401, 'Unauthenticated', 'Unauthenticated');
+						  if (auth('admin')->check()) {
+								 return $this->handleAdminJobs($categoryId);
 						  }
 						  
-						  $cacheKey = 'category_' . $categoryId;
-						  $category = Cache::remember($cacheKey, now()->addMinutes(15), fn() =>
-						  Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])->withCount('jobs')
-								->find($categoryId)
+						  if (auth('api')->check()) {
+								 return $this->handleApiUserJobs($categoryId);
+						  }
+						  
+						  return responseJson(
+								403, 'Forbidden', 'Invalid authentication guard'
 						  );
-						  
-						  if (!$category) {
-								 return responseJson(404, 'Not found', 'Category not found');
-						  }
-						  
-						  // Fetch jobs where category_name matches the category's name
-						  $jobs = JobListing::select([
-								'id', 'title', 'company_id', 'location', 'job_type','job_status','salary', 'position',
-								'category_name', 'description', 'requirement', 'benefits'
-						  ])
-								->where('category_name', $category->name)
-								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
-								->get();
-						  // Count distinct companies for this category
-						  $companiesCount = JobListing::where('category_name', $category->name)
-								->distinct('company_id')
-								->count('company_id');
-						  // Transform the response to match the desired structure
-						  $responseData = [
-								'id' => $category->id,
-								'name' => $category->name,
-								'description' => $category->slug, // Map slug to description as per snippet
-								'image' => $category->image,
-								'companies_count' => $companiesCount,
-								'jobs_count' => $category->jobs_count,
-								'jobs' => $jobs->map(function ($job) {
-									  return [
-											'id' => $job->id,
-											'title' => $job->title,
-											'company_id' => $job->company_id,
-											'location' => $job->location,
-											'job_type' => $job->job_type,
-											'job_status' => $job->job_status,
-											'salary' => $job->salary,
-											'position' => $job->position,
-											'category_name' => $job->category_name,
-											'description' => $job->description,
-											'requirement' => $job->requirement,
-											'benefits' => $job->benefits,
-											'companyName' => $job->company->name ?? null,
-											'companyLogo' => $job->company->logo ?? null,
-									  ];
-								})
-						  ];
-						  
-						  return responseJson(200, 'Category details retrieved', $responseData);
 					} catch (\Exception $e) {
-						  Log::error('Category show error: ' . $e->getMessage());
-						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
+						  Log::error('Index error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : null
+						  );
 					}
 			 }
 			 
@@ -258,12 +215,7 @@
 						  } else {
 								 $validated['image'] = 'https://jobizaa.com/still_images/category.png';
 						  }
-						  
 						  $category = Category::create($validated);
-						  
-						  // Invalidate caches
-						  Cache::forget('category_count');
-						  Cache::tags(['categories'])->flush();
 						  
 						  return responseJson(201, 'Category created successfully', ['category' => $category]);
 					} catch (ValidationException $e) {
@@ -327,11 +279,6 @@
 						  
 						  $category->update($validated);
 						  
-						  // Invalidate caches
-						  Cache::forget('category_count');
-						  Cache::forget('category_' . $categoryId);
-						  Cache::tags(['categories'])->flush();
-						  
 						  return responseJson(200, 'Category updated successfully', [
 								'category' => $category,
 								'changes' => $changes,
@@ -375,14 +322,136 @@
 						  
 						  $category->delete();
 						  
-						  // Invalidate caches
-						  Cache::forget('category_count');
-						  Cache::forget('category_' . $categoryId);
-						  Cache::tags(['categories'])->flush();
-						  
 						  return responseJson(200, 'Category deleted successfully');
 					} catch (\Exception $e) {
 						  Log::error('Category destroy error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
+					}
+			 }
+			 
+			 private function handleAdminJobs($categoryId)
+			 {
+					try {
+					$admin = auth('admin')->user();
+					
+					if (!$admin->hasRole('super-admin')) {
+						  return responseJson(
+								403, 'Forbidden',
+								'You do not have permission to view these categories'
+						  );
+					}
+						
+						  $category = Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])->withCount('jobs')
+								->find($categoryId);
+						  
+						  if (!$category) {
+								 return responseJson(404, 'Not found', 'Category not found');
+						  }
+						  
+						  // Fetch jobs where category_name matches the category's name
+						  $jobs = JobListing::select([
+								'id', 'title', 'company_id', 'location', 'job_type','job_status','salary', 'position',
+								'category_name', 'description', 'requirement', 'benefits'
+						  ])
+								->where('category_name', $category->name)
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+								->get();
+						  // Count distinct companies for this category
+						  $companiesCount = JobListing::where('category_name', $category->name)
+								->distinct('company_id')
+								->count('company_id');
+						  // Transform the response to match the desired structure
+						  $responseData = [
+								'id' => $category->id,
+								'name' => $category->name,
+								'description' => $category->slug, // Map slug to description as per snippet
+								'image' => $category->image,
+								'companies_count' => $companiesCount,
+								'jobs_count' => $category->jobs_count,
+								'jobs' => $jobs->map(function ($job) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'job_status' => $job->job_status,
+											'salary' => $job->salary,
+											'position' => $job->position,
+											'category_name' => $job->category_name,
+											'description' => $job->description,
+											'requirement' => $job->requirement,
+											'benefits' => $job->benefits,
+											'companyName' => $job->company->name ?? null,
+											'companyLogo' => $job->company->logo ?? null,
+									  ];
+								})
+						  ];
+						  
+						  return responseJson(200, 'Category details retrieved', $responseData);
+					} catch (\Exception $e) {
+						  Log::error('Category show error: ' . $e->getMessage());
+						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
+					}
+			 }
+			 
+			 private function handleApiUserJobs($categoryId): JsonResponse
+			 {
+					try {
+						  $user=auth('api')->user();
+								 $profile = $user->defaultProfile->first();
+								 
+						  $category = Category::select(['id', 'name', 'slug', 'image', 'created_at', 'updated_at'])->withCount('jobs')
+								->find($categoryId);
+						  
+						  if (!$category) {
+								 return responseJson(404, 'Not found', 'Category not found');
+						  }
+						  
+						  // Fetch jobs where category_name matches the category's name
+						  $jobs = JobListing::select([
+								'id', 'title', 'company_id', 'location', 'job_type','job_status','salary', 'position',
+								'category_name', 'description', 'requirement', 'benefits'
+						  ])
+								->where('category_name', $category->name)
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
+								->get();
+						  // Count distinct companies for this category
+						  $companiesCount = JobListing::where('category_name', $category->name)
+								->distinct('company_id')
+								->count('company_id');
+						  // Transform the response to match the desired structure
+						  $responseData = [
+								'id' => $category->id,
+								'name' => $category->name,
+								'description' => $category->slug, // Map slug to description as per snippet
+								'image' => $category->image,
+								'companies_count' => $companiesCount,
+								'jobs_count' => $category->jobs_count,
+								'jobs' => $jobs->map(function ($job) use ($profile){
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'job_status' => $job->job_status,
+											'salary' => $job->salary,
+											'position' => $job->position,
+											'category_name' => $job->category_name,
+											'description' => $job->description,
+											'requirement' => $job->requirement,
+											'benefits' => $job->benefits,
+											'isFavorite'   => $job->isFavoritedByProfile($profile->id),
+											'companyName' => $job->company->name ?? null,
+											'companyLogo' => $job->company->logo ?? null,
+									  ];
+								})
+						  ];
+						  
+						  return responseJson(200, 'Category details retrieved', $responseData);
+					} catch (\Exception $e) {
+						  Log::error('Category show error: ' . $e->getMessage());
 						  return responseJson(500, 'Server error', config('app.debug') ? $e->getMessage() : 'Something went wrong');
 					}
 			 }
