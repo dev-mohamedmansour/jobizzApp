@@ -522,7 +522,6 @@
 			 private function invalidateApplicationCaches(int $applicationId, int $companyId, int $profileId): void
 			 {
 					Cache::store('redis')->forget("application_{$applicationId}_status_history");
-					Cache::store('redis')->forget("job_{$application->job_id}_details");
 					Cache::store('redis')->forget("company_{$companyId}_details");
 					Cache::store('redis')->forget('trending_companies');
 					Cache::store('redis')->forget('popular_companies');

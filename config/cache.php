@@ -69,12 +69,15 @@ return [
                 ],
             ],
         ],
-
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => env('REDIS_CACHE_CONNECTION', 'cache'),
-            'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
-        ],
+		  
+		  'redis' => [
+				'driver' => 'redis',
+				'connection' => 'cache', // Use a dedicated connection for caching
+				'host' => env('REDIS_HOST', '127.0.0.1'),
+				'port' => env('REDIS_PORT', 6379),
+				'password' => env('REDIS_PASSWORD', null),
+				'database' => env('REDIS_CACHE_DB', 1), // Use REDIS_CACHE_DB for caching
+		  ],
 
         'dynamodb' => [
             'driver' => 'dynamodb',

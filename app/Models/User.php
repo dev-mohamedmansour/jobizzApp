@@ -33,6 +33,7 @@
 			  */
 			 protected $fillable
 				  = [
+						'id',
 						'name',
 						'email',
 						'password',

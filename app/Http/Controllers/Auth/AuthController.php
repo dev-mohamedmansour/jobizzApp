@@ -275,42 +275,67 @@
 			 public function login(Request $request): JsonResponse
 			 {
 					try {
-						  $validated = $this->validateLogin($request);
+						  $validated = Validator::make($request->all(), [
+								'email' => ['required', 'string', 'email', 'exists:users,email', 'ascii'],
+								'password' => ['required', 'string', 'min:8', 'regex:/^[a-zA-Z0-9@#$%^&*!]+$/'],
+						  ], [
+								'email.required' => 'The email field is required.',
+								'email.email' => 'Invalid email format.',
+								'email.ascii' => 'Email must contain only ASCII characters.',
+								'email.exists' => 'Email not found.',
+								'password.required' => 'The password field is required.',
+								'password.min' => 'Password must be at least 8 characters.',
+								'password.regex' => 'Password contains invalid characters.',
+						  ])->validate();
 						  
-						  if (!$token = JWTAuth::attempt($validated)) {
-								 return responseJson(
-									  401, 'Unauthorized', 'Invalid email or password'
-								 );
+						  $cacheKey = "user_login_{$validated['email']}_" . now()->format('YmdH');
+						  $userFields = ['id', 'email', 'name', 'password', 'email_verified_at'];
+						  try {
+								 $user = Cache::remember($cacheKey, now()->addHours(1), function () use ($validated, $userFields) {
+										return User::where('email', $validated['email'])
+											 ->select($userFields)
+											 ->first();
+								 });
+						  } catch (\Exception $e) {
+								 Log::error('Redis cache error: ' . $e->getMessage());
+								 $user = User::where('email', $validated['email'])
+									  ->select($userFields)
+									  ->first();
 						  }
 						  
-						  $user = auth()->user();
-						  
-						  if ($user instanceof MustVerifyEmail
-								&& !$user->hasVerifiedEmail()
-						  ) {
-								 return responseJson(
-									  403, 'Forbidden',
-									  'Please verify your email address'
-								 );
+						  if (!$user || !Hash::check($validated['password'], $user->password)) {
+								 return responseJson(401, 'Unauthorized', 'Invalid email or password');
 						  }
 						  
+						  if ($user instanceof MustVerifyEmail && !$user->hasVerifiedEmail()) {
+								 return responseJson(403, 'Forbidden', 'Please verify your email address');
+						  }
+						  
+						  $profileCacheKey = "user_profile_{$user->id}_" . now()->format('YmdH');
+						  try {
+								 $user->defaultProfile = Cache::remember($profileCacheKey, now()->addHours(1), function () use ($user) {
+										return $user->defaultProfile()
+											 ->select('id', 'is_default', 'title_job', 'job_position', 'profile_image')
+											 ->first();
+								 });
+						  } catch (\Exception $e) {
+								 Log::error('Redis cache error for profile: ' . $e->getMessage());
+								 $user->defaultProfile = $user->defaultProfile()
+									  ->select('id', 'is_default', 'title_job', 'job_position', 'profile_image')
+									  ->first();
+						  }
+						  
+						  $token = JWTAuth::fromUser($user);
+						  Cache::forget("user_{$user->id}");
 						  return responseJson(200, 'Login successful', [
 								'token' => $token,
-								'user'  => new UserResource(
-									 $user->load('defaultProfile')
-								),
+								'user' => new UserResource($user),
 						  ]);
 					} catch (ValidationException $e) {
-						  return responseJson(
-								422, 'Validation error', $e->validator->errors()->all()
-						  );
+						  return responseJson(422, 'Validation error', $e->validator->errors()->all());
 					} catch (\Exception $e) {
 						  Log::error('Login error: ' . $e->getMessage());
-						  return responseJson(
-								500, 'Server error',
-								config('app.debug') ? $e->getMessage()
-									 : 'Something went wrong'
-						  );
+						  return responseJson(500, 'Server error', 'Something went wrong');
 					}
 			 }
 			 
