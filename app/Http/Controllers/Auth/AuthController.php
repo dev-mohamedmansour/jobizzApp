@@ -798,7 +798,7 @@
 						  }
 						  
 						  $profileJobTitle = $profile->title_job;
-						  $jobsNum = JobListing::count();
+						  $jobsNum = JobListing::where('job_status', '!=', 'cancelled')->count();
 						  
 						  
 						  if ($jobsNum === 0) {
@@ -814,8 +814,8 @@
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
 											'category_name', 'description', 'requirement',
-											'benefits']
-									 )
+											'benefits','job_status']
+									 )->where('job_status', '!=', 'cancelled')
 									 ->with(
 										  ['company' => fn($query) => $query->select(
 												['id', 'name', 'logo']
@@ -830,6 +830,7 @@
 												 'company_id'    => $job->company_id,
 												 'location'      => $job->location,
 												 'job_type'      => $job->job_type,
+												 'job_status'      => $job->job_status,
 												 'salary'        => $job->salary,
 												 'position'      => $job->position,
 												 'category_name' => $job->category_name,
@@ -847,8 +848,8 @@
 										  ['id', 'title', 'company_id', 'location',
 											'job_type', 'salary', 'position',
 											'category_name', 'description', 'requirement',
-											'benefits']
-									 )
+											'benefits','job_status']
+									 )->where('job_status', '!=', 'cancelled')
 									 ->with(
 										  ['company' => fn($query) => $query->select(
 												['id', 'name', 'logo']
@@ -863,6 +864,7 @@
 												 'company_id'    => $job->company_id,
 												 'location'      => $job->location,
 												 'job_type'      => $job->job_type,
+												 'job_status'      => $job->job_status,
 												 'salary'        => $job->salary,
 												 'position'      => $job->position,
 												 'category_name' => $job->category_name,
@@ -883,8 +885,8 @@
 								->select(
 									 ['id', 'title', 'company_id', 'location',
 									  'job_type', 'salary', 'position', 'category_name',
-									  'description', 'requirement', 'benefits']
-								)
+									  'description', 'requirement', 'benefits','job_status']
+								)->where('job_status', '!=', 'cancelled')
 								->with(
 									 ['company' => fn($query) => $query->select(
 										  ['id', 'name', 'logo']
@@ -899,6 +901,7 @@
 											'company_id'    => $job->company_id,
 											'location'      => $job->location,
 											'job_type'      => $job->job_type,
+											'job_status'      => $job->job_status,
 											'salary'        => $job->salary,
 											'position'      => $job->position,
 											'category_name' => $job->category_name,

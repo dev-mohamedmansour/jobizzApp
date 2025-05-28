@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Http\Resources\PortfolioResource;
 	  use App\Models\Document;
 	  use App\Models\DocumentImage;
 	  use App\Models\Education;
@@ -37,34 +38,34 @@
 						  }
 						  
 						  $profiles = $user->profiles()->with([
-									 'educations'   => fn($query) => $query->select(
-										  'id', 'profile_id', 'college', 'degree',
-										  'field_of_study', 'start_date', 'end_date',
-										  'is_current', 'description', 'location'
-									 ),
-									 'experiences'  => fn($query) => $query->select(
-										  'id', 'profile_id', 'company', 'position',
-										  'start_date', 'end_date', 'is_current',
-										  'description', 'location'
-									 ),
-									 'cvs'          => fn($query) => $query->where(
-										  'type', 'cv'
-									 )->select(
-										  'id', 'profile_id', 'name', 'type', 'path'
-									 ),
-									 'portfolios'   => fn($query) => $query->where(
-										  'type', 'portfolio'
-									 )->select(
-										  'id', 'profile_id', 'name', 'type', 'format',
-										  'image_count', 'path', 'url'
-									 ),
-									 'applications' => fn($query) => $query->select(
-										  'id', 'profile_id', 'status'
-									 )->whereIn(
-										  'status',
-										  ['submitted', 'technical-interview', 'reviewed']
-									 )
-								])->get();
+								'educations'   => fn($query) => $query->select(
+									 'id', 'profile_id', 'college', 'degree',
+									 'field_of_study', 'start_date', 'end_date',
+									 'is_current', 'description', 'location', 'image'
+								),
+								'experiences'  => fn($query) => $query->select(
+									 'id', 'profile_id', 'company', 'position',
+									 'start_date', 'end_date', 'is_current',
+									 'description', 'location', 'image'
+								),
+								'cvs'          => fn($query) => $query->where(
+									 'type', 'cv'
+								)->select(
+									 'id', 'profile_id', 'name', 'type', 'path'
+								),
+								'portfolios'   => fn($query) => $query->where(
+									 'type', 'portfolio'
+								)->select(
+									 'id', 'profile_id', 'name', 'type', 'format',
+									 'image_count', 'path', 'url'
+								),
+								'applications' => fn($query) => $query->select(
+									 'id', 'profile_id', 'status'
+								)->whereIn(
+									 'status',
+									 ['submitted', 'technical-interview', 'reviewed']
+								)
+						  ])->get();
 						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
@@ -119,6 +120,7 @@
 												 'field_of_study' => $edu->field_of_study,
 												 'start_date'     => $edu->start_date,
 												 'end_date'       => $edu->end_date,
+												 'image'          => $edu->image,
 												 'is_current'     => (bool)$edu->is_current,
 												 'description'    => $edu->description,
 												 'location'       => $edu->location,
@@ -131,6 +133,7 @@
 												 'position'    => $exp->position,
 												 'start_date'  => $exp->start_date,
 												 'end_date'    => $exp->end_date,
+												 'image'       => $exp->image,
 												 'is_current'  => (bool)$exp->is_current,
 												 'description' => $exp->description,
 												 'location'    => $exp->location,
@@ -250,12 +253,12 @@
 								'educations'   => fn($query) => $query->select(
 									 'id', 'profile_id', 'college', 'degree',
 									 'field_of_study', 'start_date', 'end_date',
-									 'is_current', 'description', 'location'
+									 'is_current', 'description', 'location', 'image'
 								),
 								'experiences'  => fn($query) => $query->select(
 									 'id', 'profile_id', 'company', 'position',
 									 'start_date', 'end_date', 'is_current',
-									 'description', 'location'
+									 'description', 'location', 'image'
 								),
 								'documents'    => fn($query) => $query->select(
 									 'id', 'profile_id', 'name', 'type', 'format',
@@ -332,6 +335,7 @@
 										  'field_of_study' => $edu->field_of_study,
 										  'start_date'     => $edu->start_date,
 										  'end_date'       => $edu->end_date,
+										  'image'          => $edu->image,
 										  'is_current'     => (bool)$edu->is_current,
 										  'description'    => $edu->description,
 										  'location'       => $edu->location,
@@ -344,6 +348,7 @@
 										  'position'    => $exp->position,
 										  'start_date'  => $exp->start_date,
 										  'end_date'    => $exp->end_date,
+										  'image'       => $exp->image,
 										  'is_current'  => (bool)$exp->is_current,
 										  'description' => $exp->description,
 										  'location'    => $exp->location,
@@ -809,7 +814,7 @@
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  $educations =$profile->educations()->get();
+						  $educations = $profile->educations()->get();
 						  
 						  if ($educations->isEmpty()) {
 								 return responseJson(
@@ -1203,7 +1208,7 @@
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
-						  $experiences =$profile->experiences()->get();
+						  $experiences = $profile->experiences()->get();
 						  
 						  if ($experiences->isEmpty()) {
 								 return responseJson(
@@ -1826,7 +1831,8 @@
 						  return DB::transaction(
 								function () use ($request, $profile, $validated) {
 									  if ($profile->portfolios()->count() >= 3) {
-											 throw new \Exception(
+											 return responseJson(
+												  403, 'Forbidden',
 												  'Maximum of 3 portfolios allowed'
 											 );
 									  }
@@ -1857,7 +1863,9 @@
 									  
 									  return responseJson(
 											201, 'Images portfolio created successfully',
-											$portfolio->load('images')
+											new PortfolioResource(
+												 $portfolio->load('images')
+											)
 									  );
 								}
 						  );
@@ -1925,7 +1933,7 @@
 					
 					if (($currentCount + $newCount) > 12) {
 						  $remaining = 12 - $currentCount;
-						  throw new \Exception(
+						  return responseJson(400, 'Too many images',
 								"You can only add {$remaining} more images to this portfolio."
 						  );
 					}

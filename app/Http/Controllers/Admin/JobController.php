@@ -97,7 +97,7 @@
 //					$profile = $user->defaultProfile->first();
 					$profileJobTitle = $user->defaultProfile->title_job;
 					$profileId = $user->defaultProfile->id;
-					$totalJobsCount = JobListing::where('job_status', 'open')->count(
+					$totalJobsCount = JobListing::where('job_status', '!=','cancelled')->count(
 					);
 					if ($totalJobsCount === 0) {
 						  return responseJson(404, 'No Jobs found', 'No Jobs found');
@@ -105,7 +105,7 @@
 					
 					$jobsPerCategory = (int)($totalJobsCount / 3);
 					$jobsTrending = JobListing::with('company')
-						 ->where('job_status', 'open')
+						 ->where('job_status', '!=', 'cancelled')
 						 ->inRandomOrder()
 						 ->take($jobsPerCategory)
 						 ->get();
@@ -114,7 +114,7 @@
 					});
 					
 					$jobsPopular = JobListing::with('company')
-						 ->where('job_status', 'open')
+						 ->where('job_status', '!=', 'cancelled')
 						 ->inRandomOrder()
 						 ->take($jobsPerCategory)
 						 ->get();
@@ -124,7 +124,7 @@
 
 					$jobsRecommended = JobListing::with('company')
 						 ->where('title', 'like', '%' . $profileJobTitle . '%')
-						 ->where('job_status', 'open')
+						 ->where('job_status', '!=', 'cancelled')
 						 ->inRandomOrder()
 						 ->take($jobsPerCategory)
 						 ->get();

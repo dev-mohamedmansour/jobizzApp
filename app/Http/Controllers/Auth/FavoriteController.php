@@ -35,7 +35,6 @@
 									  401, 'Unauthorized', 'Unauthorized'
 								 );
 						  }
-						  
 						  // Check if the profile belongs to the user
 						  $profile = Profile::findOrFail($profileId);
 						  if ($profile->user_id !== $user->id) {
@@ -54,7 +53,7 @@
 						  // Check if the job exists
 						  $job = JobListing::findOrFail($jobId);
 						  
-						  if (!$job) {
+						  if (!$job || $job->job_status == 'cancelled') {
 								 return responseJson(404, 'Not Found', 'Job not found');
 						  }
 						  
@@ -67,6 +66,7 @@
 						  $data = $isAdded ? $profile->favorites()->find(
 								$jobId
 						  )->pivot : $message;
+						  
 						  if ($data == $message) {
 								 return responseJson($status, $message, $data);
 						  }
@@ -130,36 +130,54 @@
 									  'No favorite jobs found for the profile'
 								 );
 						  }
-				
-						  $favorites = function () use ($profile) {
-								 return $profile->favoriteJobs()
-									  ->select([
-											'job_listings.id',
-											'job_listings.company_id',
-											'job_listings.title',
-											'job_listings.job_type',
-											'job_listings.salary',
-											'job_listings.description',
-											'job_listings.requirement',
-											'job_listings.job_status',
-											'job_listings.location',
-											'job_listings.position',
-											'job_listings.benefits',
-											'job_listings.category_name',
-									  ])
-									  ->with(['company' => function ($query) {
-											 $query->select(['id', 'name', 'logo']);
-									  }])
-									  ->get();
-						  };
-						  
-						  // Explicitly convert to array to ensure clean serialization
-						  $responseData = $favorites;
+						  $favorites = $profile->favoriteJobs()
+								->select([
+									 'job_listings.id',
+									 'job_listings.company_id',
+									 'job_listings.title',
+									 'job_listings.description',
+									 'job_listings.job_type',
+									 'job_listings.requirement',
+									 'job_listings.job_status',
+									 'job_listings.position',
+									 'job_listings.benefits',
+									 'job_listings.category_name',
+									 'job_listings.salary',
+									 'job_listings.location',
+									 'job_listings.updated_at',
+									 'job_listings.created_at',
+								])
+								->with(['company' => function ($query) {
+									  $query->select(['id', 'name', 'logo']);
+								}])
+								->get()
+								->map(function ($job) use ($profile) {
+									  return [
+											'id' => $job->id,
+											'title' => $job->title,
+											'company_id' => $job->company_id,
+											'location' => $job->location,
+											'job_type' => $job->job_type,
+											'job_status' => $job->job_status,
+											'salary' => $job->salary,
+											'position' => $job->position,
+											'category_name' => $job->category_name,
+											'description' => $job->description,
+											'requirement' => $job->requirement,
+											'benefits' => $job->benefits,
+											'isFavorite' => $job->isFavoritedByProfile($profile->id),
+											'companyName' => $job->company->name ?? null,
+											'companyLogo' => $job->company->logo ?? null,
+									  ];
+								});
 						  
 						  return responseJson(
-								200, 'Favorites jobs retrieved',
-								['favorites'       => $responseData,
-								 'countFavourites' => count(array($favorites))]
+								200,
+								'Favorite jobs retrieved',
+								[
+									 'favorites' => $favorites,
+									 'countFavourites' => $favorites->count(),
+								]
 						  );
 					} catch (ValidationException $e) {
 						  return responseJson(422, 'Validation error', $e->errors());

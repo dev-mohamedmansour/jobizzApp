@@ -60,7 +60,9 @@
 						  
 						  $categoryTrending = Category::with(['jobs' => fn($query)  => $query->select([
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'job_status','position', 'category_name', 'description', 'requirement', 'benefits'
-						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
+						  ])->where('job_status', '!=','cancelled')
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
+								
 								->inRandomOrder()
 								->withCount('jobs')
 								->take($number)
@@ -101,7 +103,8 @@
 						  
 						  $categoryPopular = Category::with(['jobs' => fn($query) => $query->select([
 								'id', 'title', 'company_id', 'location', 'job_type', 'salary', 'position', 'job_status','category_name', 'description', 'requirement', 'benefits'
-						  ])->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
+						  ])->where('job_status', '!=','cancelled')
+								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])])
 								->inRandomOrder()
 								->withCount('jobs')
 								->take($number)
@@ -414,6 +417,7 @@
 								'category_name', 'description', 'requirement', 'benefits'
 						  ])
 								->where('category_name', $category->name)
+								->where('job_status', '!=','cancelled')
 								->with(['company' => fn($query) => $query->select(['id', 'name', 'logo'])])
 								->get();
 						  // Count distinct companies for this category

@@ -353,7 +353,7 @@
 								'job_status', 'salary', 'position',
 								'category_name', 'description', 'requirement',
 								'benefits'
-						  ])
+						  ])->where('job_status', '!=', 'cancelled')
 								->where('company_id', $company->id)
 								->get();
 						  // Transform the response to match the desired structure
