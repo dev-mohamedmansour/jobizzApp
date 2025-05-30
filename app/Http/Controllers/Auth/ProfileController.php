@@ -181,6 +181,7 @@
 					try {
 						  $user = $request->user();
 						  if (!$user) {
+								 // If a user is not authenticated, return 401 Unauthorized
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
