@@ -79,6 +79,30 @@
 						  return responseJson(
 								200, 'Jobs retrieved successfully', ['jobs' => $jobs]
 						  );
+					}elseif ($admin->hasRole('admin')) {
+						  $jobs = JobListing::with('company')
+								->where('job_status', '!=', 'cancelled')
+								->whereHas(
+									 'company',
+									 fn($query) => $query->where('id', $admin->company_id)
+								)
+								->withCount([
+									 'applications as active_applications' => fn($query
+									 ) => $query
+										  ->where('status', '!=', 'rejected')
+										  ->where('status', '!=', 'pending'),
+								])
+								->get();
+						  
+						  if ($jobs->isEmpty()) {
+								 return responseJson(
+									  404, 'No Jobs found', 'No Jobs found'
+								 );
+						  }
+						  
+						  return responseJson(
+								200, 'Jobs retrieved successfully', ['jobs' => $jobs]
+						  );
 					}
 					
 					return responseJson(
@@ -139,26 +163,15 @@
 					]);
 			 }
 			 
-			 /**
-			  * Retrieve jobs for a specific company.
-			  *
-			  * @param Request $request
-			  * @param int     $companyId
-			  *
-			  * @return JsonResponse
-			  */
-			 public function getAllJobsForCompany(Request $request, int $companyId
-			 ): JsonResponse {
+			 public function getAllJobsCompany(): JsonResponse {
 					try {
 						  if (!auth('admin')->check()) {
 								 return responseJson(
 									  401, 'Unauthenticated', 'Unauthenticated'
 								 );
 						  }
-						  
 						  $admin = auth('admin')->user();
-						  
-						  if ($admin->company_id != $companyId) {
+						  if ($admin->company_id == 'null') {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'You are not authorized to access this resource'
@@ -169,7 +182,7 @@
 								->where('job_status', '!=', 'cancelled')
 								->whereHas(
 									 'company',
-									 fn($query) => $query->where('id', $companyId)
+									 fn($query) => $query->where('id', $admin->company_id)
 								)
 								->withCount([
 									 'applications as active_applications' => fn($query
@@ -203,13 +216,6 @@
 					}
 			 }
 			 
-			 /**
-			  * Retrieve details of a specific job.
-			  *
-			  * @param int $jobId
-			  *
-			  * @return JsonResponse
-			  */
 			 public function show(int $jobId): JsonResponse
 			 {
 					try {

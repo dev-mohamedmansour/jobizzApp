@@ -7,6 +7,7 @@
 	  use App\DocumentType;
 	  use Illuminate\Database\Eloquent\Factories\HasFactory;
 	  use Illuminate\Database\Eloquent\Model;
+	  use Illuminate\Database\Eloquent\Relations\HasMany;
 	  
 	  class Document extends Model
 	  {
@@ -45,7 +46,7 @@
 			 }
 			 
 			 public function images(
-			 ): \Illuminate\Database\Eloquent\Relations\HasMany
+			 ): HasMany
 			 {
 					return $this->hasMany(DocumentImage::class);
 			 }

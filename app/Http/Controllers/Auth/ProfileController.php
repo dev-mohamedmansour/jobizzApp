@@ -3,7 +3,6 @@
 	  namespace App\Http\Controllers\Auth;
 	  
 	  use App\Http\Controllers\Controller;
-	  use App\Http\Resources\PortfolioResource;
 	  use App\Models\Document;
 	  use App\Models\DocumentImage;
 	  use App\Models\Education;
@@ -27,6 +26,156 @@
 			  *
 			  * @return JsonResponse
 			  */
+//			 public function getAllProfiles(Request $request): JsonResponse
+//			 {
+//					try {
+//						  $user = $request->user();
+//						  if (!$user) {
+//								 return responseJson(
+//									  401, 'Unauthenticated', 'Unauthenticated'
+//								 );
+//						  }
+//
+//						  $profiles = $user->profiles()->with([
+//								'educations'   => fn($query) => $query->select(
+//									 'id', 'profile_id', 'college', 'degree',
+//									 'field_of_study', 'start_date', 'end_date',
+//									 'is_current', 'description', 'location', 'image'
+//								),
+//								'experiences'  => fn($query) => $query->select(
+//									 'id', 'profile_id', 'company', 'position',
+//									 'start_date', 'end_date', 'is_current',
+//									 'description', 'location', 'image'
+//								),
+//								'cvs'          => fn($query) => $query->where(
+//									 'type', 'cv'
+//								)->select(
+//									 'id', 'profile_id', 'name', 'type', 'path'
+//								),
+//								'portfolios'   => fn($query) => $query->where(
+//									 'type', 'portfolio'
+//								)->select(
+//									 'id', 'profile_id', 'name', 'type', 'format',
+//									 'image_count'
+//								)->whaer('format','=','images'),
+//								'applications' => fn($query) => $query->select(
+//									 'id', 'profile_id', 'status'
+//								)->whereIn(
+//									 'status',
+//									 ['submitted', 'technical-interview', 'reviewed']
+//								)
+//						  ])->get();
+//
+//						  if ($profiles->isEmpty()) {
+//								 return responseJson(
+//									  404, 'No profiles found',
+//									  'You don\'t have any profiles yet. Please add a profile.'
+//								 );
+//						  }
+//
+//						  $transformedProfiles = $profiles->map(function ($profile) {
+//								 $messages = [];
+//								 if ($profile->educations->isEmpty()) {
+//										$messages[] = 'No education details added yet';
+//								 }
+//								 if ($profile->experiences->isEmpty()) {
+//										$messages[] = 'No experience details added yet';
+//								 }
+//								 if ($profile->cvs->isEmpty()) {
+//										$messages[] = 'No CVs uploaded yet';
+//								 }
+//								 if ($profile->portfolios->isEmpty()) {
+//										$messages[] = 'No portfolios uploaded yet';
+//								 }
+//								 // Calculate application counts by status
+//								 $appliedApplications = $profile->applications->where(
+//									  'status', 'submitted'
+//								 )->count();
+//								 $interviewApplications = $profile->applications->where(
+//									  'status', 'technical-interview'
+//								 )->count();
+//								 $reviewedApplications = $profile->applications->where(
+//									  'status', 'reviewed'
+//								 )->count();
+//								 return [
+//									  'id'                     => $profile->id,
+//									  'user_id'                => $profile->user_id,
+//									  'title_job'              => $profile->title_job,
+//									  'job_position'           => $profile->job_position,
+//									  'is_default'             => $profile->is_default,
+//									  'profile_image'          => $profile->profile_image,
+//									  'created_at'             => $profile->created_at
+//											? $profile->created_at->format('Y-m-d') : null,
+//									  'updated_at'             => $profile->updated_at
+//											? $profile->updated_at->format('Y-m-d') : null,
+//									  'applied_applications'   => $appliedApplications,
+//									  'interview_applications' => $interviewApplications,
+//									  'reviewed_applications'  => $reviewedApplications,
+//									  'educations'             => $profile->educations->map(
+//											fn($edu) => [
+//												 'id'             => $edu->id,
+//												 'college'        => $edu->college,
+//												 'degree'         => $edu->degree,
+//												 'field_of_study' => $edu->field_of_study,
+//												 'start_date'     => $edu->start_date,
+//												 'end_date'       => $edu->end_date,
+//												 'image'          => $edu->image,
+//												 'is_current'     => (bool)$edu->is_current,
+//												 'description'    => $edu->description,
+//												 'location'       => $edu->location,
+//											]
+//									  )->toArray(),
+//									  'experiences'            => $profile->experiences->map(
+//											fn($exp) => [
+//												 'id'          => $exp->id,
+//												 'company'     => $exp->company,
+//												 'position'    => $exp->position,
+//												 'start_date'  => $exp->start_date,
+//												 'end_date'    => $exp->end_date,
+//												 'image'       => $exp->image,
+//												 'is_current'  => (bool)$exp->is_current,
+//												 'description' => $exp->description,
+//												 'location'    => $exp->location,
+//											]
+//									  )->toArray(),
+//									  'cvs'                    => $profile->cvs->map(
+//											fn($cv) => [
+//												 'id'   => $cv->id,
+//												 'name' => $cv->name,
+//												 'type' => $cv->type,
+//												 'path' => $cv->path,
+//											]
+//									  )->toArray(),
+//									  'portfolios'             => $profile->portfolios->map(
+//											fn($portfolio) => [
+//												 'id'          => $portfolio->id,
+//												 'name'        => $portfolio->name,
+//												 'type'        => $portfolio->type,
+//												 'format'      => $portfolio->format,
+//												 'image_count' => $portfolio->image_count,
+//												 'path'        => $portfolio->path,
+//												 'url'         => $portfolio->url,
+//											]
+//									  )->toArray(),
+//
+//									  'messages' => $messages
+//								 ];
+//						  });
+//
+//						  return responseJson(
+//								200, 'Profiles retrieved successfully', [
+//									 'profiles'      => $transformedProfiles,
+//									 'profile_count' => $profiles->count()
+//								]
+//						  );
+//					} catch (\Exception $e) {
+//						  Log::error('Get all profiles error: ' . $e->getMessage());
+//						  return responseJson(
+//								500, 'Server error',
+//								config('app.debug') ? $e->getMessage() : null
+//						  );
+//					}
+//			 }
 			 public function getAllProfiles(Request $request): JsonResponse
 			 {
 					try {
@@ -40,40 +189,57 @@
 						  $profiles = $user->profiles()->with([
 								'educations'   => fn($query) => $query->select(
 									 'id', 'profile_id', 'college', 'degree',
-									 'field_of_study', 'start_date', 'end_date',
-									 'is_current', 'description', 'location', 'image'
-								),
-								'experiences'  => fn($query) => $query->select(
-									 'id', 'profile_id', 'company', 'position',
+									 'field_of_study',
 									 'start_date', 'end_date', 'is_current',
 									 'description', 'location', 'image'
 								),
+								'experiences'  => fn($query) => $query->select(
+									 'id', 'profile_id', 'company', 'position',
+									 'start_date',
+									 'end_date', 'is_current', 'description', 'location',
+									 'image'
+								),
 								'cvs'          => fn($query) => $query->where(
 									 'type', 'cv'
-								)->select(
-									 'id', 'profile_id', 'name', 'type', 'path'
-								),
+								)
+									 ->select(
+										  'id', 'profile_id', 'name', 'type', 'path'
+									 ),
 								'portfolios'   => fn($query) => $query->where(
 									 'type', 'portfolio'
-								)->select(
-									 'id', 'profile_id', 'name', 'type', 'format',
-									 'image_count', 'path', 'url'
-								),
+								)
+									 ->select(
+										  'id', 'profile_id', 'name', 'type', 'format',
+										  'image_count', 'path', 'url'
+									 )
+									 ->with(
+										  ['images' => fn($imgQuery
+										  ) => $imgQuery->whereHas(
+												'document',
+												fn($q) => $q->where('format', 'images')
+										  )
+												->select(
+													 'id', 'document_id', 'path',
+													 'mime_type', 'created_at', 'updated_at'
+												)
+										  ]
+									 ),
 								'applications' => fn($query) => $query->select(
 									 'id', 'profile_id', 'status'
-								)->whereIn(
-									 'status',
-									 ['submitted', 'technical-interview', 'reviewed']
 								)
+									 ->whereIn(
+										  'status',
+										  ['submitted', 'technical-interview', 'reviewed']
+									 )
 						  ])->get();
 						  
 						  if ($profiles->isEmpty()) {
 								 return responseJson(
-									  404, 'No profiles found',
+									  404,
+									  'No profiles found',
 									  'You don\'t have any profiles yet. Please add a profile.'
 								 );
 						  }
-						  
 						  $transformedProfiles = $profiles->map(function ($profile) {
 								 $messages = [];
 								 if ($profile->educations->isEmpty()) {
@@ -88,6 +254,56 @@
 								 if ($profile->portfolios->isEmpty()) {
 										$messages[] = 'No portfolios uploaded yet';
 								 }
+								 // Group portfolios by format
+								 $portfoliosByFormat = $profile->portfolios->groupBy(
+									  'format'
+								 )->map(function ($portfolios, $format) {
+										return $portfolios->map(
+											 function ($portfolio) use ($format) {
+													$portfolioData = [
+														 'id'     => $portfolio->id,
+														 'name'   => $portfolio->name,
+														 'format' => $portfolio->format,
+													];
+													// Include a path and url only for non-image portfolios
+													if ($format === 'url') {
+														  $portfolioData['url']
+																= $portfolio->url ?? 'no thing';
+													} elseif ($format === 'pdf') {
+														  $portfolioData['path']
+																= $portfolio->path ??
+																'no thing';
+													} elseif ($format === 'images') {
+														  $portfolioData['image_count']
+																= $portfolio->image_count;
+													}
+													// Include images for portfolios with format 'images'
+													if ($format === 'images'
+														 && $portfolio->relationLoaded(
+															  'images'
+														 )
+													) {
+														  $portfolioData['images']
+																= $portfolio->images->map(
+																fn($image) => [
+																	 'id'         => $image->id,
+																	 'path'       => $image->path,
+																	 'created_at' => $image->created_at
+																		  ? $image->created_at->format(
+																				'Y-m-d'
+																		  ) : 'no thing',
+																	 'updated_at' => $image->updated_at
+																		  ? $image->updated_at->format(
+																				'Y-m-d'
+																		  ) : 'no thing',
+																]
+														  )->toArray();
+													}
+													
+													return $portfolioData;
+											 }
+										)->toArray();
+								 })->toArray();
 								 // Calculate application counts by status
 								 $appliedApplications = $profile->applications->where(
 									  'status', 'submitted'
@@ -98,6 +314,7 @@
 								 $reviewedApplications = $profile->applications->where(
 									  'status', 'reviewed'
 								 )->count();
+								 
 								 return [
 									  'id'                     => $profile->id,
 									  'user_id'                => $profile->user_id,
@@ -147,24 +364,15 @@
 												 'path' => $cv->path,
 											]
 									  )->toArray(),
-									  'portfolios'             => $profile->portfolios->map(
-											fn($portfolio) => [
-												 'id'          => $portfolio->id,
-												 'name'        => $portfolio->name,
-												 'type'        => $portfolio->type,
-												 'format'      => $portfolio->format,
-												 'image_count' => $portfolio->image_count,
-												 'path'        => $portfolio->path,
-												 'url'         => $portfolio->url,
-											]
-									  )->toArray(),
-									  
-									  'messages' => $messages
+									  'portfolios'             => $portfoliosByFormat,
+									  'messages'               => $messages
 								 ];
 						  });
 						  
 						  return responseJson(
-								200, 'Profiles retrieved successfully', [
+								200,
+								'Profiles retrieved successfully',
+								[
 									 'profiles'      => $transformedProfiles,
 									 'profile_count' => $profiles->count()
 								]
@@ -172,7 +380,8 @@
 					} catch (\Exception $e) {
 						  Log::error('Get all profiles error: ' . $e->getMessage());
 						  return responseJson(
-								500, 'Server error',
+								500,
+								'Server error',
 								config('app.debug') ? $e->getMessage() : null
 						  );
 					}
@@ -260,10 +469,31 @@
 									 'start_date', 'end_date', 'is_current',
 									 'description', 'location', 'image'
 								),
-								'documents'    => fn($query) => $query->select(
-									 'id', 'profile_id', 'name', 'type', 'format',
-									 'path', 'url'
-								),
+								'cvs'          => fn($query) => $query->where(
+									 'type', 'cv'
+								)
+									 ->select(
+										  'id', 'profile_id', 'name', 'type', 'path'
+									 ),
+								'portfolios'   => fn($query) => $query->where(
+									 'type', 'portfolio'
+								)
+									 ->select(
+										  'id', 'profile_id', 'name', 'type', 'format',
+										  'image_count', 'path', 'url'
+									 )
+									 ->with(
+										  ['images' => fn($imgQuery
+										  ) => $imgQuery->whereHas(
+												'document',
+												fn($q) => $q->where('format', 'images')
+										  )
+												->select(
+													 'id', 'document_id', 'path',
+													 'mime_type', 'created_at', 'updated_at'
+												)
+										  ]
+									 ),
 								'applications' => fn($query) => $query->select(
 									 'id', 'profile_id', 'status'
 								)->whereIn(
@@ -301,7 +531,60 @@
 										]);
 								 }
 						  }
-						  
+						  // Group portfolios by format, ensuring an object is returned
+						  $portfoliosByFormat = $profile->portfolios->isEmpty()
+								? []
+								: $profile->portfolios->groupBy('format')->map(
+									 function ($portfolios, $format) {
+											return $portfolios->map(
+												 function ($portfolio) use ($format) {
+														$portfolioData = [
+															 'id'          => $portfolio->id,
+															 'name'        => $portfolio->name,
+															 'type'        => $portfolio->type,
+															 'format'      => $portfolio->format,
+															 'image_count' => $portfolio->image_count,
+														];
+														
+														// Include path and url only for non-image portfolios
+														if ($format === 'url') {
+															  $portfolioData['url']
+																	= $portfolio->url ??
+																	'no thing';
+														} elseif ($format === 'pdf') {
+															  $portfolioData['path']
+																	= $portfolio->path ??
+																	'no thing';
+														}
+														
+														// Include images for portfolios with format 'images'
+														if ($format === 'images'
+															 && $portfolio->images
+														) {
+															  $portfolioData['images']
+																	= $portfolio->images->map(
+																	fn($image) => [
+																		 'id'         => $image->id,
+																		 'path'       => $image->path,
+																		 'mime_type'  => $image->mime_type,
+																		 'created_at' => $image->created_at
+																			  ? $image->created_at->format(
+																					'Y-m-d'
+																			  ) : 'no thing',
+																		 'updated_at' => $image->updated_at
+																			  ? $image->updated_at->format(
+																					'Y-m-d'
+																			  ) : 'no thing',
+																	]
+															  )->toArray();
+														}
+														
+														return $portfolioData;
+												 }
+											)->toArray();
+									 }
+								)->toArray();
+						  $portfoliosByFormatObject = (object)$portfoliosByFormat;
 						  // Calculate application counts by status
 						  $appliedApplications = $profile->applications->where(
 								'status', 'submitted'
@@ -354,41 +637,19 @@
 										  'location'    => $exp->location,
 									 ]
 								)->toArray(),
-								'documents'              => $profile->documents->map(
-									 fn($doc) => [
-										  'id'     => $doc->id,
-										  'name'   => $doc->name,
-										  'type'   => $doc->type,
-										  'format' => $doc->format,
-										  'url'    => $doc->url ?? $doc->path,
-										  // Prefer url, fallback to a path
+								'cvs'                    => $profile->cvs->map(
+									 fn($cv) => [
+										  'id'   => $cv->id,
+										  'name' => $cv->name,
+										  'type' => $cv->type,
+										  'path' => $cv->path,
 									 ]
 								)->toArray(),
+								'portfolios'             => $portfoliosByFormatObject,
 						  ];
-						  
-						  // Sanitize strings for JSON encoding
-						  array_walk_recursive($filteredData, function (&$item) {
-								 if (is_string($item)
-									  && !mb_check_encoding(
-											$item, 'UTF-8'
-									  )
-								 ) {
-										$item = mb_convert_encoding(
-											 $item, 'UTF-8', 'auto'
-										);
-								 }
-						  });
-						  
-						  // Log filtered data for debugging
-						  Log::info('Filtered profile data', $filteredData);
-						  
-						  // Clean any stray output
-						  ob_start();
-						  $response = responseJson(
+						  return responseJson(
 								200, 'Profile retrieved successfully', $filteredData
 						  );
-						  ob_end_clean();
-						  return $response;
 						  
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
@@ -716,7 +977,9 @@
 										);
 								 }
 						  }
-						  
+						  return responseJson(
+								200, 'done', 'profile deleted successfully'
+						  );
 					} catch (ModelNotFoundException $e) {
 						  return responseJson(404, 'Not found', 'Profile not found');
 					} catch (\Exception $e) {
@@ -1810,6 +2073,7 @@
 			  *
 			  * @return JsonResponse
 			  */
+			 
 			 public function addPortfolioTypeImages(Request $request,
 				  int $profileId
 			 ): JsonResponse {
@@ -1829,7 +2093,8 @@
 						  $validated = $this->validatePortfolioImages($request);
 						  
 						  return DB::transaction(
-								function () use ($request, $profile, $validated) {
+								function () use ($user, $request, $profile, $validated
+								) {
 									  if ($profile->portfolios()->count() >= 3) {
 											 return responseJson(
 												  403, 'Forbidden',
@@ -1851,7 +2116,8 @@
 									  
 									  $portfolio = $profile->documents()->create([
 											'name'        => $validated['name'] ??
-												 'Portfolio_' . time(),
+												 $user->name,
+											'Portfolio_' . time(),
 											'type'        => 'portfolio',
 											'format'      => $format,
 											'image_count' => 0
@@ -1861,11 +2127,24 @@
 											$validated['images'] ?? [], $portfolio
 									  );
 									  
+									  $portfolioData = [
+											'id'          => $portfolio->id,
+											'name'        => $portfolio->name,
+											'type'        => $portfolio->type,
+											'format'      => $portfolio->format,
+											'image_count' => $portfolio->image_count,
+											'images'      => $portfolio->images->map(
+												 fn($image) => [
+													  'id'        => $image->id,
+													  'path'      => $image->path,
+													  'mime_type' => $image->mime_type,
+												 ]
+											),
+									  ];
+									  
 									  return responseJson(
 											201, 'Images portfolio created successfully',
-											new PortfolioResource(
-												 $portfolio->load('images')
-											)
+											$portfolioData
 									  );
 								}
 						  );
@@ -1933,7 +2212,8 @@
 					
 					if (($currentCount + $newCount) > 12) {
 						  $remaining = 12 - $currentCount;
-						  return responseJson(400, 'Too many images',
+						  return responseJson(
+								400, 'Too many images',
 								"You can only add {$remaining} more images to this portfolio."
 						  );
 					}
@@ -1994,9 +2274,11 @@
 						  $validated = $this->validatePortfolioPdf($request);
 						  
 						  return DB::transaction(
-								function () use ($request, $profile, $validated) {
+								function () use ($user, $request, $profile, $validated
+								) {
 									  if ($profile->portfolios()->count() >= 3) {
-											 throw new \Exception(
+											 return responseJson(
+												  403, 'Forbidden',
 												  'Maximum of 3 portfolios allowed'
 											 );
 									  }
@@ -2006,14 +2288,16 @@
 											'format', $format
 									  )->exists()
 									  ) {
-											 throw new \Exception(
+											 return responseJson(
+												  403, 'Forbidden',
 												  'You already have a portfolio with this format'
 											 );
 									  }
 									  
 									  $portfolio = $profile->documents()->create([
 											'name'        => $validated['name'] ??
-												 'Portfolio_' . time(),
+												 $user->name,
+											'Portfolio_' . time(),
 											'type'        => 'portfolio',
 											'format'      => $format,
 											'image_count' => 0
@@ -2023,9 +2307,28 @@
 											$request->file('pdf'), $portfolio
 									  );
 									  
+									  $portfolioData = [
+											'id'          => $portfolio->id,
+											'name'        => $portfolio->name,
+											'type'        => $portfolio->type,
+											'format'      => $portfolio->format,
+											'image_count' => $portfolio->image_count,
+											'profile_id'  => $portfolio->profile_id,
+											'path'        => $portfolio->path ??
+												 'no thing',
+											'url'         => $portfolio->url ?? 'no thing',
+											'created_at'  => $portfolio->created_at
+												 ? $portfolio->created_at->format('Y-m-d')
+												 : null,
+											'updated_at'  => $portfolio->updated_at
+												 ? $portfolio->updated_at->format('Y-m-d')
+												 : null,
+									  ];
+									  
 									  return responseJson(
-											201, 'PDF portfolio created successfully',
-											$portfolio
+											201,
+											'PDF portfolio created successfully',
+											$portfolioData
 									  );
 								}
 						  );
@@ -2116,9 +2419,11 @@
 						  $validated = $this->validatePortfolioUrl($request);
 						  
 						  return DB::transaction(
-								function () use ($request, $profile, $validated) {
+								function () use ($user, $request, $profile, $validated
+								) {
 									  if ($profile->portfolios()->count() >= 3) {
-											 throw new \Exception(
+											 return responseJson(
+												  403, 'Forbidden',
 												  'Maximum of 3 portfolios allowed'
 											 );
 									  }
@@ -2128,23 +2433,42 @@
 											'format', $format
 									  )->exists()
 									  ) {
-											 throw new \Exception(
+											 return responseJson(
+												  403, 'Forbidden',
 												  'You already have a portfolio with this format'
 											 );
+											 
 									  }
 									  
 									  $portfolio = $profile->documents()->create([
 											'name'        => $validated['name'] ??
-												 'Portfolio_' . time(),
+												 $user->name,
+											'Portfolio_' . time(),
 											'type'        => 'portfolio',
 											'format'      => $format,
 											'image_count' => 0,
 											'url'         => $validated['url']
 									  ]);
-									  
+									  $portfolioData = [
+											'id'          => $portfolio->id,
+											'name'        => $portfolio->name,
+											'type'        => $portfolio->type,
+											'format'      => $portfolio->format,
+											'image_count' => $portfolio->image_count,
+											'profile_id'  => $portfolio->profile_id,
+											'path'        => $portfolio->path ??
+												 'no thing',
+											'url'         => $portfolio->url ?? 'no thing',
+											'created_at'  => $portfolio->created_at
+												 ? $portfolio->created_at->format('Y-m-d')
+												 : null,
+											'updated_at'  => $portfolio->updated_at
+												 ? $portfolio->updated_at->format('Y-m-d')
+												 : null,
+									  ];
 									  return responseJson(
 											201, 'Link portfolio created successfully',
-											$portfolio
+											$portfolioData
 									  );
 								}
 						  );
@@ -2281,18 +2605,47 @@
 											 );
 											 $changesMade = true;
 									  }
+									  $portfolioData = [
+											'id'          => $portfolio->id,
+											'name'        => $portfolio->name,
+											'type'        => $portfolio->type,
+											'format'      => $portfolio->format,
+											'image_count' => $portfolio->image_count,
+											'profile_id'  => $portfolio->profile_id,
+											'created_at'  => $portfolio->created_at
+												 ? $portfolio->created_at->format('Y-m-d')
+												 : null,
+											'updated_at'  => $portfolio->updated_at
+												 ? $portfolio->updated_at->format('Y-m-d')
+												 : null,
+											'images'      => $portfolio->images->map(
+												 fn($image) => [
+													  'id'         => $image->id,
+													  'path'       => $image->path,
+													  'mime_type'  => $image->mime_type,
+													  'created_at' => $image->created_at
+															? $image->created_at->format(
+																 'Y-m-d'
+															) : 'no thing',
+													  'updated_at' => $image->updated_at
+															? $image->updated_at->format(
+																 'Y-m-d'
+															) : 'no thing',
+												 ]
+											)->toArray(),
+									  ];
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
 											 return responseJson(
 												  200, 'Portfolio updated successfully',
-												  $portfolio->fresh(['images'])
+												  $portfolioData
 											 );
 									  }
 									  
 									  return responseJson(
 											200, 'No changes detected',
-											$portfolio->fresh(['images'])
+											$portfolioData
 									  );
 								}
 						  );
@@ -2384,17 +2737,31 @@
 												  ->url($path);
 											 $changesMade = true;
 									  }
+									  $portfolioData = [
+											'id'         => $portfolio->id,
+											'name'       => $portfolio->name,
+											'type'       => $portfolio->type,
+											'format'     => $portfolio->format,
+											'path'       => $portfolio->path,
+											'profile_id' => $portfolio->profile_id,
+											'created_at' => $portfolio->created_at
+												 ? $portfolio->created_at->format('Y-m-d')
+												 : null,
+											'updated_at' => $portfolio->updated_at
+												 ? $portfolio->updated_at->format('Y-m-d')
+												 : null,
+									  ];
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
 											 return responseJson(
 												  200, 'PDF portfolio updated successfully',
-												  $portfolio->fresh()
+												  $portfolioData
 											 );
 									  }
 									  
 									  return responseJson(
-											200, 'No changes detected', $portfolio->fresh()
+											200, 'No changes detected', $portfolioData
 									  );
 								}
 						  );
@@ -2469,18 +2836,32 @@
 											 $portfolio->url = $request->url;
 											 $changesMade = true;
 									  }
+									  $portfolioData = [
+											'id'         => $portfolio->id,
+											'name'       => $portfolio->name,
+											'type'       => $portfolio->type,
+											'format'     => $portfolio->format,
+											'url'        => $portfolio->url,
+											'profile_id' => $portfolio->profile_id,
+											'created_at' => $portfolio->created_at
+												 ? $portfolio->created_at->format('Y-m-d')
+												 : null,
+											'updated_at' => $portfolio->updated_at
+												 ? $portfolio->updated_at->format('Y-m-d')
+												 : null,
+									  ];
 									  
 									  if ($changesMade) {
 											 $portfolio->save();
 											 return responseJson(
 												  200,
 												  'Link portfolio updated successfully',
-												  $portfolio->fresh()
+												  $portfolioData
 											 );
 									  }
 									  
 									  return responseJson(
-											200, 'No changes detected', $portfolio->fresh()
+											200, 'No changes detected', $portfolioData
 									  );
 								}
 						  );

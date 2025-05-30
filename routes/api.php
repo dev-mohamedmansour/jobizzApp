@@ -79,13 +79,12 @@
 								 Route::post(
 									  '/add-job', [JobController::class, 'store']
 								 );
-								 Route::get('/{jobId}', [JobController::class, 'show']
-								 );
-								 Route::get(
-									  '/company/{companyId}',
-									  [JobController::class, 'getAllJobsForCompany']
+								 Route::get('/company5',
+									  [JobController::class, 'getAllJobsCompany']
 								 );
 								 Route::get('/', [JobController::class, 'index']
+								 );
+								 Route::get('/{jobId}', [JobController::class, 'show']
 								 );
 								 Route::put(
 									  '/{jobId}', [JobController::class, 'update']
