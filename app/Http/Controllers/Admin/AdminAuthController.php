@@ -48,7 +48,16 @@
 								],
 								'photo'    => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
-								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/',
+								'password' => [
+									 'required',
+									 'string',
+									 'min:8',
+									 'confirmed',
+									 'regex:/^[a-zA-Z0-9@#$%^&*!]+$/',
+									 'regex:/[a-zA-Z]/',
+									 'regex:/[0-9]/',
+									 'regex:/[@#$%^&*!]/',
+								],
 						  ], [
 								 // Custom error messages
 								 'fullName.required' => 'The name field is required.',
@@ -154,7 +163,16 @@
 								],
 								'photo'    => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 								'phone'    => 'required|string|max_digits:11|unique:admins,phone',
-								'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/'
+								'password' => [
+									 'required',
+									 'string',
+									 'min:8',
+									 'confirmed',
+									 'regex:/^[a-zA-Z0-9@#$%^&*!]+$/',
+									 'regex:/[a-zA-Z]/',
+									 'regex:/[0-9]/',
+									 'regex:/[@#$%^&*!]/',
+								],
 						  ], [
 								 // Custom error messages
 								 'fullName.required' => 'The name field is required.',
@@ -213,7 +231,7 @@
 						  $admin->assignRole('admin');
 //						   Assign a pending role and basic permissions
 //						  $admin->givePermissionTo('access-pending');
-//						  "And  Your account requires super-admin approval"
+//						  "And Your account requires super-admin approval"
 //						   Notify all super-admins
 //						  $superAdmins = Admin::role('super-admin')->get();
 //						  Notification::send(
