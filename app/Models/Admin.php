@@ -10,6 +10,9 @@
 	  use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 	  use Spatie\Permission\Traits\HasRoles;
 	  
+	  /**
+		* @method static create(array $array)
+		*/
 	  class Admin extends Authenticatable implements JWTSubject, MustVerifyEmail
 	  {
 			 use HasFactory, Notifiable, HasRoles;

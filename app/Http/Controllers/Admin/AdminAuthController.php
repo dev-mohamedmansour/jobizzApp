@@ -18,7 +18,6 @@
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
-	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  use Spatie\Permission\Exceptions\PermissionAlreadyExists;
@@ -41,6 +40,7 @@
 								'email'    => [
 									 'required',
 									 'string',
+									 'email','emal:filter',
 									 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
 									 'unique:admins,email',
 									 'unique:users,email',
