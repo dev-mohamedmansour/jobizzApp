@@ -599,6 +599,7 @@
 						  // Filter profile data to include only relevant fields
 						  $filteredData = [
 								'id'                     => $profile->id,
+								'full_name'              => $user->name,
 								'user_id'                => $profile->user_id,
 								'title_job'              => $profile->title_job,
 								'job_position'           => $profile->job_position,
@@ -874,6 +875,9 @@
 										$validated['is_default'] = 0;
 								 }
 						  }
+						  $user->update([
+								'name' => $validated['full_name'] ?? $user->name
+						  ]);
 						  $originalData = $profile->only(array_keys($validated));
 						  $changes = array_diff_assoc($validated, $originalData);
 						  
@@ -908,6 +912,7 @@
 				  ?Profile $profile
 			 ): array {
 					$rules = [
+						 'full_name'     => ['sometimes', 'string', 'max:255'],
 						 'title_job'     => ['sometimes', 'string', 'max:255'],
 						 'job_position'  => ['sometimes', 'string', 'max:255'],
 						 'is_default'    => ['required', 'string', 'max:1'],
