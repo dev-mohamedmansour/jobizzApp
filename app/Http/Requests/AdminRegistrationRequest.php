@@ -26,7 +26,16 @@
 						 ],
 						 'photo' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 						 'phone' => 'required|string|max_digits:11|unique:admins,phone',
-						 'password' => 'required|string|min:8|confirmed|regex:/^[a-zA-Z0-9@#$%^&*!]+$/',
+						 'password' => [
+							  'required',
+							  'string',
+							  'min:8',
+							  'confirmed',
+							  'regex:/^[a-zA-Z0-9@#$%^&*!]+$/',
+							  'regex:/[a-zA-Z]/',
+							  'regex:/[0-9]/',
+							  'regex:/[@#$%^&*!]/',
+						 ],
 					];
 			 }
 			 
