@@ -1,6 +1,6 @@
 <?php
 	  
-	  namespace App\Http\Controllers\Auth;
+	  namespace App\Http\Controllers\V1\Auth;
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\JobListing;
@@ -24,7 +24,7 @@
 	  use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 	  use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 	  
-	  class AuthController extends Controller
+	  class UserAuthController extends Controller
 	  {
 			 protected PinService $pinService;
 			 

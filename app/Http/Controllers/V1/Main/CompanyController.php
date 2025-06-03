@@ -1,11 +1,10 @@
 <?php
 	  
-	  namespace App\Http\Controllers\Admin;
+	  namespace App\Http\Controllers\V1\Main;
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Models\Admin;
 	  use App\Models\Company;
-	  use App\Models\Profile;
 	  use App\Models\User;
 	  use App\Notifications\JobizzUserNotification;
 	  use Illuminate\Http\JsonResponse;

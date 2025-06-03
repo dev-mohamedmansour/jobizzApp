@@ -1,15 +1,15 @@
 <?php
 	  
-	  use App\Http\Controllers\Admin\AdminAuthController;
-	  use App\Http\Controllers\Admin\ApplicationController;
-	  use App\Http\Controllers\Admin\CompanyController;
-	  use App\Http\Controllers\Admin\JobController;
-	  use App\Http\Controllers\Admin\UserController;
-	  use App\Http\Controllers\Auth\AuthController;
-	  use App\Http\Controllers\Auth\FavoriteController;
-	  use App\Http\Controllers\Auth\ProfileController;
-	  use App\Http\Controllers\FirebasePushController;
-	  use App\Http\Controllers\Main\CategoryController;
+	  use App\Http\Controllers\V1\Admin\AdminControlUsersController;
+	  use App\Http\Controllers\V1\Auth\AdminAuthController;
+	  use App\Http\Controllers\V1\Auth\UserAuthController;
+	  use App\Http\Controllers\V1\Main\ApplicationController;
+	  use App\Http\Controllers\V1\Main\CategoryController;
+	  use App\Http\Controllers\V1\Main\CompanyController;
+	  use App\Http\Controllers\V1\Main\FavoriteController;
+	  use App\Http\Controllers\V1\Main\FirebasePushController;
+	  use App\Http\Controllers\V1\Main\JobController;
+	  use App\Http\Controllers\V1\Main\ProfileController;
 	  use Illuminate\Support\Facades\Route;
 	  
 	  Route::middleware('throttle:limiter')->group(function () {
@@ -26,6 +26,10 @@
 						  Route::post(
 								'/verify-email',
 								[AdminAuthController::class, 'verifyEmail']
+						  );
+						  Route::post(
+								'/resend-email',
+								[AdminAuthController::class, 'resendEmail']
 						  );
 						  Route::post('/login', [AdminAuthController::class, 'login']
 						  );
@@ -44,12 +48,12 @@
 						  Route::prefix('users')->group(function () {
 								 Route::get(
 									  '/',
-									  [UserController::class,
+									  [AdminControlUsersController::class,
 										'index']
 								 );
 								 Route::delete(
 									  '/{id}',
-									  [UserController::class,
+									  [AdminControlUsersController::class,
 										'destroy']
 								 );
 						  });
@@ -156,43 +160,43 @@
 			 Route::prefix('auth')->group(function () {
 					Route::withoutMiddleware('api')->group(function () {
 						  // Regular auth
-						  Route::post('/register', [AuthController::class, 'register']
+						  Route::post('/register', [UserAuthController::class, 'register']
 						  );
 						  Route::post(
-								'/verify-email', [AuthController::class, 'verifyEmail']
+								'/verify-email', [UserAuthController::class, 'verifyEmail']
 						  );
 						  Route::post(
 								'/resend-email-verification',
-								[AuthController::class, 'resendEmail']
+								[UserAuthController::class, 'resendEmail']
 						  );
-						  Route::post('/login', [AuthController::class, 'login']);
+						  Route::post('/login', [UserAuthController::class, 'login']);
 						  Route::post(
-								'/google-login', [AuthController::class, 'socialLogin']
+								'/google-login', [UserAuthController::class, 'socialLogin']
 						  );
 						  //password Logic
 						  Route::post(
 								'/password/reset-request',
-								[AuthController::class, 'requestPasswordReset']
+								[UserAuthController::class, 'requestPasswordReset']
 						  );
 						  Route::post(
 								'/password/verify-pin',
-								[AuthController::class, 'checkResetPasswordPinCode']
+								[UserAuthController::class, 'checkResetPasswordPinCode']
 						  );
 					});
 					Route::middleware('api')->group(function () {
-						  Route::post('/logout', [AuthController::class, 'logout']);
+						  Route::post('/logout', [UserAuthController::class, 'logout']);
 						  Route::post(
 								'/fcm-token',
 								[FirebasePushController::class, 'registerToken']
 						  );
-						  Route::get('/home', [AuthController::class, 'home']);
+						  Route::get('/home', [UserAuthController::class, 'home']);
 						  Route::post(
 								'/password/reset',
-								[AuthController::class, 'newPassword']
+								[UserAuthController::class, 'newPassword']
 						  )->middleware('check.reset.token');
 						  Route::post(
 								'/password/change-password',
-								[AuthController::class, 'changePassword']
+								[UserAuthController::class, 'changePassword']
 						  );
 						  
 						  Route::prefix('profiles')->group(

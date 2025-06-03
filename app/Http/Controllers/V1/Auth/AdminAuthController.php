@@ -1,6 +1,6 @@
 <?php
 	  
-	  namespace App\Http\Controllers\Auth;
+	  namespace App\Http\Controllers\V1\Auth;
 	  
 	  use App\Http\Controllers\Controller;
 	  use App\Http\Requests\AdminLoginRequest;
@@ -8,13 +8,16 @@
 	  use App\Http\Requests\CreateSubAdminRequest;
 	  use App\Http\Requests\NewPasswordRequest;
 	  use App\Http\Requests\RequestPasswordResetRequest;
+	  use App\Http\Requests\ResendEmailRequest;
 	  use App\Http\Requests\VerifyEmailRequest;
 	  use App\Mail\SubAdminCredentialsMail;
 	  use App\Models\Admin;
 	  use App\Models\PasswordResetPin;
 	  use App\Notifications\AdminApprovedNotification;
 	  use App\Services\PinService;
+	  use Cassandra\Exception\ValidationException;
 	  use Exception;
+	  use Illuminate\Database\Eloquent\ModelNotFoundException;
 	  use Illuminate\Http\JsonResponse;
 	  use Illuminate\Support\Facades\Cache;
 	  use Illuminate\Support\Facades\DB;
@@ -156,6 +159,49 @@
 								500, 'Server error',
 								config('app.debug') ? $e->getMessage()
 									 : 'Something went wrong.'
+						  );
+					}
+			 }
+			 
+			 public function resendEmail(ResendEmailRequest $request): JsonResponse
+			 {
+					try {
+						  $validated = $request->validated();
+						  $admin = Admin::where('email', $validated['email'])
+								->firstOrFail();
+						  
+						  if ($admin->hasVerifiedEmail()) {
+								 return responseJson(
+									  400, 'Invalid request', 'Email already verified'
+								 );
+						  }
+						  
+						  $pinResult = $this->pinService->generateAndSendPin(
+								$admin, 'verification'
+						  );
+						  
+						  if (!$pinResult['email_sent']) {
+								 return responseJson(
+									  500,  'Email not sent','Failed to send verification email'
+								 );
+						  }
+						  
+						  return responseJson(
+								200, 'Verification PIN sent',
+								'Please check your email for verification PIN, including your spam folder.'
+						  );
+					} catch (ModelNotFoundException $e) {
+						  return responseJson(404, 'Not found', 'Admin not found');
+					} catch (ValidationException $e) {
+						  return responseJson(
+								422, 'Validation error', $e->validator->errors()->all()
+						  );
+					} catch (Exception $e) {
+						  Log::error('Resend email error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage()
+									 : 'Something went wrong. Please try again later'
 						  );
 					}
 			 }
