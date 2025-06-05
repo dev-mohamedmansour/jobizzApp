@@ -3,6 +3,7 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
+	  use App\Jobs\DeleteJobAndApplications;
 	  use App\Models\Admin;
 	  use App\Models\Company;
 	  use App\Models\JobListing;
@@ -719,54 +720,173 @@
 			 public function destroy(int $companyId): JsonResponse
 			 {
 					try {
-						  if (!auth('admin')->check()) {
-								 return responseJson(
-									  401, 'Unauthenticated', 'Unauthenticated'
+						  $admin = auth('admin')->user();
+						  if ($admin->hasRole('super-admin')) {
+								 return $this->handleSuperAdminAction(
+									  $admin, $companyId
 								 );
 						  }
+						  if ($admin->hasRole('admin')) {
+								 return $this->handleAdminAction($admin, $companyId);
+						  }
 						  
-						  $admin = auth('admin')->user();
+						  return responseJson(
+								403, 'Forbidden', 'Invalid authentication guard'
+						  );
+					} catch (\Exception $e) {
+						  Log::error('Index error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : 'Server error'
+						  );
+					}
+			 }
+			 
+			 private function handleSuperAdminAction($admin, int $companyId
+			 ): JsonResponse {
+					try {
+					$company = Company::find($companyId);
+					if (!$company) {
+						  return responseJson(
+								404, 'Company not found', 'Company not found'
+						  );
+					}
+					// Update all non-cancelled jobs to cancelled
+					$company->jobs()->where('job_status', '!=', 'cancelled')
+						 ->update(['job_status' => 'cancelled']);
+					
+					// Update all applications for the company's jobs to reject
+					$company->jobs()->each(function ($job) {
+						  $job->applications()->each(function ($application) {
+								 $application->update(['status' => 'rejected']);
+								 $application->statuses()->create([
+									  'status'   => 'rejected',
+									  'feedback' => 'Job was cancelled by admin.',
+								 ]);
+						  });
+						  // Schedule deletion of the job and its applications
+						  DeleteJobAndApplications::dispatch($job->id)->delay(
+								now()->addDays(15)
+						  );
+					});
+//					$subAdmins = Admin::where('company_id', $company->id)
+//						 ->where('id', '!=', $admin->id)->get();
+//					if ($subAdmins) {
+//
+//						  foreach ($subAdmins as $subAdmin) {
+//								 if ($subAdmin->photo
+//									  && Storage::disk('public')->exists(
+//											$subAdmin->photo
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $subAdmin->photo
+//										);
+//								 }
+//						  }
+//					}
+					Admin::where('company_id', $company->id)
+						 ->where('id', '!=', $admin->id)
+						 ->update(
+							  ['company_id' => null]
+						 );
+//					Admin::where('company_id', $company->id)
+//						 ->where('id', '!=', $admin->id)
+//						 ->delete();
+//					Admin::where('company_id', $company->id)->update(
+//						 ['company_id' => null]
+//					);
+					if ($company->logo
+						 && Storage::disk('public')->exists(
+							  str_replace(
+									Storage::disk('public')->url(''), '',
+									$company->logo
+							  )
+						 )
+					) {
+						  Storage::disk('public')->delete(
+								str_replace(
+									 Storage::disk('public')->url(''), '',
+									 $company->logo
+								)
+						  );
+					}
+					$company->delete();
+					
+					return responseJson(
+						 200,
+						 'Company and associated resources deleted successfully'
+					);
+					} catch (\Exception $e) {
+						  Log::error('Destroy company error: ' . $e->getMessage());
+						  return responseJson(
+								500, 'Server error',
+								config('app.debug') ? $e->getMessage() : 'server error'
+						  );
+					}
+			 }
+			 
+			 private function handleAdminAction($admin,
+				  int $companyId
+			 ): JsonResponse {
+					try {
 						  $company = Company::find($companyId);
-						  
 						  if (!$company) {
 								 return responseJson(
 									  404, 'Company not found', 'Company not found'
 								 );
 						  }
-						  
-						  if (!$admin->hasPermissionTo('manage-all-companies')
-								&& !($admin->hasPermissionTo('manage-own-company')
-									 && $company->id === $admin->company_id)
-						  ) {
+						  if ($company->admin_id !== $admin->id) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'You do not have permission to delete this company'
 								 );
 						  }
-						  
+						  // Update all non-cancelled jobs to cancelled
 						  $company->jobs()->where('job_status', '!=', 'cancelled')
 								->update(['job_status' => 'cancelled']);
 						  
-						  $subAdmins = Admin::where('company_id', $company->id)
-								->where('id', '!=', $admin->id)->get();
-						  foreach ($subAdmins as $subAdmin) {
-								 if ($subAdmin->photo
-									  && Storage::disk('public')->exists(
-											$subAdmin->photo
-									  )
-								 ) {
-										Storage::disk('public')->delete($subAdmin->photo);
-								 }
-						  }
-						  
-						  Admin::where('company_id', $company->id)
-								->where('id', '!=', $admin->id)
-								->delete();
-						  
-						  Admin::where('company_id', $company->id)->update(
-								['company_id' => null]
-						  );
-						  
+						  // Update all applications for the company's jobs to reject
+						  $company->jobs()->each(function ($job) {
+								 $job->applications()->each(function ($application) {
+										$application->update(['status' => 'rejected']);
+										$application->statuses()->create([
+											 'status'   => 'rejected',
+											 'feedback' => 'Job was cancelled by admin.',
+										]);
+								 });
+								 // Schedule deletion of the job and its applications
+								 DeleteJobAndApplications::dispatch($job->id)->delay(
+									  now()->addDays(15)
+								 );
+						  });
+//					$subAdmins = Admin::where('company_id', $company->id)
+//						 ->where('id', '!=', $admin->id)->get();
+//					if ($subAdmins) {
+//
+//						  foreach ($subAdmins as $subAdmin) {
+//								 if ($subAdmin->photo
+//									  && Storage::disk('public')->exists(
+//											$subAdmin->photo
+//									  )
+//								 ) {
+//										Storage::disk('public')->delete(
+//											 $subAdmin->photo
+//										);
+//								 }
+//						  }
+//					}
+//						  Admin::where('company_id', $company->id)
+//								->where('id', '!=', $admin->id)
+//								->update(
+//									 ['company_id' => null]
+//								);
+					Admin::where('company_id', $company->id)
+						 ->where('id', '!=', $admin->id)
+						 ->delete();
+					Admin::where('company_id', $company->id)->update(
+						 ['company_id' => null]
+					);
 						  if ($company->logo
 								&& Storage::disk('public')->exists(
 									 str_replace(
@@ -782,7 +902,6 @@
 									  )
 								 );
 						  }
-						  
 						  $company->delete();
 						  
 						  return responseJson(
@@ -793,7 +912,7 @@
 						  Log::error('Destroy company error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',
-								config('app.debug') ? $e->getMessage() : null
+								config('app.debug') ? $e->getMessage() : 'server error'
 						  );
 					}
 			 }

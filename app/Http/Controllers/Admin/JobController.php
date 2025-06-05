@@ -292,7 +292,7 @@
 								 );
 						  }
 						  
-						  if (!$admin->hasPermissionTo('manage-company-jobs')) {
+						  if (!$admin->hasRole('admin')) {
 								 return responseJson(403, 'Forbidden', 'Unauthorized');
 						  }
 						  
@@ -484,7 +484,7 @@
 								 );
 						  }
 						  
-						  if (!$admin->hasPermissionTo('manage-company-jobs')) {
+						  if (!$admin->hasRole('admin')) {
 								 return responseJson(
 									  403, 'Forbidden',
 									  'You do not have permission to manage company jobs'
@@ -602,7 +602,7 @@
 						  Log::error('Show error: ' . $e->getMessage());
 						  return responseJson(
 								500, 'Server error',
-								config('app.debug') ? $e->getMessage() : null
+								config('app.debug') ? $e->getMessage() : 'Server error'
 						  );
 					}
 			 }
