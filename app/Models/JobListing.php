@@ -30,12 +30,12 @@ class JobListing extends Model
 	  
 	  public function applications(): HasMany
 	  {
-			 return $this->hasMany(Application::class, 'job_id');
+			 return $this->hasMany(Application::class, 'job_id', 'id');
 	  }
 	  
 	  public function company(): BelongsTo
 	  {
-			 return $this->belongsTo(Company::class,'company_id');
+			 return $this->belongsTo(Company::class,'company_id','id');
 	  }
 	  public function getCompanyLogoAttribute()
 	  {

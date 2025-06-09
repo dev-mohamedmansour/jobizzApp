@@ -47,7 +47,7 @@
 			 
 			 public function jobs(): HasMany
 			 {
-					return $this->hasMany(JobListing::class);
+					return $this->hasMany(JobListing::class, 'company_id', 'id');
 			 }
 			 
 	  }
