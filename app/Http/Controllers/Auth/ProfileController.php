@@ -1248,20 +1248,15 @@
 				  bool $isCreate = true
 			 ): array {
 					$rules = [
-						 'college'        => ['required', 'string', 'max:255',
-													 'regex:/^[a-zA-Z\s\']+$/'],
-						 'degree'         => ['required', 'string', 'max:255',
-													 'regex:/^[a-zA-Z\s\']+$/'],
-						 'field_of_study' => ['required', 'string', 'max:255',
-													 'regex:/^[a-zA-Z\s\']+$/'],
+						 'college'        => ['required', 'string', 'max:255'],
+						 'degree'         => ['required', 'string', 'max:255'],
+						 'field_of_study' => ['required', 'string', 'max:255'],
 						 'start_date'     => ['required', 'date',
 													 'before_or_equal:today'],
 						 'end_date'       => ['nullable', 'date', 'after:start_date'],
 						 'is_current'     => ['sometimes', 'boolean'],
-						 'description'    => ['nullable', 'string', 'max:500',
-													 'regex:/^[a-zA-Z\s]+$/'],
-						 'location'       => ['nullable', 'string', 'max:255',
-													 'regex:/^[a-zA-Z\s\-]+$/'],
+						 'description'    => ['nullable', 'string', 'max:500'],
+						 'location'       => ['nullable', 'string', 'max:255'],
 						 'image'          => ['nullable', 'image',
 													 'mimes:jpeg,png,jpg,gif,svg',
 													 'max:2048']
@@ -1299,7 +1294,7 @@
 			 private function handleEducationImageUpload(Request $request,
 				  array $validated, ?Education $education = null
 			 ): array {
-					if ($request->hasFile('image')) {
+					if ($request->hasFile('image') != null) {
 						  if ($education && $education->image
 								&& Storage::disk(
 									 'public'
@@ -1313,9 +1308,6 @@
 								'educations', 'public'
 						  );
 						  $validated['image'] = Storage::disk('public')->url($path);
-					} elseif (!$education || !$education->image) {
-						  $validated['image']
-								= 'https://jobizaa.com/still_images/education.jpg';
 					}
 					
 					return $validated;
@@ -1651,8 +1643,7 @@
 												 'required_if:is_current,false'],
 						 'is_current'  => ['sometimes', 'boolean'],
 						 'description' => ['nullable', 'string', 'max:1000'],
-						 'location'    => ['nullable', 'string', 'max:255',
-												 'regex:/^[a-zA-Z\s\-]+$/'],
+						 'location'    => ['nullable', 'string', 'max:255'],
 						 'image'       => ['nullable', 'image',
 												 'mimes:jpeg,png,jpg,gif,svg', 'max:2048']
 					];
@@ -1688,7 +1679,7 @@
 			 private function handleExperienceImageUpload(Request $request,
 				  array $validated, ?Experience $experience = null
 			 ): array {
-					if ($request->hasFile('image')) {
+					if ($request->hasFile('image')!=null) {
 						  if ($experience && $experience->image
 								&& Storage::disk(
 									 'public'
@@ -1702,11 +1693,7 @@
 								'experiences', 'public'
 						  );
 						  $validated['image'] = Storage::disk('public')->url($path);
-					} elseif (!$experience || !$experience->image) {
-						  $validated['image']
-								= 'https://jobizaa.com/still_images/experience.png';
 					}
-					
 					return $validated;
 			 }
 			 

@@ -19,11 +19,12 @@
 						  
 						  // Attempt to parse and authenticate the token
 						  $user = JWTAuth::parseToken()->authenticate();
-						  if (!$user) {
-								 return responseJson(
-									  401, 'Unauthorized', 'Token is invalid or expired'
-								 );
-						  }
+//						  dd($user);
+//						  if (!$user) {
+//								 return responseJson(
+//									  401, 'Unauthorized', 'Token is invalid22 or expired'
+//								 );
+//						  }
 					} catch (TokenExpiredException $e) {
 						  return responseJson(401,
 								'Token has expired',$e->getMessage());

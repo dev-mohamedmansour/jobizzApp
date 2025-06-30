@@ -3,8 +3,8 @@
 	  namespace App\Http\Controllers\Admin;
 	  
 	  use App\Http\Controllers\Controller;
-	  use App\Jobs\DeleteJobAndApplications;
 	  use App\Models\Admin;
+	  use App\Models\BlockList;
 	  use App\Models\Company;
 	  use App\Models\JobListing;
 	  use App\Models\User;
@@ -150,7 +150,8 @@
 						 ['jobs' => fn($query) => $query->where(
 							  'job_status', '!=', 'cancelled'
 						 )->select(
-							  'id', 'company_id', 'title', 'job_status', 'salary'
+							  'id', 'company_id', 'title', 'job_status', 'salary', 'location', 'job_type','position', 'category_name', 'description', 'requirement', 'benefits'
+
 						 )]
 					)
 						 ->withCount(
@@ -180,10 +181,21 @@
 													  'id'         => $job->id,
 													  'title'      => $job->title,
 													  'job_status' => $job->job_status,
-													  'job_salary' => $job->salary,
+													  'salary' => $job->salary,
+													  'location' => $job->location,
+													  'job_type' => $job->job_type,
+													  'position' => $job->position,
+													  'category_name' => $job->category_name,
+													  'description' => $job->description,
+													  'requirement' => $job->requirement,
+													  'benefits' => $job->benefits,
 													  'isFavorite' => $job->isFavoritedByProfile(
 															$profile->id
-													  )
+													  ),
+													  'companyName'   => $job->company->name ??
+															null,
+													  'companyLogo'   => $job->company->logo ??
+															null,
 												 ];
 										  }
 									 )
@@ -224,10 +236,21 @@
 													  'id'         => $job->id,
 													  'title'      => $job->title,
 													  'job_status' => $job->job_status,
-													  'job_salary' => $job->salary,
+													  'salary' => $job->salary,
+													  'location' => $job->location,
+													  'job_type' => $job->job_type,
+													  'position' => $job->position,
+													  'category_name' => $job->category_name,
+													  'description' => $job->description,
+													  'requirement' => $job->requirement,
+													  'benefits' => $job->benefits,
 													  'isFavorite' => $job->isFavoritedByProfile(
 															$profile->id
-													  )
+													  ),
+													  'companyName'   => $job->company->name ??
+															null,
+													  'companyLogo'   => $job->company->logo ??
+															null,
 												 ];
 										  }
 									 )
@@ -721,9 +744,10 @@
 			 {
 					try {
 						  $admin = auth('admin')->user();
+//						  dd($admin);
 						  if ($admin->hasRole('super-admin')) {
 								 return $this->handleSuperAdminAction(
-									   $companyId
+									  $companyId
 								 );
 						  }
 						  if ($admin->hasRole('admin')) {
@@ -759,6 +783,7 @@
 					// Update all applications
 					$company->jobs()->each(function ($job) {
 						  // Delete a job and its applications immediately
+						  $job->favoritesJob()->detach(); // Detach favorites first
 						  $job->applications()->delete(); // Delete applications first
 						  $job->delete(); // Then delete the job
 					});
@@ -780,9 +805,10 @@
 					Admin::where('company_id', $company->id)
 						 ->where('id', '!=', $admin->id)
 						 ->delete();
-					Admin::where('company_id', $company->id)->where('id',$admin->id)->update(
-						 ['company_id' => null]
-					);
+					Admin::where('company_id', $company->id)->where('id', $admin->id)
+						 ->update(
+							  ['company_id' => null]
+						 );
 					if ($company->logo
 						 && Storage::disk('public')->exists(
 							  str_replace(
@@ -799,10 +825,18 @@
 						  );
 					}
 					$company->delete();
-					
+					BlockList::create([
+						 'id_of_block_admin' => $admin->id,
+						 'email'             => $admin->email,
+						 'name'              => $admin->name,
+						 'phone'             => $admin->phone,
+					]);
+					$admin->removeRole('admin');
+					$admin->assignRole('pending');
+					$admin->update(['is_approved' => false]);
 					return responseJson(
 						 200,
-						 'Company and associated resources deleted successfully,'."$admin->name"
+						 'Company and associated resources deleted successfully, Account of this admin blocked'
 					);
 			 }
 			 
@@ -815,7 +849,7 @@
 								404, 'Not found', 'Company not found'
 						  );
 					}
-					if( $admin->id !== $company->admin_id) {
+					if ($admin->id !== $company->admin_id) {
 						  return responseJson(
 								403, 'Forbidden',
 								'You do not have permission to delete this company'
@@ -824,6 +858,7 @@
 					// Update all applications
 					$company->jobs()->each(function ($job) {
 						  // Delete a job and its applications immediately
+						  $job->favoritesJob()->detach(); // Detach favorites first
 						  $job->applications()->delete(); // Delete applications first
 						  $job->delete(); // Then delete the job
 					});
@@ -864,10 +899,16 @@
 						  );
 					}
 					$company->delete();
-					
+//					BlockList::create(['email' => $admin->email]);
+//					auth()->logout();
+//					// Optional: Add token invalidation if using JWT
+//					JWTAuth::invalidate(JWTAuth::getToken());
+//					// Optional: Clear session data
+//					session()->flush();
+//					$admin->delete();
 					return responseJson(
 						 200,
-						 'Company and associated resources deleted successfully,'."$admin->name"
+						 'Company and associated resources deleted successfully,'
 					);
 			 }
 	  }

@@ -15,6 +15,7 @@
 	  use Illuminate\Support\Facades\DB;
 	  use Illuminate\Support\Facades\Hash;
 	  use Illuminate\Support\Facades\Log;
+	  use Illuminate\Support\Facades\Storage;
 	  use Illuminate\Support\Facades\Validator;
 	  use Illuminate\Support\Str;
 	  use Illuminate\Validation\ValidationException;
@@ -926,6 +927,84 @@
 								config('app.debug') ? $e->getMessage()
 									 : 'Something went wrong. Please try again later'
 						  );
+					}
+			 }
+			 
+			 /**
+			  * Delete the authenticated user and all associated profiles and documents.
+			  *
+			  * @return JsonResponse
+			  */
+			 public function destroy(): JsonResponse
+			 {
+					try {
+						  // Check if the user is authenticated
+						  if (!auth('api')->check()) {
+								 return responseJson(401, 'Unauthenticated','Unauthenticated');
+						  }
+						  
+						  $user = auth('api')->user();
+						  
+						  // Check if the user exists
+						  if (!$user) {
+								 return responseJson(404,'Error','User not found');
+						  }
+						  
+						  // Delete all profiles and their associated data
+						  $profiles = $user->profiles;
+						  foreach ($profiles as $profile) {
+								 // Delete educations and their images
+								 if ($profile->educations) {
+										foreach ($profile->educations as $education) {
+											  if ($education->image && Storage::disk('public')->exists($education->image)) {
+													 Storage::disk('public')->delete($education->image);
+											  }
+										}
+										$profile->educations()->delete();
+								 }
+								 
+								 // Delete experiences and their images
+								 if ($profile->experiences) {
+										foreach ($profile->experiences as $experience) {
+											  if ($experience->image && Storage::disk('public')->exists($experience->image)) {
+													 Storage::disk('public')->delete($experience->image);
+											  }
+										}
+										$profile->experiences()->delete();
+								 }
+								 
+								 // Delete documents and their files
+								 if ($profile->documents) {
+										foreach ($profile->documents as $document) {
+											  if ($document->file && Storage::disk('public')->exists($document->file)) {
+													 Storage::disk('public')->delete($document->file);
+											  }
+										}
+										$profile->documents()->delete();
+								 }
+								 $profile->favoriteJobs()->detach(); // Detach favorites first
+								 // Delete the profile image if it exists
+								 if ($profile->profile_image && Storage::disk('public')->exists($profile->profile_image)) {
+										Storage::disk('public')->delete($profile->profile_image);
+								 }
+								 
+								 // Delete the profile
+								 $profile->delete();
+						  }
+						  
+						  // Delete the user
+						  $user->delete();
+						  
+						  return responseJson(
+								200,
+								'User and associated profiles and documents deleted successfully'
+						  );
+						  
+					} catch (\Exception $e) {
+						  // Handle exceptions
+						  Log::error('Server Error: ' . $e->getMessage());
+						  $errorMessage = config('app.debug') ? $e->getMessage() : 'Server error: Something went wrong. Please try again later.';
+						  return responseJson(500,'Error',$errorMessage);
 					}
 			 }
 			 

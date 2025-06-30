@@ -19,7 +19,7 @@
 						  $table->boolean('is_current')->default(false);
 						  $table->text('description')->nullable();
 						  $table->string('location')->nullable();
-						  $table->string('image')->nullable();
+						  $table->string('image')->default('https://jobizaa.com/still_images/education.jpg');
 						  $table->timestamps();
 					});
 			 }

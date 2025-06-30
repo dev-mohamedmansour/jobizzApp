@@ -53,6 +53,7 @@
 										'destroy']
 								 );
 						  });
+						  Route::get('/black-list',[AdminAuthController::class, 'getBlackList']);
 						  Route::post(
 								'/logout', [AdminAuthController::class, 'logout']
 						  );
@@ -184,6 +185,7 @@
 								'/fcm-token',
 								[FirebasePushController::class, 'registerToken']
 						  );
+						  Route::delete('/delete-account',[AuthController::class, 'destroy']);
 						  Route::get('/home', [AuthController::class, 'home']);
 						  Route::post(
 								'/password/reset',
